@@ -4,6 +4,7 @@
 #include <cstring>
 #include <map>
 #include <set>
+#include <sstream>
 
 // Network api
 #include <sys/socket.h>
@@ -21,4 +22,4 @@
 #include "log.hpp"
 
 using namespace std::string_literals;
-std::tuple<PPPoE_Discovery,std::string> dispatchPPPOE( uint8_t mac[6], PPPoE_Discovery inPkt );
+std::tuple<PPPOEDISC_HDR,std::string> dispatchPPPOE( std::array<uint8_t,6> mac, PPPOEDISC_HDR *inPkt );

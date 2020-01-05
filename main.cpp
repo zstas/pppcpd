@@ -68,11 +68,14 @@ int main( int argc, char *argv[] ) {
             auto eth = EthernetHeader( { pkt.begin(), pkt.begin() + 14 } );
             log( "Ethernet packet:\n" + eth.toString() );
             if( eth.ethertype == htons( ETH_PPPOE_DISCOVERY ) ) {
-                auto pppoe = PPPoE_Discovery( { pkt.begin() + 14, pkt.end() } );
+                PPPOEDISC_HDR *pppoe = reinterpret_cast<PPPOEDISC_HDR*>( pkt.data() + 14 );
                 if( auto const &[pkt, err] = dispatchPPPOE( eth.src_mac, pppoe ); !err.empty() ) {
                     log( "err processing pkt: " + err );
                 } else {
                     log( "pkt is good, sending answer" );
+                    EthernetHeader rep;
+                    rep.dst_mac = eth.src_mac;
+                    rep.ethertype = htons( ETH_PPPOE_DISCOVERY );
                     //send()
                 }
             } else {
@@ -84,8 +87,9 @@ int main( int argc, char *argv[] ) {
     return 0;
 }
 
-std::tuple<PPPoE_Discovery,std::string> dispatchPPPOE( uint8_t mac[6], PPPoE_Discovery inPkt ) {
-    log( "PPPoE packet:\n" + inPkt.toString() );
+std::tuple<PPPOEDISC_HDR,std::string> dispatchPPPOE( std::array<uint8_t,6> mac, PPPOEDISC_HDR *inPkt ) {
+    PPPOEDISC_HDR reply;
+    log( "PPPoE packet:\n" + pppoe::to_string( inPkt ) );
     
     uint16_t session_id = 0;
     for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
@@ -97,25 +101,32 @@ std::tuple<PPPoE_Discovery,std::string> dispatchPPPOE( uint8_t mac[6], PPPoE_Dis
     }
 
     uint8_t key[ 8 ];
-    std::memcpy( key, mac, 8 );
+    std::memcpy( key, mac.data(), 8 );
     *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = htons( session_id );
     
     if( auto const &sIt = pppoeSessions.find( key ); sIt != pppoeSessions.end() ) {
-        return { PPPoE_Discovery(), "Session is already up" };
+        return { reply, "Session is already up" };
     }
 
-    switch( inPkt.code ) {
+    reply.type = 1;
+    reply.version = 1;
+    reply.length = 0;
+
+    switch( inPkt->code ) {
     case PPPOE_CODE::PADI:
         log( "Processing PADI packet" );
-        //
+        reply.code = PPPOE_CODE::PADO;
+        return { reply, "" };
         break;
     case PPPOE_CODE::PADR:
         log( "Processing PADR packet" );
-        //
+        reply.code = PPPOE_CODE::PADS;
+        reply.session_id = session_id;
+        return { reply, "" };
         break;
     default:
         log( "Incorrect code for packet" );
-        return { PPPoE_Discovery(), "Incorrect code for packet" };
+        return { reply, "Incorrect code for packet" };
     }
-    return { PPPoE_Discovery(), "" };
+    return { reply, "" };
 }

@@ -5,15 +5,14 @@ enum class PPPOE_CODE: uint8_t {
     PADS = 0x65
 };
 
-class PPPoE_Discovery {
-public:
-    uint8_t type_version;
+struct PPPOEDISC_HDR {
+    uint32_t type : 4;
+    uint32_t version : 4;
     enum PPPOE_CODE code;
     uint16_t session_id;
     uint16_t length;
+}__attribute__((__packed__));
 
-    PPPoE_Discovery() = default;
-    PPPoE_Discovery( std::vector<uint8_t> pkt );
-
-    std::string toString() const;
-};
+namespace pppoe {
+    std::string to_string( const PPPOEDISC_HDR *hdr );
+}
