@@ -36,4 +36,6 @@ struct PPPOEDISC_TLV {
 
 namespace pppoe {
     std::string to_string( const PPPOEDISC_HDR *hdr );
+    uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val );
+    std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt );
 }

@@ -92,10 +92,11 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
     reply.reserve( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) + 128 );
     uint16_t session_id = 0;
 
+    printHex( pkt );
     ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
     log( "Ethernet packet:\n" + ether::to_string( eth ) );
     if( eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
-        return { reply, "Not pppoe packet" };
+        return { std::move( reply ), "Not pppoe packet" };
     }
     PPPOEDISC_HDR *pppoe = reinterpret_cast<PPPOEDISC_HDR*>( pkt.data() + sizeof( ETHERNET_HDR ) );
 
@@ -115,7 +116,7 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
     *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = htons( session_id );
     
     if( auto const &sIt = pppoeSessions.find( key ); sIt != pppoeSessions.end() ) {
-        return { reply, "Session is already up" };
+        return { std::move( reply ), "Session is already up" };
     }
 
     ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
@@ -141,14 +142,14 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
         break;
     default:
         log( "Incorrect code for packet" );
-        return { reply, "Incorrect code for packet" };
+        return { std::move( reply ), "Incorrect code for packet" };
     }
 
     // Parsing tags
     std::optional<std::string> chosenService;
     std::optional<std::string> hostUniq;
-    if( auto const &[ tags, error ] = parseTags( pkt ); !error.empty() ) {
-        return { reply, "Cannot parse tags cause: " + error };
+    if( auto const &[ tags, error ] = pppoe::parseTags( pkt ); !error.empty() ) {
+        return { std::move( reply ), "Cannot parse tags cause: " + error };
     } else {
         for( auto &[ tag, val ]: tags ) {
             log( "Processing tag: " + std::to_string( static_cast<uint16_t>( tag ) ) );
@@ -178,7 +179,7 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
                         log( "Service name is differ, but we can ignore it" );
                         chosenService = val;
                     } else {
-                        return { reply, "Cannot serve \"" + val + "\" service, because in policy only \"" + policy->service_name + "\"" };
+                        return { std::move( reply ), "Cannot serve \"" + val + "\" service, because in policy only \"" + policy->service_name + "\"" };
                     }
                 }
                 break;
@@ -192,20 +193,20 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
 
     // Inserting tags
     auto taglen = 0;
-    taglen += insertTag( reply, PPPOE_TAG::AC_NAME, policy->ac_name );
+    taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_NAME, policy->ac_name );
 
     if( chosenService.has_value() ) {
-        taglen += insertTag( reply, PPPOE_TAG::SERVICE_NAME, chosenService.value() );
+        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, chosenService.value() );
     } else {
-        taglen += insertTag( reply, PPPOE_TAG::SERVICE_NAME, policy->service_name );
+        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, policy->service_name );
     }
 
     if( hostUniq.has_value() ) {
-        taglen += insertTag( reply, PPPOE_TAG::HOST_UNIQ, hostUniq.value() );
+        taglen += pppoe::insertTag( reply, PPPOE_TAG::HOST_UNIQ, hostUniq.value() );
     }
 
     if( policy->insertCookie ) {
-        taglen += insertTag( reply, PPPOE_TAG::AC_COOKIE, random_string( 16 ) );
+        taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_COOKIE, random_string( 16 ) );
     }
 
     // In case of vector is increased
@@ -213,43 +214,5 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
     rep_pppoe->length = htons( taglen );
     log( "Outcoming PPPoE packet:\n" + pppoe::to_string( rep_pppoe ) );
 
-    return { reply, "" };
-}
-
-uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val ) {
-    std::vector<uint8_t> tagvec;
-    tagvec.resize( 4 );
-    auto tlv = reinterpret_cast<PPPOEDISC_TLV*>( tagvec.data() );
-    tlv->type = htons( static_cast<uint16_t>( tag ) );
-    tlv->length = htons( val.size() );
-    tagvec.insert( tagvec.end(), val.begin(), val.end() );
-    pkt.insert( pkt.end(), tagvec.begin(), tagvec.end() );     
-
-    return tagvec.size();
-}
-
-std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt ) {
-    std::map<PPPOE_TAG,std::string> tags;
-    PPPOEDISC_TLV *tlv = nullptr;
-    auto offset = pkt.data() + sizeof( ETHERNET_HDR) + sizeof( PPPOEDISC_HDR );
-    while( true ) {
-        tlv = reinterpret_cast<PPPOEDISC_TLV*>( offset );
-        auto tag = PPPOE_TAG { ntohs( tlv->type ) };
-        auto len = ntohs( tlv->length );
-        std::string_view val;
-
-        if( len > 0 ) {
-            val = std::string_view { reinterpret_cast<char*>( &tlv->value ), len };
-        }
-
-        if( auto const &[ it, ret ] = tags.emplace( tag, val ); !ret ) {
-            return { tags, "Cannot insert tag in tag map" };
-        }
-
-        offset += 4 + len;
-        if( offset >= pkt.end().base() ) {
-            break;
-        }
-    }
-    return { tags, "" };
+    return { std::move( reply ), "" };
 }
