@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iomanip>
 #include <memory>
+#include <random>
+#include <functional>
 
 // Network api
 #include <sys/socket.h>
@@ -23,6 +25,9 @@
 #include "session.hpp"
 #include "log.hpp"
 #include "policy.hpp"
+#include "tools.hpp"
+
 using namespace std::string_literals;
 std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt );
-uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, std::string val );
+uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val );
+std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt );
