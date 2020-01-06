@@ -9,6 +9,9 @@
 #include <memory>
 #include <random>
 #include <functional>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 // Network api
 #include <sys/socket.h>
@@ -29,3 +32,25 @@
 
 using namespace std::string_literals;
 std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt );
+
+struct PPPOEQ {
+    std::mutex mutex;
+    std::queue<std::vector<uint8_t>> queue;
+
+    void push( std::vector<uint8_t> pkt ) {
+        std::lock_guard lg( mutex );
+        queue.push( pkt );
+    }
+
+    std::vector<uint8_t> pop() {
+        std::lock_guard lg( mutex );
+        auto ret = queue.front();
+        queue.pop();
+        return ret;
+    }
+
+    bool empty() {
+        std::lock_guard lg( mutex );
+        return queue.empty();
+    }
+};

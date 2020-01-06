@@ -9,6 +9,10 @@ std::set<uint16_t> sessionSet;
 std::map<uint8_t[8], uint8_t> pppoeSessions;
 std::shared_ptr<PPPOEPolicy> policy;
 
+// Queues for packets
+PPPOEQ pppoe_incoming;
+PPPOEQ pppoe_outcoming;
+
 void printHex( std::vector<uint8_t> pkt ) {
     for( auto &byte: pkt ) {
         printf( "%02x ", byte );
@@ -27,7 +31,7 @@ int main( int argc, char *argv[] ) {
             exit( -1 );
         }
     }
-    if( int optval=1; setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof( optval ) ) < 0 ) {
+    if( int optval = 1; setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &optval, sizeof( optval ) ) < 0 ) {
         log( "Cannot exec setsockopt" );
     }
 
@@ -55,7 +59,7 @@ int main( int argc, char *argv[] ) {
     log( "Ifindex: "s + std::to_string( ifr.ifr_ifindex ) );
     sa.sll_ifindex = ifr.ifr_ifindex;
 
-    if( bind( sock, (struct sockaddr *) &sa, sizeof( sa ) ) < 0 ) {
+    if( bind( sock, reinterpret_cast<struct sockaddr*>( &sa ), sizeof( sa ) ) < 0 ) {
         log( "Cannot bind on interface: "s + strerror( errno ) );
         exit( -1 );
     }
@@ -69,17 +73,32 @@ int main( int argc, char *argv[] ) {
     std::vector<uint8_t> pkt;
     pkt.resize( 1508 );
 
+    std::thread pppoe_dispatcher ([]() -> void {
+        while( true ) {
+            if( pppoe_incoming.empty() ) {
+                continue;
+            }
+            auto pkt = pppoe_incoming.pop();
+            if( auto const &[ reply, error ] = dispatchPPPOE( pkt ); !error.empty() ) {
+                log( error );
+            } else {
+                pppoe_outcoming.push( reply );
+            }
+        }
+    });
+
     while( true ) {
         if( auto ret = recv( sock, pkt.data(), pkt.capacity(), 0 ); ret > 0 ) {
+            log( "Got pkt with len " + std::to_string( ret ) );
             pkt.resize( ret );
-            if( auto [ reply, err ] = dispatchPPPOE( pkt ); !err.empty() ) {
-                log( "err processing pkt: " + err );
-            } else {
-                ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
-                rep_eth->src_mac = hwaddr;
-                if( auto ret = send( sock, reply.data(), reply.size(), 0 ); ret < 0 ) {
-                    log( "Cannot send pkt cause: "s + strerror( errno ) );
-                }
+            pppoe_incoming.push( pkt );
+        }
+        if( !pppoe_outcoming.empty() ) {
+            auto reply = pppoe_outcoming.pop();
+            ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
+            rep_eth->src_mac = hwaddr;
+            if( auto ret = send( sock, reply.data(), reply.size(), 0 ); ret < 0 ) {
+                log( "Cannot send pkt cause: "s + strerror( errno ) );
             }
         }
     }
@@ -140,6 +159,10 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
         rep_pppoe->code = PPPOE_CODE::PADS;
         rep_pppoe->session_id = session_id;
         break;
+    case PPPOE_CODE::PADT:
+        log( "Processing PADT packet" );
+        // TODO security check for session
+        return { std::move( reply ), "Received PADT, doing nothing" };
     default:
         log( "Incorrect code for packet" );
         return { std::move( reply ), "Incorrect code for packet" };

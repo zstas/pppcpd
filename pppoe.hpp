@@ -2,7 +2,8 @@ enum class PPPOE_CODE: uint8_t {
     PADI = 0x09,
     PADO = 0x07,
     PADR = 0x19,
-    PADS = 0x65
+    PADS = 0x65,
+    PADT = 0xa7
 };
 
 enum class PPPOE_TAG: uint16_t {
