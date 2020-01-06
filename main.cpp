@@ -40,12 +40,12 @@ int main( int argc, char *argv[] ) {
     strncpy( ifr.ifr_ifrn.ifrn_name, ifname, IFNAMSIZ );
     ifr.ifr_ifrn.ifrn_name[ IFNAMSIZ - 1 ] = 0;
 
-    char hwaddr[ ETH_ALEN ];
+    std::array<uint8_t,ETH_ALEN> hwaddr;
     if( ioctl( sock, SIOCGIFHWADDR, &ifr ) < 0) {
 	    log( "ioctl(SIOCGIFHWADDR)" );
         exit( -1 );
 	}
-	memcpy( hwaddr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	memcpy( hwaddr.data(), ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
     if( ioctl( sock, SIOCGIFINDEX, &ifr ) < 0) {
 	    log( "Cannot get ifindex for interface" );
@@ -65,21 +65,15 @@ int main( int argc, char *argv[] ) {
     while( true ) {
         if( auto ret = recv( sock, pkt.data(), pkt.capacity(), 0 ); ret > 0 ) {
             pkt.resize( ret );
-            auto eth = EthernetHeader( { pkt.begin(), pkt.begin() + 14 } );
-            log( "Ethernet packet:\n" + eth.toString() );
-            if( eth.ethertype == htons( ETH_PPPOE_DISCOVERY ) ) {
-                PPPOEDISC_HDR *pppoe = reinterpret_cast<PPPOEDISC_HDR*>( pkt.data() + 14 );
-                if( auto const &[pkt, err] = dispatchPPPOE( eth.src_mac, pppoe ); !err.empty() ) {
-                    log( "err processing pkt: " + err );
-                } else {
-                    log( "pkt is good, sending answer" );
-                    EthernetHeader rep;
-                    rep.dst_mac = eth.src_mac;
-                    rep.ethertype = htons( ETH_PPPOE_DISCOVERY );
-                    //send()
-                }
+            if( auto [ reply, err ] = dispatchPPPOE( pkt ); !err.empty() ) {
+                log( "err processing pkt: " + err );
             } else {
-                log( "unknown ethertype" );
+                log( "pkt is good, sending answer with len " + std::to_string( reply.size() ) );
+                ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
+                rep_eth->src_mac = hwaddr;
+                if( auto ret = send( sock, reply.data(), reply.size(), 0 ); ret < 0 ) {
+                    log( "Cannot send pkt cause: "s + strerror( errno ) );
+                }
             }
         }
     }
@@ -87,11 +81,20 @@ int main( int argc, char *argv[] ) {
     return 0;
 }
 
-std::tuple<PPPOEDISC_HDR,std::string> dispatchPPPOE( std::array<uint8_t,6> mac, PPPOEDISC_HDR *inPkt ) {
-    PPPOEDISC_HDR reply;
-    log( "PPPoE packet:\n" + pppoe::to_string( inPkt ) );
-    
+std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt ) {
+    std::vector<uint8_t> reply;
     uint16_t session_id = 0;
+
+    ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
+    log( "Ethernet packet:\n" + ether::to_string( eth ) );
+    if( eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
+        return { reply, "Not pppoe packet" };
+    }
+    PPPOEDISC_HDR *pppoe = reinterpret_cast<PPPOEDISC_HDR*>( pkt.data() + sizeof( ETHERNET_HDR ) );
+
+    reply.resize( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) );
+    log( "PPPoE packet:\n" + pppoe::to_string( pppoe ) );
+    
     for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
         if( auto ret = sessionSet.find( i ); ret == sessionSet.end() ) {
             sessionSet.emplace( i );
@@ -101,32 +104,43 @@ std::tuple<PPPOEDISC_HDR,std::string> dispatchPPPOE( std::array<uint8_t,6> mac, 
     }
 
     uint8_t key[ 8 ];
-    std::memcpy( key, mac.data(), 8 );
+    std::memcpy( key, eth->src_mac.data(), 6 );
     *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = htons( session_id );
     
     if( auto const &sIt = pppoeSessions.find( key ); sIt != pppoeSessions.end() ) {
         return { reply, "Session is already up" };
     }
 
-    reply.type = 1;
-    reply.version = 1;
-    reply.length = 0;
+    ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
+    rep_eth->ethertype = htons( ETH_PPPOE_DISCOVERY );
+    rep_eth->dst_mac = eth->src_mac;
 
-    switch( inPkt->code ) {
+    PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
+    rep_pppoe->type = 1;
+    rep_pppoe->version = 1;
+    rep_pppoe->session_id = 0;
+    rep_pppoe->length = 0;
+
+    switch( pppoe->code ) {
     case PPPOE_CODE::PADI:
         log( "Processing PADI packet" );
-        reply.code = PPPOE_CODE::PADO;
-        return { reply, "" };
+        rep_pppoe->code = PPPOE_CODE::PADO;
         break;
     case PPPOE_CODE::PADR:
         log( "Processing PADR packet" );
-        reply.code = PPPOE_CODE::PADS;
-        reply.session_id = session_id;
-        return { reply, "" };
+        rep_pppoe->code = PPPOE_CODE::PADS;
+        rep_pppoe->session_id = session_id;
         break;
     default:
         log( "Incorrect code for packet" );
         return { reply, "Incorrect code for packet" };
+    }
+
+    if( htons( pppoe->length ) > 0 ) {
+        PPPOEDISC_TLV *tlv = reinterpret_cast<PPPOEDISC_TLV*>( pkt.data() + sizeof( ETHERNET_HDR) + sizeof( PPPOEDISC_HDR ) );
+        rep_pppoe->length = pppoe->length;
+        //reply.resize( reply.size() + htons( pppoe->length ) );
+        reply.insert( reply.end(), pkt.begin() + sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ), pkt.end() );
     }
     return { reply, "" };
 }

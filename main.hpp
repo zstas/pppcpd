@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <sstream>
+#include <iomanip>
 
 // Network api
 #include <sys/socket.h>
@@ -22,4 +23,4 @@
 #include "log.hpp"
 
 using namespace std::string_literals;
-std::tuple<PPPOEDISC_HDR,std::string> dispatchPPPOE( std::array<uint8_t,6> mac, PPPOEDISC_HDR *inPkt );
+std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt );
