@@ -4,6 +4,8 @@ struct ETHERNET_HDR {
     uint16_t ethertype;
 }__attribute__((__packed__));;
 
+static_assert( sizeof( ETHERNET_HDR ) == 14 );
+
 namespace ether {
     std::string to_string( ETHERNET_HDR *eth );
 }

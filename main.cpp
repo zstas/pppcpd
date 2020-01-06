@@ -7,6 +7,7 @@
 uint16_t lastSession = 0;
 std::set<uint16_t> sessionSet;
 std::map<uint8_t[8], uint8_t> pppoeSessions;
+std::shared_ptr<PPPOEPolicy> policy;
 
 void printHex( std::vector<uint8_t> pkt ) {
     for( auto &byte: pkt ) {
@@ -58,6 +59,10 @@ int main( int argc, char *argv[] ) {
         log( "Cannot bind on interface: "s + strerror( errno ) );
         exit( -1 );
     }
+
+    policy = std::make_shared<PPPOEPolicy>();
+    policy->ac_name = "vBNG AC PPPoE";
+    policy->insertCookie = false;
 
     std::vector<uint8_t> pkt;
     pkt.resize( 1508 );
@@ -136,11 +141,75 @@ std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t>
         return { reply, "Incorrect code for packet" };
     }
 
-    if( htons( pppoe->length ) > 0 ) {
-        PPPOEDISC_TLV *tlv = reinterpret_cast<PPPOEDISC_TLV*>( pkt.data() + sizeof( ETHERNET_HDR) + sizeof( PPPOEDISC_HDR ) );
-        rep_pppoe->length = pppoe->length;
-        //reply.resize( reply.size() + htons( pppoe->length ) );
-        reply.insert( reply.end(), pkt.begin() + sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ), pkt.end() );
+    PPPOEDISC_TLV *tlv = nullptr;
+    std::map<PPPOE_TAG,std::string> tags;
+    auto offset = pkt.data() + sizeof( ETHERNET_HDR) + sizeof( PPPOEDISC_HDR );
+    while( true ) {
+        tlv = reinterpret_cast<PPPOEDISC_TLV*>( offset );
+        auto tag = PPPOE_TAG { ntohs( tlv->type ) };
+        log( "Parsed tag: " + std::to_string( ntohs( tlv->type ) ) );
+        auto len = ntohs( tlv->length );
+        std::string val;
+        if( len > 0 ) {
+            val = std::string { (char*)tlv->value, len };
+        }
+
+        if( auto const &[ it, ret ] = tags.emplace( tag, val ); !ret ) {
+            return { reply, "Cannot insert tag in tag map" };
+        }
+
+        offset += 4 + len;
+        if( offset >= pkt.end().base() ) {
+            break;
+        }
     }
+
+    for( auto &[ tag, val ]: tags ) {
+        log( "Processing tag: " + std::to_string( static_cast<uint16_t>( tag ) ) );
+        PPPOEDISC_TLV *tlv = nullptr;
+
+        switch( tag ) {
+        case PPPOE_TAG::AC_NAME:
+            break;
+        case PPPOE_TAG::AC_COOKIE:
+            break;
+        case PPPOE_TAG::HOST_UNIQ:
+            break;
+        case PPPOE_TAG::VENDOR_SPECIFIC:
+            break;
+        case PPPOE_TAG::RELAY_SESSION_ID:
+            break;
+        case PPPOE_TAG::AC_SYSTEM_ERROR:
+            break;
+        case PPPOE_TAG::GENERIC_ERROR:
+            break;
+        case PPPOE_TAG::SERVICE_NAME:
+            break;
+        case PPPOE_TAG::SERVICE_NAME_ERROR:
+            break;
+        case PPPOE_TAG::END_OF_LIST:
+            break;
+        }
+    }
+
+    // Inserting tags
+    auto taglen = 0;
+    taglen += insertTag( reply, PPPOE_TAG::AC_NAME, policy->ac_name );
+    taglen += insertTag( reply, PPPOE_TAG::SERVICE_NAME, policy->service_name );
+
+    rep_pppoe->length == htons( sizeof( PPPOEDISC_HDR) + taglen );
+
     return { reply, "" };
+}
+
+uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, std::string val ) {
+    std::vector<uint8_t> tagvec;
+    tagvec.resize( 4 );
+    auto tlv = reinterpret_cast<PPPOEDISC_TLV*>( tagvec.data() );
+    tlv->type = htons( static_cast<uint16_t>( tag ) );
+    tlv->length = htons( val.size() );
+    tagvec.insert( tagvec.end(), val.begin(), val.end() );
+    pkt.insert( pkt.end(), tagvec.begin(), tagvec.end() );     
+
+    return tagvec.size();
 }

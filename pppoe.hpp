@@ -26,9 +26,11 @@ struct PPPOEDISC_HDR {
     uint16_t length;
 }__attribute__((__packed__));
 
+static_assert( sizeof( PPPOEDISC_HDR ) == 6 );
+
 struct PPPOEDISC_TLV {
     uint16_t type;
-    uint8_t length;
+    uint16_t length;
     uint8_t *value;
 }__attribute__((__packed__));
 

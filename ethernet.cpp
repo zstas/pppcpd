@@ -1,12 +1,5 @@
 #include "main.hpp"
 
-static std::string mac( const std::array<uint8_t,6> &mac ) {
-    char buf[18] { 0 };
-    snprintf( buf, sizeof( buf ), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
-    buf[ 17 ] = 0;
-    return buf;
-}
-
 std::string ether::to_string( ETHERNET_HDR *eth ) {
     std::ostringstream out;
     out << "dst mac: ";

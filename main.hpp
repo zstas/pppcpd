@@ -6,6 +6,7 @@
 #include <set>
 #include <sstream>
 #include <iomanip>
+#include <memory>
 
 // Network api
 #include <sys/socket.h>
@@ -21,6 +22,7 @@
 #include "ethernet.hpp"
 #include "session.hpp"
 #include "log.hpp"
-
+#include "policy.hpp"
 using namespace std::string_literals;
 std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt );
+uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, std::string val );
