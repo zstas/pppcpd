@@ -1,21 +1,25 @@
 TARGET ?= pppcpd
-SRC_DIRS ?= .
+SRCDIR = ./src
+OBJDIR = ./obj
 
-SRCS := $(shell find $(SRC_DIRS) -name '*.cpp')
-OBJS := $(addsuffix .o,$(basename $(SRCS)))
-DEPS := $(OBJS:.o=.d)
+SRC = $(wildcard $(SRCDIR)/*.cpp main.cpp)
+OBJ = $(addprefix $(OBJDIR)/,$(notdir $(SRC:.cpp=.o)))
 
-INC_DIRS :=
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-
-CPPFLAGS ?= $(INC_FLAGS) -g -Wall -std=c++17
+CPPFLAGS ?= -g -Wall -std=c++17
 LDLIBS += -lpthread
 
-$(TARGET): $(OBJS)
-	$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(LOADLIBES) $(LDLIBS)
+$(TARGET): $(OBJ)
+	$(CXX) $(LDFLAGS) $(OBJ) -o $@ $(LOADLIBES) $(LDLIBS)
 
-.PHONY: clean
+$(OBJDIR):
+	mkdir -p $@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(OBJDIR)
+	$(CXX) -c $(CPPFLAGS) $< -o $@
+
+.PHONY: clean start
 clean:
-	$(RM) $(TARGET) $(OBJS) $(DEPS)
+	$(RM) $(TARGET) $(OBJ)
 
--include $(DEPS)
+start:
+	sudo ./$(TARGET)

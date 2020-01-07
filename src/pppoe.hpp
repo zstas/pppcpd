@@ -1,3 +1,7 @@
+/* Ethernet frame types according to RFC 2516 */
+#define ETH_PPPOE_DISCOVERY 0x8863
+#define ETH_PPPOE_SESSION   0x8864
+
 enum class PPPOE_CODE: uint8_t {
     PADI = 0x09,
     PADO = 0x07,
@@ -39,4 +43,5 @@ namespace pppoe {
     std::string to_string( const PPPOEDISC_HDR *hdr );
     uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val );
     std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt );
+    std::tuple<std::vector<uint8_t>,std::string> processPPPOE( std::vector<uint8_t> pkt );
 }

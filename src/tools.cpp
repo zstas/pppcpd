@@ -15,3 +15,10 @@ std::string random_string( size_t length )
     std::generate_n( str.begin(), length, randchar );
     return str;
 }
+
+void printHex( std::vector<uint8_t> pkt ) {
+    for( auto &byte: pkt ) {
+        printf( "%02x ", byte );
+    }
+    printf( "\n" );
+}
