@@ -30,8 +30,17 @@ struct PPPOEDISC_HDR {
     uint16_t session_id;
     uint16_t length;
 }__attribute__((__packed__));
-
 static_assert( sizeof( PPPOEDISC_HDR ) == 6 );
+
+struct PPPOESESSION_HDR {
+    uint32_t type : 4;
+    uint32_t version : 4;
+    enum PPPOE_CODE code;
+    uint16_t session_id;
+    uint16_t length;
+    uint16_t ppp_protocol;
+}__attribute__((__packed__));
+static_assert( sizeof( PPPOESESSION_HDR ) == 8 );
 
 struct PPPOEDISC_TLV {
     uint16_t type;
