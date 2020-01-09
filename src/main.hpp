@@ -26,17 +26,16 @@
 // Local headers
 #include "pppoe.hpp"
 #include "ethernet.hpp"
-#include "session.hpp"
 #include "log.hpp"
 #include "policy.hpp"
 #include "tools.hpp"
-#include "ppp_fsm.hpp"
-#include "ppp.hpp"
 #include "ppp_lcp.hpp"
+#include "ppp.hpp"
+#include "ppp_fsm.hpp"
+#include "session.hpp"
 #include "string_helpers.hpp"
 
 using namespace std::string_literals;
-std::tuple<std::vector<uint8_t>,std::string> dispatchPPPOE( std::vector<uint8_t> pkt );
 
 struct PPPOEQ {
     std::mutex mutex;

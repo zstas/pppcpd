@@ -28,4 +28,35 @@ enum class LCP_OPTIONS: uint8_t {
     ADD_AND_CTRL_FIELD_COMP = 8,
 };
 
+template<typename T>
+struct PPP_CP {
+    T code;
+    uint8_t identifier;
+    uint16_t length;
+}__attribute__((__packed__));
+
+template<typename T, typename P>
+struct PPP_CP_PAYLOAD {
+    T code;
+    uint8_t identifier;
+    uint16_t length;
+    P payload;
+}__attribute__((__packed__));
+
+struct Packet {
+    ETHERNET_HDR *eth { nullptr };
+    PPPOEDISC_HDR *pppoe_discovery { nullptr };
+    PPPOESESSION_HDR *pppoe_session { nullptr };
+    PPP_CP<LCP_CODE> *lcp { nullptr };
+    std::vector<uint8_t> bytes;
+
+    Packet( std::vector<uint8_t> p ):
+        bytes( std::move( p ) )
+    {}
+};
+
+struct LCP {
+    std::tuple<Packet,std::string> processReq();
+};
+
 #endif

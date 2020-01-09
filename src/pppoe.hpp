@@ -29,6 +29,10 @@ struct PPPOEDISC_HDR {
     enum PPPOE_CODE code;
     uint16_t session_id;
     uint16_t length;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
 }__attribute__((__packed__));
 static_assert( sizeof( PPPOEDISC_HDR ) == 6 );
 
@@ -39,6 +43,10 @@ struct PPPOESESSION_HDR {
     uint16_t session_id;
     uint16_t length;
     uint16_t ppp_protocol;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
 }__attribute__((__packed__));
 static_assert( sizeof( PPPOESESSION_HDR ) == 8 );
 

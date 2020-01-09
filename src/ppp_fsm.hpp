@@ -1,8 +1,6 @@
 #ifndef PPP_FSM_HPP_
 #define PPP_FSM_HPP_
 
-#include "ppp.hpp"
-
 enum class PPP_FSM_STATE : uint8_t {
     Initial = 0,
     Starting,
@@ -16,8 +14,11 @@ enum class PPP_FSM_STATE : uint8_t {
     Opened
 };
 
+template<typename T>
 struct PPP_FSM {
+    T protocol; // Here will be all protocol specific functions
     PPP_FSM_STATE state;
+    uint8_t nak_counter { 0U };
 
     void receive( PPP_CP<LCP_CODE> *lcp );
 

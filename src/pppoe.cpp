@@ -2,33 +2,6 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-std::string pppoe::to_string( const PPPOEDISC_HDR *hdr ) {
-    std::ostringstream out;
-    out << "discovery packet: ";
-    out << "Type = " << hdr->type << " ";
-    out << "Version = " << hdr->version << " ";
-    out << "Code = ";
-    switch( hdr->code ) {
-        case PPPOE_CODE::PADI:
-            out << "PADI "; break;
-        case PPPOE_CODE::PADO:
-            out << "PADO "; break;
-        case PPPOE_CODE::PADR:
-            out << "PADR "; break;
-        case PPPOE_CODE::PADS:
-            out << "PADS "; break;
-        case PPPOE_CODE::PADT:
-            out << "PADT "; break;
-        default:
-            out << "UNKNOWN ";
-    }
-    out << "Session id = " << hdr->session_id << " ";
-    out << "length = " << htons( hdr->length );
-
-    return out.str();
-}
-
-
 uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val ) {
     std::vector<uint8_t> tagvec;
     tagvec.resize( 4 );
