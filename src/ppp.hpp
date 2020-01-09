@@ -14,10 +14,6 @@ enum class PPP_PROTO : uint16_t {
     LQR = 0xc025,
 };
 
-struct PPP_HDR {
-    uint16_t proto;
-}__attribute__((__packed__));
-
 template<typename T>
 struct PPP_CP {
     T code;
