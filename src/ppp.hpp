@@ -13,8 +13,7 @@ enum class PPP_PROTO : uint16_t {
 };
 
 namespace ppp {
-    std::tuple<std::vector<uint8_t>,std::string> processPPP( Packet inPkt );
-    std::tuple<std::vector<uint8_t>,std::string> processLCP( PPP_CP<LCP_CODE> *lcp );
+    std::string processPPP( Packet inPkt );
 }
 
 #endif

@@ -1,41 +1,42 @@
 #include "main.hpp"
 
-std::tuple<std::vector<uint8_t>,std::string> ppp::processPPP( Packet inPkt ) {
-    std::vector<uint8_t> reply;
-    reply.reserve( sizeof( ETHERNET_HDR ) + 128 );
+extern std::shared_ptr<PPPOERuntime> runtime;
 
-    //ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
+std::string ppp::processPPP( Packet inPkt ) {
     inPkt.eth = reinterpret_cast<ETHERNET_HDR*>( inPkt.bytes.data() );
     log( "Ethernet packet:\n" + ether::to_string( inPkt.eth ) );
-    if( inPkt.eth->ethertype != htons( ETH_PPPOE_SESSION ) ) {
-        return { std::move( reply ), "Not pppoe session packet" };
+    if( inPkt.eth->ethertype != ntohs( ETH_PPPOE_SESSION ) ) {
+        return "Not pppoe session packet";
     }
 
     inPkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.eth->getPayload() );
+
+    // Determine this session
+    std::array<uint8_t,8> key;
+    std::memcpy( key.data(), inPkt.eth->src_mac.data(), 6 );
+    uint16_t sessionId = ntohs( inPkt.pppoe_session->session_id );
+    *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = sessionId;
+
+    auto sessionIt = runtime->sessions.find( sessionId );
+    if( sessionIt == runtime->sessions.end() ) {
+        return "Cannot find this session in runtime";
+    }
+    auto session = sessionIt->second;
+
+    inPkt.lcp = reinterpret_cast<PPP_LCP*>( inPkt.pppoe_session->getPayload() );
+
     switch( static_cast<PPP_PROTO>( ntohs( inPkt.pppoe_session->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
         log( "proto LCP" );
-        inPkt.lcp = reinterpret_cast<PPP_CP<LCP_CODE>*>( inPkt.pppoe_session->getPayload() );
-        return ppp::processLCP( inPkt.lcp );
+        session.lcp.receive( inPkt.lcp );
         break;
     case PPP_PROTO::IPCP:
         log( "proto IPCP" );
+        session.ipcp.receive( inPkt.lcp );
         break;
     default:
         log( "unknown proto" );
     }
 
-    return { std::move( reply ), "" };
-}
-
-std::tuple<std::vector<uint8_t>,std::string> ppp::processLCP( PPP_CP<LCP_CODE> *lcp ) {
-    std::vector<uint8_t> reply;
-    switch( lcp->code ) {
-    case LCP_CODE::CONF_REQ:
-        log("CONF REQ");
-        break;
-    default:
-        log("another code");
-    }
-    return { std::move( reply ), "" };
+    return "";
 }

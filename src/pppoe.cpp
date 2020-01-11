@@ -44,41 +44,23 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
     return { std::move( tags ), "" };
 }
 
-std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( std::vector<uint8_t> pkt ) {
+std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt ) {
     std::vector<uint8_t> reply;
     reply.reserve( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) + 128 );
-    uint16_t session_id = 0;
 
-    printHex( pkt );
-    ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
-    log( "Ethernet packet:\n" + ether::to_string( eth ) );
-    if( eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
-        return { std::move( reply ), "Not pppoe packet" };
+    inPkt.eth = reinterpret_cast<ETHERNET_HDR*>( inPkt.bytes.data() );
+    if( inPkt.eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
+        return { std::move( reply ), "Not pppoe discovery packet" };
     }
-    PPPOEDISC_HDR *pppoe = reinterpret_cast<PPPOEDISC_HDR*>( pkt.data() + sizeof( ETHERNET_HDR ) );
+
+    inPkt.pppoe_discovery = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.eth->getPayload() );
 
     reply.resize( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) );
-    log( "Incoming " + pppoe::to_string( pppoe ) );
+    log( "Incoming " + std::to_string( inPkt.pppoe_discovery ) );
     
-    for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
-        if( auto ret = runtime->sessionSet.find( i ); ret == runtime->sessionSet.end() ) {
-            runtime->sessionSet.emplace( i );
-            session_id = i;
-            break;
-        } 
-    }
-
-    uint8_t key[ 8 ];
-    std::memcpy( key, eth->src_mac.data(), 6 );
-    *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = htons( session_id );
-    
-    if( auto const &sIt = runtime->pppoeSessions.find( key ); sIt != runtime->pppoeSessions.end() ) {
-        return { std::move( reply ), "Session is already up" };
-    }
-
     ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
     rep_eth->ethertype = htons( ETH_PPPOE_DISCOVERY );
-    rep_eth->dst_mac = eth->src_mac;
+    rep_eth->dst_mac = inPkt.eth->src_mac;
 
     PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
     rep_pppoe->type = 1;
@@ -87,7 +69,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( std::vector<ui
     rep_pppoe->length = 0;
 
     // Starting to prepare the answer
-    switch( pppoe->code ) {
+    switch( inPkt.pppoe_discovery->code ) {
     case PPPOE_CODE::PADI:
         log( "Processing PADI packet" );
         rep_pppoe->code = PPPOE_CODE::PADO;
@@ -95,7 +77,12 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( std::vector<ui
     case PPPOE_CODE::PADR:
         log( "Processing PADR packet" );
         rep_pppoe->code = PPPOE_CODE::PADS;
-        rep_pppoe->session_id = session_id;
+        if( const auto &[ sid, err ] = runtime->allocateSession( inPkt.eth->src_mac ); !err.empty() ) {
+            return { std::move( reply ), "Cannot process PPPOE pkt: " + err };
+        } else {
+            log( "Session " + std::to_string( sid ) + " is UP!" );
+            rep_pppoe->session_id = htons( sid );
+        }
         break;
     case PPPOE_CODE::PADT:
         log( "Processing PADT packet" );
@@ -109,7 +96,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( std::vector<ui
     // Parsing tags
     std::optional<std::string> chosenService;
     std::optional<std::string> hostUniq;
-    if( auto const &[ tags, error ] = pppoe::parseTags( pkt ); !error.empty() ) {
+    if( auto const &[ tags, error ] = pppoe::parseTags( inPkt.bytes ); !error.empty() ) {
         return { std::move( reply ), "Cannot parse tags cause: " + error };
     } else {
         for( auto &[ tag, val ]: tags ) {
@@ -172,7 +159,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( std::vector<ui
     // In case of vector is increased
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
     rep_pppoe->length = htons( taglen );
-    log( "Outcoming " + pppoe::to_string( rep_pppoe ) );
+    log( "Outcoming " + std::to_string( rep_pppoe ) );
 
     return { std::move( reply ), "" };
 }

@@ -1,11 +1,19 @@
 struct PPPOESession {
     // General Data
-    uint8_t mac[6];
+    std::array<uint8_t,6> mac;
 
     // PPPoE Data
     uint16_t session_id;
     std::string cookie;
 
     // PPP FSM for all the protocols we support
-    PPP_FSM<LCP> lcp;
+    PPP_FSM lcp;
+    PPP_FSM ipcp;
+
+    PPPOESession( std::array<uint8_t,6> m, uint16_t sid ): 
+        mac( m ),
+        session_id( sid )
+    {
+        log( "Session UP: " + std::to_string( sid ) );
+    }
 };

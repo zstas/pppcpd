@@ -1,7 +1,6 @@
 #include "main.hpp"
 
-template<typename T>
-void PPP_FSM<T>::receive( PPP_CP<LCP_CODE> *lcp ) {
+void PPP_FSM::receive( PPP_LCP *lcp ) {
     if( state == PPP_FSM_STATE::Initial || 
         state == PPP_FSM_STATE::Starting ) {
             log( "Received packet in invalid state: "s + std::to_string( state ) );
@@ -38,8 +37,7 @@ void PPP_FSM<T>::receive( PPP_CP<LCP_CODE> *lcp ) {
     }
 }
 
-template<typename T>
-void PPP_FSM<T>::recv_conf_req( PPP_CP<LCP_CODE> *lcp ) {
+void PPP_FSM::recv_conf_req( PPP_LCP *lcp ) {
     switch( state ){
     case PPP_FSM_STATE::Closing:
     case PPP_FSM_STATE::Stopping:
@@ -80,4 +78,16 @@ void PPP_FSM<T>::recv_conf_req( PPP_CP<LCP_CODE> *lcp ) {
             nak_counter++;
         }
     }
+}
+
+int PPP_FSM::send_conf_req() {
+    return 1;
+}
+
+void PPP_FSM::layer_up() {
+    return;
+}
+
+void PPP_FSM::layer_down() {
+    return;
 }

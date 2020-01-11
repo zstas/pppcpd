@@ -51,10 +51,8 @@ int main( int argc, char *argv[] ) {
                 continue;
             }
             auto pkt = ppp_incoming.pop();
-            if( auto const &[ reply, error ] = ppp::processPPP( pkt ); !error.empty() ) {
+            if( auto const error = ppp::processPPP( pkt ); !error.empty() ) {
                 log( error );
-            } else {
-                //ppp_outcoming.push( reply );
             }
         }
     });

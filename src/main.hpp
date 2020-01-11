@@ -34,6 +34,7 @@
 #include "ppp_fsm.hpp"
 #include "session.hpp"
 #include "string_helpers.hpp"
+#include "packet.hpp"
 
 using namespace std::string_literals;
 
@@ -85,6 +86,21 @@ public:
     int PPPOESessFD { 0 };
     std::array<uint8_t,ETH_ALEN> hwaddr { 0 };
     std::set<uint16_t> sessionSet;
-    std::map<uint8_t[8], uint8_t> pppoeSessions;
+    std::map<uint16_t,PPPOESession> sessions;
     std::shared_ptr<PPPOEPolicy> policy;
+
+    std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
+        for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
+            if( auto ret = sessionSet.find( i ); ret == sessionSet.end() ) {
+                if( auto const &[ it, ret ] = sessionSet.emplace( i ); !ret ) {
+                    return { 0, "Cannot allocate session: cannot emplace value in set" };
+                }
+                if( auto const &[ it, ret ] = sessions.emplace( i, PPPOESession{ mac, i }); !ret ) {
+                    return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
+                }
+                return { i, "" };
+            }
+            return { 0, "Maximum of sessions" };
+        }
+    }
 };

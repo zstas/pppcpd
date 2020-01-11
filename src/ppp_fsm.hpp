@@ -14,13 +14,11 @@ enum class PPP_FSM_STATE : uint8_t {
     Opened
 };
 
-template<typename T>
 struct PPP_FSM {
-    T protocol; // Here will be all protocol specific functions
     PPP_FSM_STATE state;
     uint8_t nak_counter { 0U };
 
-    void receive( PPP_CP<LCP_CODE> *lcp );
+    void receive( PPP_LCP *lcp );
 
     // Actions
 	void layer_up();
@@ -37,7 +35,7 @@ struct PPP_FSM {
 	void send_term_ack();
 
     // Events
-    void recv_conf_req( PPP_CP<LCP_CODE> *lcp );
+    void recv_conf_req( PPP_LCP *lcp );
 };
 
 #endif
