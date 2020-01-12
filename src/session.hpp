@@ -7,8 +7,8 @@ struct PPPOESession {
     std::string cookie;
 
     // PPP FSM for all the protocols we support
-    PPP_FSM lcp;
-    PPP_FSM ipcp;
+    LCP_FSM lcp;
+    LCP_FSM ipcp;
 
     // LCP negotiated options
     uint16_t our_MRU;

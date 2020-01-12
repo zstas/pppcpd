@@ -2,7 +2,6 @@
 #define PACKET_HPP_
 
 #include "ethernet.hpp"
-#include "ppp_lcp.hpp"
 
 /* Ethernet frame types according to RFC 2516 */
 #define ETH_PPPOE_DISCOVERY 0x8863
@@ -45,6 +44,16 @@ enum class LCP_CODE : uint8_t {
 	DISCARD_REQ = 11,
 	IDENTIFICATION = 12,
 	TIME_REMAINING = 13,
+};
+
+enum class LCP_OPTIONS: uint8_t {
+    VEND_SPEC = 0,
+    MRU = 1,
+    AUTH_PROTO = 3,
+    QUAL_PROTO = 4,
+    MAGIC_NUMBER = 5,
+    PROTO_FIELD_COMP = 7,
+    ADD_AND_CTRL_FIELD_COMP = 8,
 };
 
 struct PPPOEDISC_TLV {

@@ -15,7 +15,7 @@ enum class PPP_FSM_STATE : uint8_t {
 };
 
 struct PPP_FSM {
-private:
+protected:
     PPP_FSM_STATE state { PPP_FSM_STATE::Initial };
     uint8_t nak_counter { 0U };
     uint16_t session_id { 0U };
@@ -37,17 +37,19 @@ public:
 	void layer_started();
 	void layer_finished();
 
-	std::string send_conf_req();
-	std::string send_conf_ack( Packet pkt );
-	std::string send_conf_nak( Packet pkt );
-	void send_conf_rej();
-	void send_code_rej();
-	void send_term_req();
-	void send_term_ack();
-
     // Events
     std::string recv_conf_req( Packet pkt );
     std::string recv_conf_ack( Packet pkt );
+
+    //Overrided
+	virtual std::string send_conf_req() = 0;
+	virtual std::string send_conf_ack( Packet pkt ) = 0;
+	virtual std::string send_conf_nak( Packet pkt ) = 0;
+    virtual std::string check_conf( Packet pkt ) = 0;
+	virtual void send_conf_rej() = 0;
+	virtual void send_code_rej() = 0;
+	virtual void send_term_req() = 0;
+	virtual void send_term_ack() = 0;
 };
 
 #endif
