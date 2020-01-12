@@ -6,17 +6,9 @@ enum class LCP_OPTIONS: uint8_t {
     MRU = 1,
     AUTH_PROTO = 3,
     QUAL_PROTO = 4,
-    MAGICK_NUMBER = 5,
+    MAGIC_NUMBER = 5,
     PROTO_FIELD_COMP = 7,
     ADD_AND_CTRL_FIELD_COMP = 8,
-};
-
-struct LCP {
-    std::tuple<Packet,std::string> processReq();
-};
-
-struct IPCP {
-    std::tuple<Packet,std::string> processReq();
 };
 
 #endif

@@ -82,6 +82,12 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         } else {
             log( "Session " + std::to_string( sid ) + " is UP!" );
             rep_pppoe->session_id = htons( sid );
+            if( auto const &sIt = runtime->sessions.find( sid ); sIt == runtime->sessions.end() ) {
+                return { std::move( reply ), "Cannot find session which just was installed" };
+            } else {
+                sIt->second.lcp.open();
+                sIt->second.lcp.layer_up();
+            }
         }
         break;
     case PPPOE_CODE::PADT:
@@ -121,12 +127,12 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
             case PPPOE_TAG::SERVICE_NAME:
                 // RFC 2516:
                 // If the Access Concentrator can not serve the PADI it MUST NOT respond with a PADO.
-                if( !val.empty() && val != runtime->policy->service_name ) {
-                    if( runtime->policy->ignoreServiceName ) {
+                if( !val.empty() && val != runtime->pppoe_conf->service_name ) {
+                    if( runtime->pppoe_conf->ignoreServiceName ) {
                         log( "Service name is differ, but we can ignore it" );
                         chosenService = val;
                     } else {
-                        return { std::move( reply ), "Cannot serve \"" + val + "\" service, because in policy only \"" + runtime->policy->service_name + "\"" };
+                        return { std::move( reply ), "Cannot serve \"" + val + "\" service, because in policy only \"" + runtime->pppoe_conf->service_name + "\"" };
                     }
                 }
                 break;
@@ -140,19 +146,19 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
 
     // Inserting tags
     auto taglen = 0;
-    taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_NAME, runtime->policy->ac_name );
+    taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_NAME, runtime->pppoe_conf->ac_name );
 
     if( chosenService.has_value() ) {
         taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, chosenService.value() );
     } else {
-        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, runtime->policy->service_name );
+        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, runtime->pppoe_conf->service_name );
     }
 
     if( hostUniq.has_value() ) {
         taglen += pppoe::insertTag( reply, PPPOE_TAG::HOST_UNIQ, hostUniq.value() );
     }
 
-    if( runtime->policy->insertCookie ) {
+    if( runtime->pppoe_conf->insertCookie ) {
         taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_COOKIE, random_string( 16 ) );
     }
 

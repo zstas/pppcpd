@@ -4,7 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 
 std::string ppp::processPPP( Packet inPkt ) {
     inPkt.eth = reinterpret_cast<ETHERNET_HDR*>( inPkt.bytes.data() );
-    log( "Ethernet packet:\n" + ether::to_string( inPkt.eth ) );
+    //log( "Ethernet packet:\n" + ether::to_string( inPkt.eth ) );
     if( inPkt.eth->ethertype != ntohs( ETH_PPPOE_SESSION ) ) {
         return "Not pppoe session packet";
     }
@@ -28,11 +28,11 @@ std::string ppp::processPPP( Packet inPkt ) {
     switch( static_cast<PPP_PROTO>( ntohs( inPkt.pppoe_session->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
         log( "proto LCP" );
-        session.lcp.receive( inPkt.lcp );
+        session.lcp.receive( inPkt );
         break;
     case PPP_PROTO::IPCP:
         log( "proto IPCP" );
-        session.ipcp.receive( inPkt.lcp );
+        session.ipcp.receive( inPkt );
         break;
     default:
         log( "unknown proto" );

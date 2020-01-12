@@ -13,8 +13,4 @@ struct ETHERNET_HDR {
 
 static_assert( sizeof( ETHERNET_HDR ) == 14 );
 
-namespace ether {
-    std::string to_string( ETHERNET_HDR *eth );
-}
-
 #endif

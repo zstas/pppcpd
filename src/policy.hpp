@@ -4,3 +4,10 @@ struct PPPOEPolicy {
     bool insertCookie { false };
     bool ignoreServiceName { false };
 };
+
+struct LCPPolicy {
+    bool insertMagicNumber { true };
+    uint16_t MRU { 1492U };
+    bool authCHAP { false };
+    bool authPAP { true };
+};

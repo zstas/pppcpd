@@ -23,10 +23,13 @@ int main( int argc, char *argv[] ) {
     }
 
     // At this point all the config lies here
-    runtime->policy = std::make_shared<PPPOEPolicy>();
-    runtime->policy->ac_name = "vBNG AC PPPoE";
-    runtime->policy->insertCookie = true;
-    runtime->policy->ignoreServiceName = true;
+    runtime->pppoe_conf = std::make_shared<PPPOEPolicy>();
+    runtime->pppoe_conf->ac_name = "vBNG AC PPPoE";
+    runtime->pppoe_conf->insertCookie = true;
+    runtime->pppoe_conf->ignoreServiceName = true;
+
+    // LCP options
+    runtime->lcp_conf = std::make_shared<LCPPolicy>();
 
     std::vector<uint8_t> pkt;
     pkt.resize( 1508 );
@@ -64,7 +67,7 @@ int main( int argc, char *argv[] ) {
     fds[ 1 ].events = POLLIN;
 
     while( true ) {
-        if( int ret = poll( reinterpret_cast<pollfd*>( &fds ), 2, 10000 ); ret == -1 ) {
+        if( int ret = poll( reinterpret_cast<pollfd*>( &fds ), 2, 100 ); ret == -1 ) {
             log( "Poll returned error: "s + strerror( errno ) );
         } else if( ret > 0 ) {
             if( fds[ 0 ].revents & POLLIN ) {
@@ -88,6 +91,13 @@ int main( int argc, char *argv[] ) {
             ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
             rep_eth->src_mac = runtime->hwaddr;
             if( auto ret = send( runtime->PPPOEDiscFD, reply.data(), reply.size(), 0 ); ret < 0 ) {
+                log( "Cannot send pkt cause: "s + strerror( errno ) );
+            }
+        }
+        // Sending pppoe session control packets
+        while( !ppp_outcoming.empty() ) {
+            auto reply = ppp_outcoming.pop();
+            if( auto ret = send( runtime->PPPOESessFD, reply.data(), reply.size(), 0 ); ret < 0 ) {
                 log( "Cannot send pkt cause: "s + strerror( errno ) );
             }
         }

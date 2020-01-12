@@ -87,7 +87,8 @@ public:
     std::array<uint8_t,ETH_ALEN> hwaddr { 0 };
     std::set<uint16_t> sessionSet;
     std::map<uint16_t,PPPOESession> sessions;
-    std::shared_ptr<PPPOEPolicy> policy;
+    std::shared_ptr<PPPOEPolicy> pppoe_conf;
+    std::shared_ptr<LCPPolicy> lcp_conf;
 
     std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
@@ -100,7 +101,7 @@ public:
                 }
                 return { i, "" };
             }
-            return { 0, "Maximum of sessions" };
         }
+        return { 0, "Maximum of sessions" };
     }
 };

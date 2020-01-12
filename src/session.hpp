@@ -10,9 +10,17 @@ struct PPPOESession {
     PPP_FSM lcp;
     PPP_FSM ipcp;
 
+    // LCP negotiated options
+    uint16_t our_MRU;
+    uint16_t peer_MRU;
+    uint32_t our_magic_number;
+    uint32_t peer_magic_number;
+
     PPPOESession( std::array<uint8_t,6> m, uint16_t sid ): 
         mac( m ),
-        session_id( sid )
+        session_id( sid ),
+        lcp( sid),
+        ipcp( sid )
     {
         log( "Session UP: " + std::to_string( sid ) );
     }

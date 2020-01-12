@@ -2,12 +2,14 @@
 #define PACKET_HPP_
 
 #include "ethernet.hpp"
+#include "ppp_lcp.hpp"
 
 /* Ethernet frame types according to RFC 2516 */
 #define ETH_PPPOE_DISCOVERY 0x8863
 #define ETH_PPPOE_SESSION   0x8864
 
 enum class PPPOE_CODE: uint8_t {
+    SESSION_DATA = 0x00,
     PADI = 0x09,
     PADO = 0x07,
     PADR = 0x19,
@@ -82,6 +84,67 @@ struct PPP_LCP {
     LCP_CODE code;
     uint8_t identifier;
     uint16_t length;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct LCP_OPT_HDR {
+    LCP_OPTIONS opt;
+    uint8_t len;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct LCP_OPT_1B {
+    LCP_OPTIONS opt;
+    uint8_t len;
+    uint8_t val;
+
+    void set( LCP_OPTIONS o, uint8_t v ) {
+        opt = o;
+        val = v;
+        len = 3;
+    }
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct LCP_OPT_2B {
+    LCP_OPTIONS opt;
+    uint8_t len;
+    uint16_t val;
+
+    void set( LCP_OPTIONS o, uint16_t v ) {
+        opt = o;
+        val = htons( v );
+        len = 4;
+    }
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct LCP_OPT_4B {
+    LCP_OPTIONS opt;
+    uint8_t len;
+    uint32_t val;
+
+    void set( LCP_OPTIONS o, uint32_t v ) {
+        opt = o;
+        val = htonl( v );
+        len = 6;
+    }
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
 }__attribute__((__packed__));
 
 struct Packet {
@@ -91,6 +154,9 @@ struct Packet {
     PPP_LCP *lcp { nullptr };
     
     std::vector<uint8_t> bytes;
+
+    Packet() {
+    }
 
     Packet( std::vector<uint8_t> p ):
         bytes( std::move( p ) )

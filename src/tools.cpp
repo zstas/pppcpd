@@ -22,3 +22,11 @@ void printHex( std::vector<uint8_t> pkt ) {
     }
     printf( "\n" );
 }
+
+uint32_t random_uin32_t() {
+    std::random_device rd;
+    std::mt19937_64 eng( rd() );
+    
+    std::uniform_int_distribution<uint32_t> distr;
+    return distr( eng );
+}
