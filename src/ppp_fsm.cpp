@@ -4,6 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 void PPP_FSM::receive( Packet pkt ) {
+    log( "receive pkt in state: " + std::to_string( state ) );
     if( pkt.lcp == nullptr ) {
         return;
     }
@@ -17,11 +18,13 @@ void PPP_FSM::receive( Packet pkt ) {
     switch( pkt.lcp->code ) {
     case LCP_CODE::CONF_REQ:
         if( auto const &err = recv_conf_req( std::move( pkt ) ); !err.empty() ) {
-            log( "Error while receiving LCP packet: " + err );
+            log( "Error while receiving LCP packet CONF_REQ: " + err );
         }
         break;
     case LCP_CODE::CONF_ACK:
-        //fsm_rconfack(f, id, inp, len);
+        if( auto const &err = recv_conf_ack( std::move( pkt ) ); !err.empty() ) {
+            log( "Error while receiving LCP packet CONF_ACK: " + err );
+        }
 	    break;
     
     case LCP_CODE::CONF_NAK:
@@ -44,10 +47,11 @@ void PPP_FSM::receive( Packet pkt ) {
         //send CODEREJ
         break;
     }
+    log( "FSM state: " + std::to_string( state ) );
 }
 
 std::string PPP_FSM::recv_conf_req( Packet pkt ) {
-    log( "recv_conf_req" );
+    log( "recv_conf_req current state: " + std::to_string( state ) );
     switch( state ){
     case PPP_FSM_STATE::Closing:
     case PPP_FSM_STATE::Stopping:
@@ -120,7 +124,7 @@ std::string PPP_FSM::recv_conf_req( Packet pkt ) {
 }
 
 std::string PPP_FSM::send_conf_req() {
-    log( "send_conf_req" );
+    log( "send_conf_req current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return "Cannot send conf req for unexisting session";
@@ -231,7 +235,7 @@ void PPP_FSM::open() {
 }
 
 std::string PPP_FSM::send_conf_ack( Packet pkt ) {
-    log( "send_conf_ack" );
+    log( "send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return "Cannot send conf req for unexisting session";
@@ -246,7 +250,6 @@ std::string PPP_FSM::send_conf_ack( Packet pkt ) {
     pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
 
     // Fill LCP part
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
     pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
     pkt.lcp->code = LCP_CODE::CONF_ACK;
 
@@ -257,7 +260,7 @@ std::string PPP_FSM::send_conf_ack( Packet pkt ) {
 }
 
 std::string PPP_FSM::send_conf_nak( Packet pkt ) {
-    log( "send_conf_nak" );
+    log( "send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return "Cannot send conf req for unexisting session";
@@ -273,11 +276,51 @@ std::string PPP_FSM::send_conf_nak( Packet pkt ) {
 
     // Fill LCP part
     pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
     pkt.lcp->code = LCP_CODE::CONF_NAK;
 
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
+
+    return "";
+}
+
+std::string PPP_FSM::recv_conf_ack( Packet pkt ) {
+    log( "recv_conf_ack current state: " + std::to_string( state ) );
+
+    // Parse in case of moved data
+    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
+    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
+    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
+
+    if( pkt.lcp->identifier != pkt_id ) {
+        return "Packet identifier is not match with our";
+    }
+
+    seen_ack = true;
+
+    switch( state ) {
+    case PPP_FSM_STATE::Closed:
+    case PPP_FSM_STATE::Stopped:
+        // send TERM ACK
+        break;
+    case PPP_FSM_STATE::Req_Sent:
+        state = PPP_FSM_STATE::Ack_Rcvd;
+        break;
+    case PPP_FSM_STATE::Ack_Rcvd:
+        log( "extra ack, but not considering it is like a problem" );
+        break;
+    case PPP_FSM_STATE::Ack_Sent:
+        state = PPP_FSM_STATE::Opened;
+        break;
+    case PPP_FSM_STATE::Opened:
+        // Restarting the connection
+        send_conf_req();
+        state = PPP_FSM_STATE::Req_Sent;
+        break;
+    default:
+        log( "Incorrect state?" );
+        break;
+    }
 
     return "";
 }

@@ -20,6 +20,8 @@ private:
     uint8_t nak_counter { 0U };
     uint16_t session_id { 0U };
     uint8_t pkt_id { 1U };
+
+    bool seen_ack { false };
 public:
 
     PPP_FSM( uint16_t sid ):
@@ -45,6 +47,7 @@ public:
 
     // Events
     std::string recv_conf_req( Packet pkt );
+    std::string recv_conf_ack( Packet pkt );
 };
 
 #endif

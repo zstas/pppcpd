@@ -17,17 +17,17 @@ std::string ppp::processPPP( Packet inPkt ) {
     uint16_t sessionId = ntohs( inPkt.pppoe_session->session_id );
     *reinterpret_cast<uint16_t*>( &key[ 6 ] ) = sessionId;
 
-    auto sessionIt = runtime->sessions.find( sessionId );
+    auto const &sessionIt = runtime->sessions.find( sessionId );
     if( sessionIt == runtime->sessions.end() ) {
         return "Cannot find this session in runtime";
     }
-    auto session = sessionIt->second;
+    auto &session = sessionIt->second;
 
     inPkt.lcp = reinterpret_cast<PPP_LCP*>( inPkt.pppoe_session->getPayload() );
 
     switch( static_cast<PPP_PROTO>( ntohs( inPkt.pppoe_session->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
-        log( "proto LCP" );
+        log( "proto LCP for session " + std::to_string( session.session_id ) );
         session.lcp.receive( inPkt );
         break;
     case PPP_PROTO::IPCP:
