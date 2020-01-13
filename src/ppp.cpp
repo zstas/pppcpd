@@ -34,6 +34,10 @@ std::string ppp::processPPP( Packet inPkt ) {
         log( "proto IPCP" );
         session.ipcp.receive( inPkt );
         break;
+    case PPP_PROTO::PAP:
+        log( "proto PAP" );
+        session.auth.receive( inPkt );
+        break;
     default:
         log( "unknown proto" );
     }

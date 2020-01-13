@@ -32,6 +32,7 @@
 #include "ppp_lcp.hpp"
 #include "ppp.hpp"
 #include "ppp_fsm.hpp"
+#include "ppp_auth.hpp"
 #include "session.hpp"
 #include "string_helpers.hpp"
 #include "packet.hpp"

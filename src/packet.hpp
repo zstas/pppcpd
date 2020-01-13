@@ -46,6 +46,12 @@ enum class LCP_CODE : uint8_t {
 	TIME_REMAINING = 13,
 };
 
+enum class PAP_CODE: uint8_t {
+    AUTHENTICATE_REQ = 1,
+    AUTHENTICATE_ACK = 2,
+    AUTHENTICATE_NAK = 3
+};
+
 enum class LCP_OPTIONS: uint8_t {
     VEND_SPEC = 0,
     MRU = 1,
@@ -91,6 +97,16 @@ static_assert( sizeof( PPPOESESSION_HDR ) == 8 );
 
 struct PPP_LCP {
     LCP_CODE code;
+    uint8_t identifier;
+    uint16_t length;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct PPP_AUTH_HDR {
+    PAP_CODE code;
     uint8_t identifier;
     uint16_t length;
 
@@ -161,6 +177,7 @@ struct Packet {
     PPPOEDISC_HDR *pppoe_discovery { nullptr };
     PPPOESESSION_HDR *pppoe_session { nullptr };
     PPP_LCP *lcp { nullptr };
+    PPP_AUTH_HDR *auth { nullptr };
     
     std::vector<uint8_t> bytes;
 
