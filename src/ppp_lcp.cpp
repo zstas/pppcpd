@@ -67,7 +67,7 @@ std::string LCP_FSM::send_conf_req() {
     return "";
 }
 
-std::string LCP_FSM::send_conf_ack( Packet pkt ) {
+std::string LCP_FSM::send_conf_ack( Packet &pkt ) {
     log( "send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
@@ -92,7 +92,7 @@ std::string LCP_FSM::send_conf_ack( Packet pkt ) {
     return "";
 }
 
-std::string LCP_FSM::send_conf_nak( Packet pkt ) {
+std::string LCP_FSM::send_conf_nak( Packet &pkt ) {
     log( "send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
@@ -117,7 +117,7 @@ std::string LCP_FSM::send_conf_nak( Packet pkt ) {
     return "";
 }
 
-std::string LCP_FSM::check_conf( Packet pkt ) {
+std::string LCP_FSM::check_conf( Packet &pkt ) {
     uint32_t len = ntohs( pkt.lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
         return "There is no options";

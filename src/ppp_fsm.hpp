@@ -28,7 +28,7 @@ public:
         session_id( sid )
     {}
 
-    void receive( Packet pkt );
+    void receive( Packet &pkt );
     void open();
 
     // Actions
@@ -38,14 +38,14 @@ public:
 	void layer_finished();
 
     // Events
-    std::string recv_conf_req( Packet pkt );
-    std::string recv_conf_ack( Packet pkt );
+    std::string recv_conf_req( Packet &pkt );
+    std::string recv_conf_ack( Packet &pkt );
 
     //Overrided
 	virtual std::string send_conf_req() = 0;
-	virtual std::string send_conf_ack( Packet pkt ) = 0;
-	virtual std::string send_conf_nak( Packet pkt ) = 0;
-    virtual std::string check_conf( Packet pkt ) = 0;
+	virtual std::string send_conf_ack( Packet &pkt ) = 0;
+	virtual std::string send_conf_nak( Packet &pkt ) = 0;
+    virtual std::string check_conf( Packet &pkt ) = 0;
 	virtual void send_conf_rej() = 0;
 	virtual void send_code_rej() = 0;
 	virtual void send_term_req() = 0;

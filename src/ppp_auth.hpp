@@ -7,9 +7,9 @@ private:
 
 public:
 
-    void receive( Packet pkt );
+    void receive( Packet &pkt );
     // PAP methods
-    void recv_auth_req( Packet pkt );
+    void recv_auth_req( Packet &pkt );
     void send_auth_ack();
     void send_auth_nak();
 };

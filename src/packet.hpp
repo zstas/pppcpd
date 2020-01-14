@@ -187,6 +187,9 @@ struct Packet {
     Packet( std::vector<uint8_t> p ):
         bytes( std::move( p ) )
     {}
+
+    Packet( const Packet & ) = delete;
+    Packet& operator=( const Packet& ) = delete;
 };
 
 #endif

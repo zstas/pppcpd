@@ -3,7 +3,7 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
-void PPP_FSM::receive( Packet pkt ) {
+void PPP_FSM::receive( Packet &pkt ) {
     log( "receive pkt in state: " + std::to_string( state ) );
     if( pkt.lcp == nullptr ) {
         return;
@@ -17,12 +17,12 @@ void PPP_FSM::receive( Packet pkt ) {
     
     switch( pkt.lcp->code ) {
     case LCP_CODE::CONF_REQ:
-        if( auto const &err = recv_conf_req( std::move( pkt ) ); !err.empty() ) {
+        if( auto const &err = recv_conf_req( pkt ); !err.empty() ) {
             log( "Error while receiving LCP packet CONF_REQ: " + err );
         }
         break;
     case LCP_CODE::CONF_ACK:
-        if( auto const &err = recv_conf_ack( std::move( pkt ) ); !err.empty() ) {
+        if( auto const &err = recv_conf_ack( pkt ); !err.empty() ) {
             log( "Error while receiving LCP packet CONF_ACK: " + err );
         }
 	    break;
@@ -50,7 +50,7 @@ void PPP_FSM::receive( Packet pkt ) {
     log( "FSM state: " + std::to_string( state ) );
 }
 
-std::string PPP_FSM::recv_conf_req( Packet pkt ) {
+std::string PPP_FSM::recv_conf_req( Packet &pkt ) {
     log( "recv_conf_req current state: " + std::to_string( state ) );
     switch( state ){
     case PPP_FSM_STATE::Closing:
@@ -123,7 +123,7 @@ void PPP_FSM::open() {
     }
 }
 
-std::string PPP_FSM::recv_conf_ack( Packet pkt ) {
+std::string PPP_FSM::recv_conf_ack( Packet &pkt ) {
     log( "recv_conf_ack current state: " + std::to_string( state ) );
 
     // Parse in case of moved data
