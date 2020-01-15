@@ -31,9 +31,6 @@ int main( int argc, char *argv[] ) {
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
 
-    std::vector<uint8_t> pkt;
-    pkt.resize( 1508 );
-
     std::thread pppoe_dispatcher ([]() -> void {
         while( true ) {
             if( pppoe_incoming.empty() ) {
@@ -66,21 +63,27 @@ int main( int argc, char *argv[] ) {
     fds[ 1 ].fd = runtime->PPPOESessFD;
     fds[ 1 ].events = POLLIN;
 
+    std::vector<unsigned char> pkt;
+    pkt.reserve( 1500 );
+
     while( true ) {
         if( int ret = poll( reinterpret_cast<pollfd*>( &fds ), 2, 100 ); ret == -1 ) {
             log( "Poll returned error: "s + strerror( errno ) );
         } else if( ret > 0 ) {
+            pkt.resize( 1500 );
             if( fds[ 0 ].revents & POLLIN ) {
                 // Receiving pppoe discovery packets
-                if( auto ret = recv( runtime->PPPOEDiscFD, pkt.data(), pkt.capacity(), 0 ); ret > 0 ) {
-                    pkt.resize( ret );
+                if( auto pktSize = recv( runtime->PPPOEDiscFD, pkt.data(), pkt.capacity(), 0 ); pktSize > 0 ) {
+                    pkt.resize( pktSize );
                     pppoe_incoming.push( pkt );
                 }
             }
             if( fds[ 1 ].revents & POLLIN ) {
                 // Receiving pppoe session control packets (lcp, ipcp, ipcp6, etc)
-                if( auto ret = recv( runtime->PPPOESessFD, pkt.data(), pkt.capacity(), 0 ); ret > 0 ) {
-                    pkt.resize( ret );
+                if( auto pktSize = recv( runtime->PPPOESessFD, pkt.data(), pkt.capacity(), 0 ); pktSize > 0 ) {
+                    log("recv pkt size: " + std::to_string( pktSize ) );
+                    pkt.resize( pktSize );
+                    printHex( pkt );
                     ppp_incoming.push( pkt );
                 }
             }

@@ -45,7 +45,7 @@ struct PPPOEQ {
 
     void push( std::vector<uint8_t> pkt ) {
         std::lock_guard lg( mutex );
-        queue.push( pkt );
+        queue.push( std::move( pkt ) );
     }
 
     std::vector<uint8_t> pop() {
