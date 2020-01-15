@@ -62,6 +62,12 @@ enum class LCP_OPTIONS: uint8_t {
     ADD_AND_CTRL_FIELD_COMP = 8,
 };
 
+enum class IPCP_OPTIONS: uint8_t {
+    IP_ADDRESS = 3,
+    PRIMARY_DNS = 129,
+    SECONDARY_DNS = 131,
+};
+
 struct PPPOEDISC_TLV {
     uint16_t type;
     uint16_t length;
@@ -162,6 +168,22 @@ struct LCP_OPT_4B {
     uint32_t val;
 
     void set( LCP_OPTIONS o, uint32_t v ) {
+        opt = o;
+        val = htonl( v );
+        len = 6;
+    }
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct IPCP_OPT_4B {
+    IPCP_OPTIONS opt;
+    uint8_t len;
+    uint32_t val;
+
+    void set( IPCP_OPTIONS o, uint32_t v ) {
         opt = o;
         val = htonl( v );
         len = 6;

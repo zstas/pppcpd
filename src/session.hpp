@@ -8,8 +8,8 @@ struct PPPOESession {
 
     // PPP FSM for all the protocols we support
     LCP_FSM lcp;
-    LCP_FSM ipcp;
     PPP_AUTH auth;
+    LCP_FSM ipcp;
 
     // LCP negotiated options
     uint16_t our_MRU;
@@ -21,6 +21,7 @@ struct PPPOESession {
         mac( m ),
         session_id( sid ),
         lcp( sid),
+        auth( sid ),
         ipcp( sid )
     {
         log( "Session UP: " + std::to_string( sid ) );

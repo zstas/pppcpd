@@ -30,12 +30,14 @@
 #include "policy.hpp"
 #include "tools.hpp"
 #include "ppp_lcp.hpp"
+#include "ppp_ipcp.hpp"
 #include "ppp.hpp"
 #include "ppp_fsm.hpp"
 #include "ppp_auth.hpp"
 #include "session.hpp"
 #include "string_helpers.hpp"
 #include "packet.hpp"
+#include "aaa.hpp"
 
 using namespace std::string_literals;
 
@@ -90,6 +92,7 @@ public:
     std::map<uint16_t,PPPOESession> sessions;
     std::shared_ptr<PPPOEPolicy> pppoe_conf;
     std::shared_ptr<LCPPolicy> lcp_conf;
+    std::shared_ptr<AAA> aaa;
 
     std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {

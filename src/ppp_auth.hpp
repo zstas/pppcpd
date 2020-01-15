@@ -3,15 +3,20 @@
 
 struct PPP_AUTH {
 private:
+    uint16_t session_id;
     uint8_t pkt_id { 1U };
 
 public:
 
+    PPP_AUTH( uint16_t sid ):
+        session_id( sid )
+    {}
+    
     void receive( Packet &pkt );
     // PAP methods
     void recv_auth_req( Packet &pkt );
-    void send_auth_ack();
-    void send_auth_nak();
+    std::string send_auth_ack( Packet &pkt );
+    std::string send_auth_nak( Packet &pkt );
 };
 
 #endif
