@@ -46,3 +46,56 @@ std::string IPCP_FSM::send_conf_req() {
 
     return "";
 }
+
+
+std::string IPCP_FSM::send_conf_ack( Packet &pkt ) {
+    log( "send_conf_ack current state: " + std::to_string( state ) );
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return "Cannot send conf req for unexisting session";
+    }
+    auto &session = sessIt->second;
+
+    // Fill ethernet part
+    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
+    pkt.eth->dst_mac = session.mac;
+    pkt.eth->src_mac = runtime->hwaddr;
+
+    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
+
+    // Fill LCP part
+    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
+    pkt.lcp->code = LCP_CODE::CONF_ACK;
+
+    // Send this CONF REQ
+    ppp_outcoming.push( std::move( pkt.bytes ) );
+    return "";
+}
+
+std::string IPCP_FSM::send_conf_nak( Packet &pkt ) {
+    log( "send_conf_nak current state: " + std::to_string( state ) );
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return "Cannot send conf req for unexisting session";
+    }
+    auto &session = sessIt->second;
+
+    // Fill ethernet part
+    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
+    pkt.eth->dst_mac = session.mac;
+    pkt.eth->src_mac = runtime->hwaddr;
+
+    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
+
+    // Fill LCP part
+    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
+    pkt.lcp->code = LCP_CODE::CONF_NAK;
+
+    // Set our parameters
+    auto opts = pkt.lcp->parseOptions();
+
+    // Send this CONF REQ
+    ppp_outcoming.push( std::move( pkt.bytes ) );
+
+    return "";
+}

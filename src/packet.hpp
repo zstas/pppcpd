@@ -106,8 +106,18 @@ struct PPP_LCP {
     uint8_t identifier;
     uint16_t length;
 
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    uint8_t* getPayload( size_t offset = 0 ) {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this ) + offset;
+    }
+
+    std::set<LCP_OPT_HDR*> parseOptions() {
+        std::set<LCP_OPT_HDR*> options;
+        size_t offset = 0;
+        do {
+            auto opt = reinterpret_cast<LCP_OPT_HDR*>( getPayload( offset ) );
+            offset += opt->len;
+        } while( offset + sizeof( *this ) < length );
+        return options;
     }
 }__attribute__((__packed__));
 
