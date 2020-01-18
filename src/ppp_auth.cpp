@@ -14,16 +14,24 @@ void PPP_AUTH::receive( Packet &pkt ) {
     }
 }
 
-void PPP_AUTH::recv_auth_req( Packet &pkt ) {
+std::string PPP_AUTH::recv_auth_req( Packet &pkt ) {
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return "Cannot send auth ack for unexisting session";
+    }
+    auto &session = sessIt->second;
+
     uint8_t user_len = *( pkt.auth->getPayload() );
     std::string username { reinterpret_cast<char*>( pkt.auth->getPayload() + 1 ), reinterpret_cast<char*>( pkt.auth->getPayload() + 1 + user_len ) };
     uint8_t pass_len = *( pkt.auth->getPayload() + user_len + 1 );
     std::string password { reinterpret_cast<char*>( pkt.auth->getPayload() + 1 + user_len + 1 ), reinterpret_cast<char*>( pkt.auth->getPayload() + 1 + user_len + 1 + pass_len ) };
 
+    session.username = username;
+
     if( runtime->aaa->startSession( username, password ) ) {
-        send_auth_ack( pkt );
+        return send_auth_ack( pkt );
     } else {
-        send_auth_nak( pkt );
+        return send_auth_nak( pkt );
     }
 }
 

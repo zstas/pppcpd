@@ -101,6 +101,24 @@ struct PPPOESESSION_HDR {
 }__attribute__((__packed__));
 static_assert( sizeof( PPPOESESSION_HDR ) == 8 );
 
+struct LCP_OPT_HDR {
+    LCP_OPTIONS opt;
+    uint8_t len;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct IPCP_OPT_HDR {
+    IPCP_OPTIONS opt;
+    uint8_t len;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
 struct PPP_LCP {
     LCP_CODE code;
     uint8_t identifier;
@@ -110,11 +128,21 @@ struct PPP_LCP {
         return reinterpret_cast<uint8_t*>( this ) + sizeof( *this ) + offset;
     }
 
-    std::set<LCP_OPT_HDR*> parseOptions() {
+    std::set<LCP_OPT_HDR*> parseLCPOptions() {
         std::set<LCP_OPT_HDR*> options;
         size_t offset = 0;
         do {
             auto opt = reinterpret_cast<LCP_OPT_HDR*>( getPayload( offset ) );
+            offset += opt->len;
+        } while( offset + sizeof( *this ) < length );
+        return options;
+    }
+
+    std::set<IPCP_OPT_HDR*> parseIPCPOptions() {
+        std::set<IPCP_OPT_HDR*> options;
+        size_t offset = 0;
+        do {
+            auto opt = reinterpret_cast<IPCP_OPT_HDR*>( getPayload( offset ) );
             offset += opt->len;
         } while( offset + sizeof( *this ) < length );
         return options;
@@ -125,15 +153,6 @@ struct PPP_AUTH_HDR {
     PAP_CODE code;
     uint8_t identifier;
     uint16_t length;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
-}__attribute__((__packed__));
-
-struct LCP_OPT_HDR {
-    LCP_OPTIONS opt;
-    uint8_t len;
 
     uint8_t* getPayload() {
         return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );

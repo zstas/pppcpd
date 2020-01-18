@@ -14,7 +14,7 @@ public:
     
     void receive( Packet &pkt );
     // PAP methods
-    void recv_auth_req( Packet &pkt );
+    std::string recv_auth_req( Packet &pkt );
     std::string send_auth_ack( Packet &pkt );
     std::string send_auth_nak( Packet &pkt );
 };

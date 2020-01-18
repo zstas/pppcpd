@@ -79,6 +79,10 @@ std::string IPCP_FSM::send_conf_nak( Packet &pkt ) {
         return "Cannot send conf req for unexisting session";
     }
     auto &session = sessIt->second;
+    auto const &[ conf, err ] = runtime->aaa->getConf( session.username );
+    if( !err.empty() ) {
+        return "Cannot send conf nak cause: "s + err;
+    }
 
     // Fill ethernet part
     pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
@@ -92,10 +96,116 @@ std::string IPCP_FSM::send_conf_nak( Packet &pkt ) {
     pkt.lcp->code = LCP_CODE::CONF_NAK;
 
     // Set our parameters
-    auto opts = pkt.lcp->parseOptions();
+    auto opts = pkt.lcp->parseIPCPOptions();
+    for( auto &opt: opts ) {
+        switch( opt->opt ) {
+        case IPCP_OPTIONS::IP_ADDRESS: {
+            auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            ipad->val = conf.address;
+            break;
+        }
+        case IPCP_OPTIONS::PRIMARY_DNS: {
+            auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            dns1->val = conf.dns1;
+            break;
+        }
+        case IPCP_OPTIONS::SECONDARY_DNS: {
+            auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            dns2->val = conf.dns2;
+            break;
+        }
+        default:
+            break;
+        }
+    }
 
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
 
     return "";
+}
+
+std::string IPCP_FSM::check_conf( Packet &pkt ) {
+    uint32_t len = ntohs( pkt.lcp->length ) - sizeof( PPP_LCP );
+    if( len <= 0 ) {
+        return "There is no options";
+    }
+
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return "Cannot send conf req for unexisting session";
+    }
+    auto &session = sessIt->second;
+    auto const &[ conf, err ] = runtime->aaa->getConf( session.username );
+    if( !err.empty() ) {
+        return "Cannot send conf nak cause: "s + err;
+    }
+
+    LCP_CODE code = LCP_CODE::CONF_ACK;
+
+    // Check options
+    auto opts = pkt.lcp->parseIPCPOptions();
+    for( auto &opt: opts ) {
+        switch( opt->opt ) {
+        case IPCP_OPTIONS::IP_ADDRESS: {
+            auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            if( ipad->val != conf.address ) {
+                code = LCP_CODE::CONF_NAK;
+            }
+            break;
+        }
+        case IPCP_OPTIONS::PRIMARY_DNS: {
+            auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            if( dns1->val != conf.dns1 ) {
+                code = LCP_CODE::CONF_NAK;
+            }
+            break;
+        }
+        case IPCP_OPTIONS::SECONDARY_DNS: {
+            auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
+            if( dns2->val != conf.dns2 ) {
+                code = LCP_CODE::CONF_NAK;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    //send pkt
+    if( code == LCP_CODE::CONF_ACK ) {
+        if( state == PPP_FSM_STATE::Ack_Rcvd ) {
+            state = PPP_FSM_STATE::Opened;
+            layer_up();
+        } else {
+            state = PPP_FSM_STATE::Ack_Sent;
+        }
+        nak_counter = 0;
+        return send_conf_ack( pkt );
+    } else {
+        if( state != PPP_FSM_STATE::Ack_Rcvd ) {
+            state = PPP_FSM_STATE::Req_Sent;
+        }
+        if( code == LCP_CODE::CONF_NAK ) {
+            nak_counter++;
+        }
+        return send_conf_nak( pkt );
+    }
+}
+
+void IPCP_FSM::send_conf_rej() {
+
+}
+
+void IPCP_FSM::send_code_rej() {
+
+}
+
+void IPCP_FSM::send_term_req() {
+
+}
+
+void IPCP_FSM::send_term_ack() {
+
 }

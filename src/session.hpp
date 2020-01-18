@@ -5,6 +5,9 @@ struct PPPOESession {
     // PPPoE Data
     uint16_t session_id;
     std::string cookie;
+    
+    // Various data
+    std::string username;
 
     // PPP FSM for all the protocols we support
     LCP_FSM lcp;
