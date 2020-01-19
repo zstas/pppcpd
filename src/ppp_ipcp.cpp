@@ -105,17 +105,17 @@ FSM_RET IPCP_FSM::send_conf_nak( Packet &pkt ) {
         switch( opt->opt ) {
         case IPCP_OPTIONS::IP_ADDRESS: {
             auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            ipad->val = conf.address;
+            ipad->val = htonl( conf.address );
             break;
         }
         case IPCP_OPTIONS::PRIMARY_DNS: {
             auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            dns1->val = conf.dns1;
+            dns1->val = htonl( conf.dns1 );
             break;
         }
         case IPCP_OPTIONS::SECONDARY_DNS: {
             auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            dns2->val = conf.dns2;
+            dns2->val = htonl( conf.dns2 );
             break;
         }
         default:
@@ -153,21 +153,21 @@ FSM_RET IPCP_FSM::check_conf( Packet &pkt ) {
         switch( opt->opt ) {
         case IPCP_OPTIONS::IP_ADDRESS: {
             auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( ipad->val != conf.address ) {
+            if( ipad->val != htonl( conf.address ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
         }
         case IPCP_OPTIONS::PRIMARY_DNS: {
             auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( dns1->val != conf.dns1 ) {
+            if( dns1->val != htonl( conf.dns1 ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
         }
         case IPCP_OPTIONS::SECONDARY_DNS: {
             auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( dns2->val != conf.dns2 ) {
+            if( dns2->val != htonl( conf.dns2 ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
