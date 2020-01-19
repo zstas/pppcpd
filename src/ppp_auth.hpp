@@ -12,11 +12,15 @@ public:
         session_id( sid )
     {}
     
-    void receive( Packet &pkt );
+    void open();
+    void layer_up();
+    void layer_down();
+
+    FSM_RET receive( Packet &pkt );
     // PAP methods
-    std::string recv_auth_req( Packet &pkt );
-    std::string send_auth_ack( Packet &pkt );
-    std::string send_auth_nak( Packet &pkt );
+    FSM_RET recv_auth_req( Packet &pkt );
+    FSM_RET send_auth_ack( Packet &pkt );
+    FSM_RET send_auth_nak( Packet &pkt );
 };
 
 #endif

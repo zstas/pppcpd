@@ -28,15 +28,34 @@ std::string ppp::processPPP( Packet inPkt ) {
     switch( static_cast<PPP_PROTO>( ntohs( inPkt.pppoe_session->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
         log( "proto LCP for session " + std::to_string( session.session_id ) );
-        session.lcp.receive( inPkt );
-        break;
-    case PPP_PROTO::IPCP:
-        log( "proto IPCP" );
-        session.ipcp.receive( inPkt );
+        if( auto const& [ action, err ] = session.lcp.receive( inPkt ); !err.empty() ) {
+            log( "Error while processing LCP packet: " + err );
+        } else {
+            if( action == PPP_FSM_ACTION::LAYER_UP ) {
+                session.auth.open();
+            } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
+                //session.auth.close();
+            }
+        }
         break;
     case PPP_PROTO::PAP:
         log( "proto PAP" );
-        session.auth.receive( inPkt );
+        if( auto const& [ action, err ] = session.auth.receive( inPkt ); !err.empty() ) {
+            log( "Error while processing LCP packet: " + err );
+        } else {
+            if( action == PPP_FSM_ACTION::LAYER_UP ) {
+                session.ipcp.open();
+                session.ipcp.layer_up();
+            } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
+                //session.ipcp.close();
+            }
+        }
+        break;
+    case PPP_PROTO::IPCP:
+        log( "proto IPCP" );
+        if( auto const &[ action, err ] = session.ipcp.receive( inPkt ); !err.empty() ) {
+            log( "Error while processing IPCP pkt: " + err );
+        }
         break;
     default:
         log( "unknown proto" );

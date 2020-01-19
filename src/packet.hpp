@@ -134,19 +134,27 @@ struct PPP_LCP {
         do {
             auto opt = reinterpret_cast<LCP_OPT_HDR*>( getPayload( offset ) );
             offset += opt->len;
-        } while( offset + sizeof( *this ) < length );
+        } while( offset + sizeof( *this ) < ntohs( length ) );
         return options;
     }
 
     std::set<IPCP_OPT_HDR*> parseIPCPOptions() {
         std::set<IPCP_OPT_HDR*> options;
         size_t offset = 0;
-        do {
+        while( offset + sizeof( *this ) < ntohs( length ) ) {
             auto opt = reinterpret_cast<IPCP_OPT_HDR*>( getPayload( offset ) );
             offset += opt->len;
-        } while( offset + sizeof( *this ) < length );
+            options.emplace( opt );
+        } 
         return options;
     }
+}__attribute__((__packed__));
+
+struct PPP_LCP_ECHO {
+    LCP_CODE code;
+    uint8_t identifier;
+    uint16_t length;
+    uint32_t magic_number;
 }__attribute__((__packed__));
 
 struct PPP_AUTH_HDR {
@@ -229,6 +237,7 @@ struct Packet {
     PPPOESESSION_HDR *pppoe_session { nullptr };
     PPP_LCP *lcp { nullptr };
     PPP_AUTH_HDR *auth { nullptr };
+    PPP_LCP_ECHO *lcp_echo { nullptr };
     
     std::vector<uint8_t> bytes;
 

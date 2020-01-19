@@ -3,21 +3,22 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
-void PPP_AUTH::receive( Packet &pkt ) {
+FSM_RET PPP_AUTH::receive( Packet &pkt ) {
     pkt.auth = reinterpret_cast<PPP_AUTH_HDR*>( pkt.pppoe_session->getPayload() );
     switch( pkt.auth->code ) {
     case PAP_CODE::AUTHENTICATE_REQ:
-        recv_auth_req( pkt );
+        return recv_auth_req( pkt );
         break;
     default:
         break;
     }
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string PPP_AUTH::recv_auth_req( Packet &pkt ) {
+FSM_RET PPP_AUTH::recv_auth_req( Packet &pkt ) {
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send auth ack for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send auth ack for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -35,10 +36,10 @@ std::string PPP_AUTH::recv_auth_req( Packet &pkt ) {
     }
 }
 
-std::string PPP_AUTH::send_auth_ack( Packet &pkt ) {
+FSM_RET PPP_AUTH::send_auth_ack( Packet &pkt ) {
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send auth ack for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send auth ack for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -60,13 +61,13 @@ std::string PPP_AUTH::send_auth_ack( Packet &pkt ) {
 
     // Send this packet
     ppp_outcoming.push( std::move( pkt.bytes ) );
-    return "";
+    return { PPP_FSM_ACTION::LAYER_UP, "" };
 }
 
-std::string PPP_AUTH::send_auth_nak( Packet &pkt ) {
+FSM_RET PPP_AUTH::send_auth_nak( Packet &pkt ) {
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send auth nak for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send auth nak for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -88,6 +89,9 @@ std::string PPP_AUTH::send_auth_nak( Packet &pkt ) {
 
     // Send this packet
     ppp_outcoming.push( std::move( pkt.bytes ) );
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
+void PPP_AUTH::open() {
+    
+}

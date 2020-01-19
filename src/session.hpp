@@ -12,7 +12,7 @@ struct PPPOESession {
     // PPP FSM for all the protocols we support
     LCP_FSM lcp;
     PPP_AUTH auth;
-    LCP_FSM ipcp;
+    IPCP_FSM ipcp;
 
     // LCP negotiated options
     uint16_t our_MRU;

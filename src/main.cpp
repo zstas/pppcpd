@@ -83,9 +83,7 @@ int main( int argc, char *argv[] ) {
             if( fds[ 1 ].revents & POLLIN ) {
                 // Receiving pppoe session control packets (lcp, ipcp, ipcp6, etc)
                 if( auto pktSize = recv( runtime->PPPOESessFD, pkt.data(), pkt.capacity(), 0 ); pktSize > 0 ) {
-                    log("recv pkt size: " + std::to_string( pktSize ) );
                     pkt.resize( pktSize );
-                    printHex( pkt );
                     ppp_incoming.push( pkt );
                 }
             }

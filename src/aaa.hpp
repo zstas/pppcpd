@@ -54,11 +54,13 @@ struct AAA {
     {}
 
     bool startSession( const std::string &user, const std::string &pass ) {
+        log( "AAA: starting session user: " + user + " password: " + pass );
         PPP_IPCONF conf;
         conf.address = pool1.allocate_ip();
         conf.dns1 = pool1.dns1;
         conf.dns2 = pool1.dns2;
         if( auto const &[ it, ret ] = confs.emplace( user, conf); !ret ) {
+            log( "AAA: failer to emplace user " + user );
             return false;
         }
         return true;

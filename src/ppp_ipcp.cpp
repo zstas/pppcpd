@@ -4,7 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 FSM_RET IPCP_FSM::send_conf_req() {
-    log( "send_conf_req current state: " + std::to_string( state ) );
+    log( "IPCP: send_conf_req current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -21,7 +21,7 @@ FSM_RET IPCP_FSM::send_conf_req() {
     pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
     pkt.pppoe_session->version = 1;
     pkt.pppoe_session->type = 1;
-    pkt.pppoe_session->ppp_protocol = htons( static_cast<uint16_t>( PPP_PROTO::LCP ) );
+    pkt.pppoe_session->ppp_protocol = htons( static_cast<uint16_t>( PPP_PROTO::IPCP ) );
     pkt.pppoe_session->code = PPPOE_CODE::SESSION_DATA;
     pkt.pppoe_session->session_id = htons( session_id );
 
@@ -39,7 +39,6 @@ FSM_RET IPCP_FSM::send_conf_req() {
     pkt.lcp->length = htons( sizeof( PPP_LCP ) + ipcpOpts );
     pkt.pppoe_session->length = htons( sizeof( PPP_LCP ) + ipcpOpts + 2 ); // plus 2 bytes of ppp proto
     pkt.bytes.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + ipcpOpts  );
-    printHex( pkt.bytes );
 
     // Send this CONF REQ
     ppp_outcoming.push( pkt.bytes );
@@ -49,7 +48,7 @@ FSM_RET IPCP_FSM::send_conf_req() {
 
 
 FSM_RET IPCP_FSM::send_conf_ack( Packet &pkt ) {
-    log( "send_conf_ack current state: " + std::to_string( state ) );
+    log( "IPCP: send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -69,11 +68,16 @@ FSM_RET IPCP_FSM::send_conf_ack( Packet &pkt ) {
 
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
+
+    if( state == PPP_FSM_STATE::Opened ) {
+        return { PPP_FSM_ACTION::LAYER_UP, "" };
+    }
+
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
 FSM_RET IPCP_FSM::send_conf_nak( Packet &pkt ) {
-    log( "send_conf_nak current state: " + std::to_string( state ) );
+    log( "IPCP: send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -207,5 +211,9 @@ FSM_RET IPCP_FSM::send_term_req() {
 }
 
 FSM_RET IPCP_FSM::send_term_ack() {
+    return { PPP_FSM_ACTION::NONE, "" };
+}
+
+FSM_RET IPCP_FSM::send_echo_rep( Packet &pkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }

@@ -4,7 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 FSM_RET LCP_FSM::send_conf_req() {
-    log( "send_conf_req current state: " + std::to_string( state ) );
+    log( "LCP: send_conf_req current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -59,7 +59,6 @@ FSM_RET LCP_FSM::send_conf_req() {
     pkt.lcp->length = htons( sizeof( PPP_LCP ) + lcpOpts );
     pkt.pppoe_session->length = htons( sizeof( PPP_LCP ) + lcpOpts + 2 ); // plus 2 bytes of ppp proto
     pkt.bytes.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + lcpOpts  );
-    printHex( pkt.bytes );
 
     // Send this CONF REQ
     ppp_outcoming.push( pkt.bytes );
@@ -68,7 +67,7 @@ FSM_RET LCP_FSM::send_conf_req() {
 }
 
 FSM_RET LCP_FSM::send_conf_ack( Packet &pkt ) {
-    log( "send_conf_ack current state: " + std::to_string( state ) );
+    log( "LCP: send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -88,12 +87,15 @@ FSM_RET LCP_FSM::send_conf_ack( Packet &pkt ) {
 
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
+    if( state == PPP_FSM_STATE::Opened ) {
+        return { PPP_FSM_ACTION::LAYER_UP, "" };
+    }
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
 FSM_RET LCP_FSM::send_conf_nak( Packet &pkt ) {
-    log( "send_conf_nak current state: " + std::to_string( state ) );
+    log( "LCP: send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
@@ -179,5 +181,32 @@ FSM_RET LCP_FSM::send_term_req() {
 }
 
 FSM_RET LCP_FSM::send_term_ack() {
+    return { PPP_FSM_ACTION::NONE, "" };
+}
+
+FSM_RET LCP_FSM::send_echo_rep( Packet &pkt ) {
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
+    }
+    auto &session = sessIt->second;
+
+    // Fill ethernet part
+    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
+    pkt.eth->dst_mac = session.mac;
+    pkt.eth->src_mac = runtime->hwaddr;
+
+    // Fill LCP ECHO part
+    pkt.lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pkt.pppoe_session->getPayload() );
+    pkt.lcp_echo->code = LCP_CODE::ECHO_REPLY;
+    if( pkt.lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
+        return { PPP_FSM_ACTION::NONE, "Magic number is wrong!" };
+    }
+    pkt.lcp_echo->magic_number = htonl( session.our_magic_number );
+
+    // Send this CONF REQ
+    log( "Sending LCP ECHO REPLY" );
+    ppp_outcoming.push( pkt.bytes );
+
     return { PPP_FSM_ACTION::NONE, "" };
 }

@@ -58,6 +58,7 @@ public:
 	virtual FSM_RET send_code_rej() = 0;
 	virtual FSM_RET send_term_req() = 0;
 	virtual FSM_RET send_term_ack() = 0;
+    virtual FSM_RET send_echo_rep( Packet &pkt ) = 0;
 };
 
 #endif

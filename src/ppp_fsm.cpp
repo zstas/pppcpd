@@ -38,6 +38,8 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
     case LCP_CODE::CODE_REJ:
         //fsm_rcoderej
         break;
+    case LCP_CODE::ECHO_REQ:
+        return send_echo_rep( pkt );
     default:
         //send CODEREJ
         break;
@@ -61,6 +63,7 @@ FSM_RET PPP_FSM::recv_conf_req( Packet &pkt ) {
         layer_down();
         send_conf_req();
         state = PPP_FSM_STATE::Req_Sent;
+        return { PPP_FSM_ACTION::LAYER_DOWN, "" };
         break;
     case PPP_FSM_STATE::Stopped:
         send_conf_req();
@@ -147,11 +150,14 @@ FSM_RET PPP_FSM::recv_conf_ack( Packet &pkt ) {
         break;
     case PPP_FSM_STATE::Ack_Sent:
         state = PPP_FSM_STATE::Opened;
+        layer_up();
+        return { PPP_FSM_ACTION::LAYER_UP, "" };
         break;
     case PPP_FSM_STATE::Opened:
         // Restarting the connection
         send_conf_req();
         state = PPP_FSM_STATE::Req_Sent;
+        return { PPP_FSM_ACTION::LAYER_DOWN, "" };
         break;
     default:
         log( "Incorrect state?" );
