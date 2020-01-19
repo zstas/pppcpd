@@ -31,7 +31,7 @@ int main( int argc, char *argv[] ) {
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
 
-    runtime->aaa = std::make_shared<AAA>( 0x64400A, 0x6440FE, 0x08080808, 0x01010101 );
+    runtime->aaa = std::make_shared<AAA>( 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 );
 
     std::thread pppoe_dispatcher ([]() -> void {
         while( true ) {
