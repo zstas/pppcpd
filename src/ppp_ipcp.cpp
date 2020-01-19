@@ -3,11 +3,11 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
-std::string IPCP_FSM::send_conf_req() {
+FSM_RET IPCP_FSM::send_conf_req() {
     log( "send_conf_req current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
     Packet pkt{};
@@ -44,15 +44,15 @@ std::string IPCP_FSM::send_conf_req() {
     // Send this CONF REQ
     ppp_outcoming.push( pkt.bytes );
 
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
 
-std::string IPCP_FSM::send_conf_ack( Packet &pkt ) {
+FSM_RET IPCP_FSM::send_conf_ack( Packet &pkt ) {
     log( "send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -69,19 +69,19 @@ std::string IPCP_FSM::send_conf_ack( Packet &pkt ) {
 
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string IPCP_FSM::send_conf_nak( Packet &pkt ) {
+FSM_RET IPCP_FSM::send_conf_nak( Packet &pkt ) {
     log( "send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
     auto const &[ conf, err ] = runtime->aaa->getConf( session.username );
     if( !err.empty() ) {
-        return "Cannot send conf nak cause: "s + err;
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf nak cause: "s + err };
     }
 
     // Fill ethernet part
@@ -122,23 +122,23 @@ std::string IPCP_FSM::send_conf_nak( Packet &pkt ) {
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
 
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string IPCP_FSM::check_conf( Packet &pkt ) {
+FSM_RET IPCP_FSM::check_conf( Packet &pkt ) {
     uint32_t len = ntohs( pkt.lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
-        return "There is no options";
+        return { PPP_FSM_ACTION::NONE, "There is no options" };
     }
 
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
     auto const &[ conf, err ] = runtime->aaa->getConf( session.username );
     if( !err.empty() ) {
-        return "Cannot send conf nak cause: "s + err;
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf nak cause: "s + err };
     }
 
     LCP_CODE code = LCP_CODE::CONF_ACK;
@@ -194,18 +194,18 @@ std::string IPCP_FSM::check_conf( Packet &pkt ) {
     }
 }
 
-void IPCP_FSM::send_conf_rej() {
-
+FSM_RET IPCP_FSM::send_conf_rej() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void IPCP_FSM::send_code_rej() {
-
+FSM_RET IPCP_FSM::send_code_rej() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void IPCP_FSM::send_term_req() {
-
+FSM_RET IPCP_FSM::send_term_req() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void IPCP_FSM::send_term_ack() {
-
+FSM_RET IPCP_FSM::send_term_ack() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }

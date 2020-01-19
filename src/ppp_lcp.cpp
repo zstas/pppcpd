@@ -3,11 +3,11 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
-std::string LCP_FSM::send_conf_req() {
+FSM_RET LCP_FSM::send_conf_req() {
     log( "send_conf_req current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
     Packet pkt{};
@@ -42,7 +42,7 @@ std::string LCP_FSM::send_conf_req() {
     } else if( runtime->lcp_conf->authPAP ) {
         auth_proto = static_cast<uint16_t>( PPP_PROTO::PAP );
     } else {
-        return "No Auth proto is chosen!";
+        return { PPP_FSM_ACTION::NONE, "No Auth proto is chosen!" };
     }
     auth->set( LCP_OPTIONS::AUTH_PROTO, auth_proto );
     lcpOpts += auth->len;
@@ -64,14 +64,14 @@ std::string LCP_FSM::send_conf_req() {
     // Send this CONF REQ
     ppp_outcoming.push( pkt.bytes );
 
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string LCP_FSM::send_conf_ack( Packet &pkt ) {
+FSM_RET LCP_FSM::send_conf_ack( Packet &pkt ) {
     log( "send_conf_ack current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -89,14 +89,14 @@ std::string LCP_FSM::send_conf_ack( Packet &pkt ) {
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
 
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string LCP_FSM::send_conf_nak( Packet &pkt ) {
+FSM_RET LCP_FSM::send_conf_nak( Packet &pkt ) {
     log( "send_conf_nak current state: " + std::to_string( state ) );
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -114,18 +114,18 @@ std::string LCP_FSM::send_conf_nak( Packet &pkt ) {
     // Send this CONF REQ
     ppp_outcoming.push( std::move( pkt.bytes ) );
 
-    return "";
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-std::string LCP_FSM::check_conf( Packet &pkt ) {
+FSM_RET LCP_FSM::check_conf( Packet &pkt ) {
     uint32_t len = ntohs( pkt.lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
-        return "There is no options";
+        return { PPP_FSM_ACTION::NONE, "There is no options" };
     }
 
     auto const &sessIt = runtime->sessions.find( session_id );
     if( sessIt == runtime->sessions.end() ) {
-        return "Cannot send conf req for unexisting session";
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
     }
     auto &session = sessIt->second;
 
@@ -166,18 +166,18 @@ std::string LCP_FSM::check_conf( Packet &pkt ) {
     }
 }
 
-void LCP_FSM::send_conf_rej() {
-
+FSM_RET LCP_FSM::send_conf_rej() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void LCP_FSM::send_code_rej() {
-
+FSM_RET LCP_FSM::send_code_rej() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void LCP_FSM::send_term_req() {
-
+FSM_RET LCP_FSM::send_term_req() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
-void LCP_FSM::send_term_ack() {
-
+FSM_RET LCP_FSM::send_term_ack() {
+    return { PPP_FSM_ACTION::NONE, "" };
 }

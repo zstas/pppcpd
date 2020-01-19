@@ -10,14 +10,14 @@ struct LCP_FSM: public PPP_FSM {
         PPP_FSM( sid )
     {}
 
-	std::string send_conf_req() override;
-	std::string send_conf_ack( Packet &pkt ) override;
-	std::string send_conf_nak( Packet &pkt ) override;
-    std::string check_conf( Packet &pkt ) override;
-	void send_conf_rej() override;
-	void send_code_rej() override;
-	void send_term_req() override;
-	void send_term_ack() override;
+	FSM_RET send_conf_req() override;
+	FSM_RET send_conf_ack( Packet &pkt ) override;
+	FSM_RET send_conf_nak( Packet &pkt ) override;
+    FSM_RET check_conf( Packet &pkt ) override;
+	FSM_RET send_conf_rej() override;
+	FSM_RET send_code_rej() override;
+	FSM_RET send_term_req() override;
+	FSM_RET send_term_ack() override;
 };
 
 #endif
