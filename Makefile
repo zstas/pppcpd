@@ -6,7 +6,7 @@ SRC = $(wildcard $(SRCDIR)/*.cpp main.cpp)
 OBJ = $(addprefix $(OBJDIR)/,$(notdir $(SRC:.cpp=.o)))
 
 CPPFLAGS ?= -g -Wall -std=c++17
-LDLIBS += -lpthread
+LDLIBS += -lpthread -lvapiclient
 
 $(TARGET): $(OBJ)
 	$(CXX) $(LDFLAGS) $(OBJ) -o $@ $(LOADLIBES) $(LDLIBS)

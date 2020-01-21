@@ -38,6 +38,7 @@
 #include "string_helpers.hpp"
 #include "packet.hpp"
 #include "aaa.hpp"
+#include "vpp.hpp"
 
 using namespace std::string_literals;
 
@@ -93,6 +94,7 @@ public:
     std::shared_ptr<PPPOEPolicy> pppoe_conf;
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
+    std::shared_ptr<VPPAPI> vpp;
 
     std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {

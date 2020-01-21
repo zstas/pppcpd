@@ -55,6 +55,13 @@ std::string ppp::processPPP( Packet inPkt ) {
         log( "proto IPCP" );
         if( auto const &[ action, err ] = session.ipcp.receive( inPkt ); !err.empty() ) {
             log( "Error while processing IPCP pkt: " + err );
+        } else {
+            if( action == PPP_FSM_ACTION::LAYER_UP ) {
+                log( "IPCP is opened: configuring vpp" );
+                if( auto const &[ conf, err ] = runtime->aaa->getConf( session.username ); !err.empty() ) {
+                    runtime->vpp->add_pppoe_session( conf.address, session.session_id, session.mac );
+                }
+            }
         }
         break;
     default:

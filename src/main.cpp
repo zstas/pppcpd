@@ -32,6 +32,7 @@ int main( int argc, char *argv[] ) {
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
 
     runtime->aaa = std::make_shared<AAA>( 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 );
+    runtime->vpp = std::make_shared<VPPAPI>();
 
     std::thread pppoe_dispatcher ([]() -> void {
         while( true ) {
@@ -57,6 +58,18 @@ int main( int argc, char *argv[] ) {
                 log( error );
             }
         }
+    });
+
+    std::thread vpp_api ([]() -> void {
+        vapi::Connection con;
+        auto ret = con.connect( "vbng", nullptr, 32, 32 );
+        if( ret != VAPI_OK ) {
+            log( "Cannot connect to vpp " );
+        }
+        vapi::Pppoe_session_dump dump( con );
+        auto output = dump.get_request().get_payload();
+        log( std::to_string( output.sw_if_index ) );
+        
     });
 
     struct pollfd fds[ 2 ];
