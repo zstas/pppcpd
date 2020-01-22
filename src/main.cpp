@@ -60,17 +60,17 @@ int main( int argc, char *argv[] ) {
         }
     });
 
-    std::thread vpp_api ([]() -> void {
-        vapi::Connection con;
-        auto ret = con.connect( "vbng", nullptr, 32, 32 );
-        if( ret != VAPI_OK ) {
-            log( "Cannot connect to vpp " );
-        }
-        vapi::Pppoe_session_dump dump( con );
-        auto output = dump.get_request().get_payload();
-        log( std::to_string( output.sw_if_index ) );
+    // std::thread vpp_api ([]() -> void {
+    //     vapi::Connection con;
+    //     auto ret = con.connect( "vbng", nullptr, 32, 32 );
+    //     if( ret != VAPI_OK ) {
+    //         log( "Cannot connect to vpp " );
+    //     }
+    //     vapi::Pppoe_session_dump dump( con );
+    //     auto output = dump.get_request().get_payload();
+    //     log( std::to_string( output.sw_if_index ) );
         
-    });
+    // });
 
     struct pollfd fds[ 2 ];
     fds[ 0 ].fd = runtime->PPPOEDiscFD;

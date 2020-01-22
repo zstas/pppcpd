@@ -4,6 +4,7 @@ DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 
 VPPAPI::VPPAPI() {
+    log( "VPPAPI cstr" );
     auto ret = con.connect( "vbng", nullptr, 32, 32 );
     if( ret != VAPI_OK ) {
         log( "VPP API: Cannot connect to vpp" );
@@ -19,12 +20,12 @@ VPPAPI::~VPPAPI() {
 bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac ) {
     vapi::Pppoe_add_del_session pppoe( con );
 
-    auto req = pppoe.get_request().get_payload();
+    auto &req = pppoe.get_request().get_payload();
 
-    req.client_ip[0] = ( ip_address && 0xFF );
-    req.client_ip[1] = ( ip_address && 0xFF00 ) >> 8;
-    req.client_ip[2] = ( ip_address && 0xFF0000 ) >> 16;
-    req.client_ip[3] = ( ip_address && 0xFF000000 ) >> 24;
+    req.client_ip[0] = ( ip_address >> 24 ) & 0xFF;
+    req.client_ip[1] = ( ip_address >> 16 ) & 0xFF;
+    req.client_ip[2] = ( ip_address >> 8 ) & 0xFF;
+    req.client_ip[3] = ( ip_address ) & 0xFF;
     req.is_ipv6 = 0;
 
     req.client_mac[0] = mac[0]; req.client_mac[1] = mac[1]; req.client_mac[2] = mac[2]; 
