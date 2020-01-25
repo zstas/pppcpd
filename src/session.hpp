@@ -1,6 +1,7 @@
 struct PPPOESession {
     // General Data
     std::array<uint8_t,6> mac;
+    bool started { false };
 
     // PPPoE Data
     uint16_t session_id;

@@ -2,6 +2,7 @@
 
 // Some global vars
 std::shared_ptr<PPPOERuntime> runtime;
+std::atomic_bool interrupted { false };
 
 // Queues for packets
 PPPOEQ pppoe_incoming;
@@ -9,7 +10,13 @@ PPPOEQ pppoe_outcoming;
 PPPOEQ ppp_incoming;
 PPPOEQ ppp_outcoming;
 
+void sighandler( int signal ) {
+    interrupted = true;
+}
+
 int main( int argc, char *argv[] ) {
+    std::signal( SIGINT, sighandler );
+    std::signal( SIGTERM, sighandler );
     runtime = std::make_shared<PPPOERuntime>( "pppoe-cp" );
 
     if( auto const &err = runtime->setupPPPOEDiscovery(); !err.empty() ) {
@@ -35,7 +42,7 @@ int main( int argc, char *argv[] ) {
     runtime->vpp = std::make_shared<VPPAPI>();
 
     std::thread pppoe_dispatcher ([]() -> void {
-        while( true ) {
+        while( !interrupted ) {
             if( pppoe_incoming.empty() ) {
                 continue;
             }
@@ -49,7 +56,7 @@ int main( int argc, char *argv[] ) {
     });
 
     std::thread ppp_dispatcher ([]() -> void {
-        while( true ) {
+        while( !interrupted ) {
             if( ppp_incoming.empty() ) {
                 continue;
             }
@@ -81,7 +88,7 @@ int main( int argc, char *argv[] ) {
     std::vector<unsigned char> pkt;
     pkt.reserve( 1500 );
 
-    while( true ) {
+    while( !interrupted ) {
         if( int ret = poll( reinterpret_cast<pollfd*>( &fds ), 2, 100 ); ret == -1 ) {
             log( "Poll returned error: "s + strerror( errno ) );
         } else if( ret > 0 ) {
@@ -118,6 +125,9 @@ int main( int argc, char *argv[] ) {
             }
         }
     }
+
+    pppoe_dispatcher.join();
+    ppp_dispatcher.join();
 
     return 0;
 }

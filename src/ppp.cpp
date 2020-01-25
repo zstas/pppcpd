@@ -22,6 +22,11 @@ std::string ppp::processPPP( Packet inPkt ) {
         return "Cannot find this session in runtime";
     }
     auto &session = sessionIt->second;
+    if( !session.started ) {
+        session.lcp.open();
+        session.lcp.layer_up();
+        session.started = true;
+    }
 
     inPkt.lcp = reinterpret_cast<PPP_LCP*>( inPkt.pppoe_session->getPayload() );
 

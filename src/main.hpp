@@ -12,6 +12,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <csignal>
 
 // Network api
 #include <sys/socket.h>

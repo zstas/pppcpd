@@ -82,12 +82,6 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         } else {
             log( "Session " + std::to_string( sid ) + " is UP!" );
             rep_pppoe->session_id = htons( sid );
-            if( auto const &sIt = runtime->sessions.find( sid ); sIt == runtime->sessions.end() ) {
-                return { std::move( reply ), "Cannot find session which just was installed" };
-            } else {
-                sIt->second.lcp.open();
-                sIt->second.lcp.layer_up();
-            }
         }
         break;
     case PPPOE_CODE::PADT:
