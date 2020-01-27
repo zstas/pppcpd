@@ -6,15 +6,20 @@ DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 VPPAPI::VPPAPI() {
     log( "VPPAPI cstr" );
     auto ret = con.connect( "vbng", nullptr, 32, 32 );
-    if( ret != VAPI_OK ) {
-        log( "VPP API: Cannot connect to vpp" );
-    } else {
+    if( ret == VAPI_OK ) {
         log("VPP API: connected");
+    } else {
+        log( "VPP API: Cannot connect to vpp" );
     }
 }
 
 VPPAPI::~VPPAPI() {
-    con.disconnect();
+    auto ret = con.disconnect();
+    if( ret == VAPI_OK ) {
+        log("VPP API: disconnected");
+    } else {
+        log("VPP API: something went wrong, cannot disconnect");
+    }
 }
 
 bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac ) {
