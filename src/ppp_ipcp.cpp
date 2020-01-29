@@ -212,7 +212,7 @@ FSM_RET IPCP_FSM::send_term_req() {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET IPCP_FSM::send_term_ack() {
+FSM_RET IPCP_FSM::send_term_ack( Packet &pkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 

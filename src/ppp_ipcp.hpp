@@ -17,7 +17,7 @@ struct IPCP_FSM: public PPP_FSM {
 	FSM_RET send_conf_rej() override;
 	FSM_RET send_code_rej() override;
 	FSM_RET send_term_req() override;
-	FSM_RET send_term_ack() override;
+	FSM_RET send_term_ack( Packet &pkt ) override;
 	FSM_RET send_echo_rep( Packet &pkt ) override;
 };
 

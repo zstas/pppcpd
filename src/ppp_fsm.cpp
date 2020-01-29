@@ -28,7 +28,7 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
 	    break;
     
     case LCP_CODE::TERM_REQ:
-	    //fsm_rtermreq(f, id, inp, len);
+	    return recv_term_req( pkt );
 	    break;
     
     case LCP_CODE::TERM_ACK:
@@ -167,5 +167,24 @@ FSM_RET PPP_FSM::recv_conf_ack( Packet &pkt ) {
         break;
     }
 
+    return { PPP_FSM_ACTION::NONE, "" };
+}
+
+FSM_RET PPP_FSM::recv_term_req( Packet &pkt ) {
+    switch( state ) {
+    case PPP_FSM_STATE::Ack_Rcvd:
+    case PPP_FSM_STATE::Ack_Sent:
+	    state = PPP_FSM_STATE::Req_Sent;
+	    break;
+    case PPP_FSM_STATE::Opened:
+        state = PPP_FSM_STATE::Stopping;
+        send_term_ack( pkt );
+        return { PPP_FSM_ACTION::LAYER_DOWN, "" };
+	    break;
+    default:
+       break;
+    }
+
+    send_term_ack( pkt );
     return { PPP_FSM_ACTION::NONE, "" };
 }

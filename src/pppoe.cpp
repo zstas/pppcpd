@@ -89,7 +89,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         if( const auto &err = runtime->deallocateSession( inPkt.eth->src_mac, ntohs( inPkt.pppoe_discovery->session_id ) ); !err.empty() ) {
             log( "Cannot terminate session: " + err );
         } else {
-            log( "Terminated session " + ntohs( inPkt.pppoe_discovery->session_id ) );
+            log( "Terminated session " + std::to_string( ntohs( inPkt.pppoe_discovery->session_id ) ) );
         }
         return { std::move( reply ), "Received PADT, send nothing" };
     default:

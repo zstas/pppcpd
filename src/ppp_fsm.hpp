@@ -48,6 +48,7 @@ public:
     // Events
     FSM_RET recv_conf_req( Packet &pkt );
     FSM_RET recv_conf_ack( Packet &pkt );
+    FSM_RET recv_term_req( Packet &pkt );
 
     //Overrided
 	virtual FSM_RET send_conf_req() = 0;
@@ -57,7 +58,7 @@ public:
 	virtual FSM_RET send_conf_rej() = 0;
 	virtual FSM_RET send_code_rej() = 0;
 	virtual FSM_RET send_term_req() = 0;
-	virtual FSM_RET send_term_ack() = 0;
+	virtual FSM_RET send_term_ack( Packet &pkt ) = 0;
     virtual FSM_RET send_echo_rep( Packet &pkt ) = 0;
 };
 

@@ -110,12 +110,16 @@ public:
     }
 
     std::string deallocateSession( std::array<uint8_t,6> mac, uint16_t sid ) {
-        if( auto const &it = sessions.find( sid ); it != sessions.end() ) {
-            if( it->second.mac != mac ) {
-                return "Wrong mac!";
-            }
-            sessions.erase( it );
+        auto const &it = sessions.find( sid );
+        if( it == sessions.end() ) {
+            return "Cannot find session with this session id";
         }
+
+        if( it->second.mac != mac ) {
+            return "Wrong mac!";
+        }
+
+        sessions.erase( it );
         return "";
     }
 };

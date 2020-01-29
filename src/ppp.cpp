@@ -39,7 +39,10 @@ std::string ppp::processPPP( Packet inPkt ) {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
                 session.auth.open();
             } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
-                //session.auth.close();
+                log( "LCP goes down, terminate session..." );
+                if( auto const &err = runtime->deallocateSession( session.mac, session.session_id ); !err.empty() ) {
+                    return "Cannot terminate session: " + err;
+                }
             }
         }
         break;

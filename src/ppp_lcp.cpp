@@ -180,7 +180,30 @@ FSM_RET LCP_FSM::send_term_req() {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_term_ack() {
+FSM_RET LCP_FSM::send_term_ack( Packet &pkt ) {
+    auto const &sessIt = runtime->sessions.find( session_id );
+    if( sessIt == runtime->sessions.end() ) {
+        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
+    }
+    auto &session = sessIt->second;
+
+    // Fill ethernet part
+    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
+    pkt.eth->dst_mac = session.mac;
+    pkt.eth->src_mac = runtime->hwaddr;
+
+    // Fill LCP ECHO part
+    pkt.lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pkt.pppoe_session->getPayload() );
+    pkt.lcp_echo->code = LCP_CODE::TERM_ACK;
+    if( pkt.lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
+        return { PPP_FSM_ACTION::NONE, "Magic number is wrong!" };
+    }
+    pkt.lcp_echo->magic_number = htonl( session.our_magic_number );
+
+    // Send this CONF REQ
+    log( "Sending LCP TERM ACK" );
+    ppp_outcoming.push( pkt.bytes );
+
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
