@@ -22,7 +22,7 @@ VPPAPI::~VPPAPI() {
     }
 }
 
-bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac ) {
+bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add ) {
     vapi::Pppoe_add_del_session pppoe( con );
 
     auto &req = pppoe.get_request().get_payload();
@@ -38,7 +38,11 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
 
     req.decap_vrf_id = 0;
     req.session_id = session_id;
-    req.is_add = 1;
+    if( is_add ) {
+        req.is_add = 1;
+    } else {
+        req.is_add = 0;
+    }
     
     auto ret = pppoe.execute();
     if( ret != VAPI_OK ) {

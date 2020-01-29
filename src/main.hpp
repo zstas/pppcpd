@@ -69,9 +69,6 @@ struct PPPOERuntime {
 private:
     // For handling packets
     std::string ifName;
-    
-    // For dispatching control packets
-    uint16_t lastSession = 0;
 
 public:
     PPPOERuntime() = delete;
@@ -110,5 +107,15 @@ public:
             }
         }
         return { 0, "Maximum of sessions" };
+    }
+
+    std::string deallocateSession( std::array<uint8_t,6> mac, uint16_t sid ) {
+        if( auto const &it = sessions.find( sid ); it != sessions.end() ) {
+            if( it->second.mac != mac ) {
+                return "Wrong mac!";
+            }
+            sessions.erase( it );
+        }
+        return "";
     }
 };

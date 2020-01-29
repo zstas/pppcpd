@@ -63,11 +63,7 @@ std::string ppp::processPPP( Packet inPkt ) {
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
                 log( "IPCP is opened: configuring vpp" );
-                if( auto const &[ conf, err ] = runtime->aaa->getConf( session.username ); err.empty() ) {
-                    if( !runtime->vpp->add_pppoe_session( conf.address, session.session_id, session.mac ) ) {
-                        log( "Cannot add new session to vpp " );
-                    }
-                } else {
+                if( auto const &err = session.provision_dp(); !err.empty() ) {
                     log("Cannot get ip config for session: " + err );
                 }
             }

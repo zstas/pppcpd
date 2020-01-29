@@ -1,21 +1,30 @@
 #include "main.hpp"
 
-bool AAA::startSession( const std::string &user, const std::string &pass ) {
+std::tuple<uint32_t,std::string> AAA::startSession( const std::string &user, const std::string &pass ) {
     log( "AAA: starting session user: " + user + " password: " + pass );
-    PPP_IPCONF conf;
-    conf.address = pool1.allocate_ip();
-    conf.dns1 = pool1.dns1;
-    conf.dns2 = pool1.dns2;
-    if( auto const &[ it, ret ] = confs.emplace( user, conf); !ret ) {
-        log( "AAA: failer to emplace user " + user );
-        return false;
+    auto address = pool1.allocate_ip();
+
+    // Creating new session
+    uint32_t i;
+    for( i = 0; i < UINT32_MAX; i++ ) {
+        if( auto const &it = sessions.find( i ); it == sessions.end() ) {
+            break;
+        }
     }
-    return true;
+    if( i == UINT32_MAX ) {
+        return { i, "No space for new sessions" };
+    }
+
+    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, pool1 ); !ret ) {
+        log( "AAA: failer to emplace user " + user );
+        return { SESSION_ERROR, "Failed to emplace user" };
+    }
+    return { i, "" };
 }
 
-std::tuple<PPP_IPCONF,std::string> AAA::getConf( const std::string &user ) {
-    if( auto const &it = confs.find( user); it == confs.end() ) {
-        return { PPP_IPCONF{}, "Cannot find user " + user };
+std::tuple<AAA_Session,std::string> AAA::getSession( uint32_t sid ) {
+    if( auto const &it = sessions.find( sid); it == sessions.end() ) {
+        return { AAA_Session{}, "Cannot find session id " + std::to_string( sid ) };
     } else {
         return { it->second, "" };
     }

@@ -86,8 +86,12 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         break;
     case PPPOE_CODE::PADT:
         log( "Processing PADT packet" );
-        // TODO security check for session
-        return { std::move( reply ), "Received PADT, doing nothing" };
+        if( const auto &err = runtime->deallocateSession( inPkt.eth->src_mac, ntohs( inPkt.pppoe_discovery->session_id ) ); !err.empty() ) {
+            log( "Cannot terminate session: " + err );
+        } else {
+            log( "Terminated session " + ntohs( inPkt.pppoe_discovery->session_id ) );
+        }
+        return { std::move( reply ), "Received PADT, send nothing" };
     default:
         log( "Incorrect code for packet" );
         return { std::move( reply ), "Incorrect code for packet" };

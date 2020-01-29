@@ -29,7 +29,8 @@ FSM_RET PPP_AUTH::recv_auth_req( Packet &pkt ) {
 
     session.username = username;
 
-    if( runtime->aaa->startSession( username, password ) ) {
+    if( auto const &[ sid, err ] = runtime->aaa->startSession( username, password ); err.empty() ) {
+        session.aaa_session_id = sid;
         return send_auth_ack( pkt );
     } else {
         return send_auth_nak( pkt );
