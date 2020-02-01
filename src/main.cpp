@@ -43,9 +43,6 @@ int main( int argc, char *argv[] ) {
 
     std::thread pppoe_dispatcher ([]() -> void {
         while( !interrupted ) {
-            if( pppoe_incoming.empty() ) {
-                continue;
-            }
             auto pkt = pppoe_incoming.pop();
             if( auto const &[ reply, error ] = pppoe::processPPPOE( pkt ); !error.empty() ) {
                 log( error );
@@ -57,9 +54,6 @@ int main( int argc, char *argv[] ) {
 
     std::thread ppp_dispatcher ([]() -> void {
         while( !interrupted ) {
-            if( ppp_incoming.empty() ) {
-                continue;
-            }
             auto pkt = ppp_incoming.pop();
             if( auto const error = ppp::processPPP( pkt ); !error.empty() ) {
                 log( error );

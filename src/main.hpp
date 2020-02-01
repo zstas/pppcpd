@@ -13,6 +13,7 @@
 #include <queue>
 #include <thread>
 #include <csignal>
+#include <condition_variable>
 
 // Network api
 #include <sys/socket.h>
@@ -45,15 +46,20 @@ using namespace std::string_literals;
 
 struct PPPOEQ {
     std::mutex mutex;
+    std::condition_variable cond;
     std::queue<std::vector<uint8_t>> queue;
 
     void push( std::vector<uint8_t> pkt ) {
-        std::lock_guard lg( mutex );
+        std::unique_lock lg( mutex );
         queue.push( std::move( pkt ) );
+        cond.notify_one();
     }
 
     std::vector<uint8_t> pop() {
-        std::lock_guard lg( mutex );
+        std::unique_lock lg{ mutex };
+        while( queue.empty() ) {
+            cond.wait( lg );
+        }
         auto ret = queue.front();
         queue.pop();
         return ret;
