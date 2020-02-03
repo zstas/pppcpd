@@ -61,64 +61,7 @@ int main( int argc, char *argv[] ) {
         }
     });
 
-    // std::thread vpp_api ([]() -> void {
-    //     vapi::Connection con;
-    //     auto ret = con.connect( "vbng", nullptr, 32, 32 );
-    //     if( ret != VAPI_OK ) {
-    //         log( "Cannot connect to vpp " );
-    //     }
-    //     vapi::Pppoe_session_dump dump( con );
-    //     auto output = dump.get_request().get_payload();
-    //     log( std::to_string( output.sw_if_index ) );
-        
-    // });
-
-    struct pollfd fds[ 2 ];
-    fds[ 0 ].fd = runtime->PPPOEDiscFD;
-    fds[ 0 ].events = POLLIN;
-    fds[ 1 ].fd = runtime->PPPOESessFD;
-    fds[ 1 ].events = POLLIN;
-
-    std::vector<unsigned char> pkt;
-    pkt.reserve( 1500 );
-
-    while( !interrupted ) {
-        if( int ret = poll( reinterpret_cast<pollfd*>( &fds ), 2, 100 ); ret == -1 ) {
-            log( "Poll returned error: "s + strerror( errno ) );
-        } else if( ret > 0 ) {
-            pkt.resize( 1500 );
-            if( fds[ 0 ].revents & POLLIN ) {
-                // Receiving pppoe discovery packets
-                if( auto pktSize = recv( runtime->PPPOEDiscFD, pkt.data(), pkt.capacity(), 0 ); pktSize > 0 ) {
-                    pkt.resize( pktSize );
-                    pppoe_incoming.push( pkt );
-                }
-            }
-            if( fds[ 1 ].revents & POLLIN ) {
-                // Receiving pppoe session control packets (lcp, ipcp, ipcp6, etc)
-                if( auto pktSize = recv( runtime->PPPOESessFD, pkt.data(), pkt.capacity(), 0 ); pktSize > 0 ) {
-                    pkt.resize( pktSize );
-                    ppp_incoming.push( pkt );
-                }
-            }
-        }
-        // Sending pppoe discovery packets
-        while( !pppoe_outcoming.empty() ) {
-            auto reply = pppoe_outcoming.pop();
-            ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
-            rep_eth->src_mac = runtime->hwaddr;
-            if( auto ret = send( runtime->PPPOEDiscFD, reply.data(), reply.size(), 0 ); ret < 0 ) {
-                log( "Cannot send pkt cause: "s + strerror( errno ) );
-            }
-        }
-        // Sending pppoe session control packets
-        while( !ppp_outcoming.empty() ) {
-            auto reply = ppp_outcoming.pop();
-            if( auto ret = send( runtime->PPPOESessFD, reply.data(), reply.size(), 0 ); ret < 0 ) {
-                log( "Cannot send pkt cause: "s + strerror( errno ) );
-            }
-        }
-    }
+    EVLoop loop;
 
     pppoe_dispatcher.join();
     ppp_dispatcher.join();

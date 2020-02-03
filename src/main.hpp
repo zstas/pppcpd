@@ -24,6 +24,8 @@
 #include <linux/if.h>
 #include <linux/if_ether.h>
 #include <poll.h>
+#include <boost/asio.hpp>
+#include <boost/asio/basic_raw_socket.hpp>
 
 // Local headers
 #include "pppoe.hpp"
@@ -127,5 +129,66 @@ public:
 
         sessions.erase( it );
         return "";
+    }
+};
+
+extern PPPOEQ pppoe_incoming;
+extern PPPOEQ pppoe_outcoming;
+extern PPPOEQ ppp_incoming;
+extern PPPOEQ ppp_outcoming;
+extern std::shared_ptr<PPPOERuntime> runtime;
+extern std::atomic_bool interrupted;
+
+class EVLoop {
+private:
+    boost::asio::io_context io;
+    //boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
+    std::array<uint8_t,1500> pktbuf;
+
+    boost::asio::generic::raw_protocol pppoed { PF_PACKET, htons( ETH_PPPOE_DISCOVERY ) };
+    boost::asio::generic::raw_protocol pppoes { PF_PACKET, htons( ETH_PPPOE_SESSION ) };
+    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
+    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
+    boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
+public:
+    EVLoop() {
+        raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), [ &, this ]( boost::system::error_code ec, std::size_t len ) {
+            if( !ec ) {
+                pppoe_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+            }
+        });
+
+        raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), [ &, this ]( boost::system::error_code ec, std::size_t len ) {
+            if( !ec ) {
+                ppp_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+            }
+        });
+        
+        periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
+
+        while( !interrupted ) {
+            io.run();
+        }
+    }
+
+    void periodic( boost::system::error_code ec ) {
+        log( "periodic callback" );
+        if( interrupted ) {
+            io.stop();
+        }
+        // Sending pppoe discovery packets
+        while( !pppoe_outcoming.empty() ) {
+            auto reply = pppoe_outcoming.pop();
+            ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
+            rep_eth->src_mac = runtime->hwaddr;
+            raw_sock_pppoe.send( boost::asio::buffer( reply ) );
+        }
+        // Sending pppoe session control packets
+        while( !ppp_outcoming.empty() ) {
+            auto reply = ppp_outcoming.pop();
+            raw_sock_ppp.send( boost::asio::buffer( reply ) );
+        }
+        periodic_callback.expires_from_now( boost::asio::chrono::seconds( 1 ) );
+        periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
     }
 };
