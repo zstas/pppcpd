@@ -45,6 +45,7 @@
 #include "vpp.hpp"
 
 using namespace std::string_literals;
+extern std::atomic_bool interrupted;
 
 struct PPPOEQ {
     std::mutex mutex;
@@ -60,7 +61,10 @@ struct PPPOEQ {
     std::vector<uint8_t> pop() {
         std::unique_lock lg{ mutex };
         while( queue.empty() ) {
-            cond.wait( lg );
+            cond.wait_for( lg, std::chrono::seconds( 1 ) );
+            if( interrupted ) {
+                exit( 0 );
+            }
         }
         auto ret = queue.front();
         queue.pop();
@@ -74,11 +78,6 @@ struct PPPOEQ {
 };
 
 struct PPPOERuntime {
-private:
-    // For handling packets
-    std::string ifName;
-
-public:
     PPPOERuntime() = delete;
     PPPOERuntime( const PPPOERuntime& ) = delete;
     PPPOERuntime( PPPOERuntime&& ) = default;
@@ -92,6 +91,7 @@ public:
     std::string setupPPPOEDiscovery();
     std::string setupPPPOESession();
 
+    std::string ifName;
     int PPPOEDiscFD { 0 };
     int PPPOESessFD { 0 };
     std::array<uint8_t,ETH_ALEN> hwaddr { 0 };
@@ -137,38 +137,58 @@ extern PPPOEQ pppoe_outcoming;
 extern PPPOEQ ppp_incoming;
 extern PPPOEQ ppp_outcoming;
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern std::atomic_bool interrupted;
 
 class EVLoop {
 private:
     boost::asio::io_context io;
-    //boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
+    boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
     std::array<uint8_t,1500> pktbuf;
 
-    boost::asio::generic::raw_protocol pppoed { PF_PACKET, htons( ETH_PPPOE_DISCOVERY ) };
-    boost::asio::generic::raw_protocol pppoes { PF_PACKET, htons( ETH_PPPOE_SESSION ) };
+    boost::asio::generic::raw_protocol pppoed { PF_PACKET, SOCK_RAW };
+    boost::asio::generic::raw_protocol pppoes { PF_PACKET, SOCK_RAW };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
     boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
 public:
     EVLoop() {
-        raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), [ &, this ]( boost::system::error_code ec, std::size_t len ) {
-            if( !ec ) {
-                pppoe_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
-            }
+        sockaddr_ll sockaddr;
+        memset(&sockaddr, 0, sizeof(sockaddr));
+        sockaddr.sll_family = PF_PACKET;
+        sockaddr.sll_protocol = htons( ETH_PPPOE_DISCOVERY );
+        sockaddr.sll_ifindex = if_nametoindex( runtime->ifName.c_str() );
+        sockaddr.sll_hatype = 1;
+        raw_sock_pppoe.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
+
+        sockaddr.sll_protocol = htons( ETH_PPPOE_SESSION );
+        raw_sock_ppp.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
+
+        signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
+            interrupted = true;
+            io.stop();
         });
 
-        raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), [ &, this ]( boost::system::error_code ec, std::size_t len ) {
-            if( !ec ) {
-                ppp_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
-            }
-        });
+        raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
+        raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
         
         periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
 
         while( !interrupted ) {
             io.run();
         }
+    }
+
+    void receive_pppoe( boost::system::error_code ec, std::size_t len ) {
+        if( !ec ) {
+            pppoe_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+        }
+        raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
+    }
+
+    void receive_ppp( boost::system::error_code ec, std::size_t len ) {
+        if( !ec ) {
+            ppp_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+        }
+        raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
     void periodic( boost::system::error_code ec ) {

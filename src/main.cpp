@@ -10,13 +10,7 @@ PPPOEQ pppoe_outcoming;
 PPPOEQ ppp_incoming;
 PPPOEQ ppp_outcoming;
 
-void sighandler( int signal ) {
-    interrupted = true;
-}
-
 int main( int argc, char *argv[] ) {
-    std::signal( SIGINT, sighandler );
-    std::signal( SIGTERM, sighandler );
     runtime = std::make_shared<PPPOERuntime>( "pppoe-cp" );
 
     if( auto const &err = runtime->setupPPPOEDiscovery(); !err.empty() ) {
