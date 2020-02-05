@@ -179,20 +179,25 @@ public:
 
     void receive_pppoe( boost::system::error_code ec, std::size_t len ) {
         if( !ec ) {
-            pppoe_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+            std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
+            if( auto const &error = pppoe::processPPPOE( pkt ); !error.empty() ) {
+                log( error );
+            }
         }
         raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
     void receive_ppp( boost::system::error_code ec, std::size_t len ) {
         if( !ec ) {
-            ppp_incoming.push( { pktbuf.begin(), pktbuf.begin() + len } );
+            std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
+            if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
+                log( error );
+            }
         }
         raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
     void periodic( boost::system::error_code ec ) {
-        log( "periodic callback" );
         if( interrupted ) {
             io.stop();
         }

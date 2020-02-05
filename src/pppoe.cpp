@@ -1,6 +1,7 @@
 #include "main.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
+extern PPPOEQ pppoe_outcoming;
 
 uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val ) {
     std::vector<uint8_t> tagvec;
@@ -44,13 +45,13 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
     return { std::move( tags ), "" };
 }
 
-std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt ) {
+std::string pppoe::processPPPOE( Packet inPkt ) {
     std::vector<uint8_t> reply;
     reply.reserve( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) + 128 );
 
     inPkt.eth = reinterpret_cast<ETHERNET_HDR*>( inPkt.bytes.data() );
     if( inPkt.eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
-        return { std::move( reply ), "Not pppoe discovery packet" };
+        return "Not pppoe discovery packet";
     }
 
     inPkt.pppoe_discovery = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.eth->getPayload() );
@@ -78,7 +79,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         log( "Processing PADR packet" );
         rep_pppoe->code = PPPOE_CODE::PADS;
         if( const auto &[ sid, err ] = runtime->allocateSession( inPkt.eth->src_mac ); !err.empty() ) {
-            return { std::move( reply ), "Cannot process PPPOE pkt: " + err };
+            return "Cannot process PPPOE pkt: " + err;
         } else {
             log( "Session " + std::to_string( sid ) + " is UP!" );
             rep_pppoe->session_id = htons( sid );
@@ -91,17 +92,17 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
         } else {
             log( "Terminated session " + std::to_string( ntohs( inPkt.pppoe_discovery->session_id ) ) );
         }
-        return { std::move( reply ), "Received PADT, send nothing" };
+        return "Received PADT, send nothing";
     default:
         log( "Incorrect code for packet" );
-        return { std::move( reply ), "Incorrect code for packet" };
+        return "Incorrect code for packet";
     }
 
     // Parsing tags
     std::optional<std::string> chosenService;
     std::optional<std::string> hostUniq;
     if( auto const &[ tags, error ] = pppoe::parseTags( inPkt.bytes ); !error.empty() ) {
-        return { std::move( reply ), "Cannot parse tags cause: " + error };
+        return "Cannot parse tags cause: " + error;
     } else {
         for( auto &[ tag, val ]: tags ) {
             switch( tag ) {
@@ -130,7 +131,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
                         log( "Service name is differ, but we can ignore it" );
                         chosenService = val;
                     } else {
-                        return { std::move( reply ), "Cannot serve \"" + val + "\" service, because in policy only \"" + runtime->pppoe_conf->service_name + "\"" };
+                        return "Cannot serve \"" + val + "\" service, because in policy only \"" + runtime->pppoe_conf->service_name + "\"";
                     }
                 }
                 break;
@@ -165,5 +166,7 @@ std::tuple<std::vector<uint8_t>,std::string> pppoe::processPPPOE( Packet inPkt )
     rep_pppoe->length = htons( taglen );
     log( "Outcoming " + std::to_string( rep_pppoe ) );
 
-    return { std::move( reply ), "" };
+    pppoe_outcoming.push( std::move( reply ) );
+
+    return "";
 }

@@ -6,7 +6,7 @@
 namespace pppoe {
     uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val );
     std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt );
-    std::tuple<std::vector<uint8_t>,std::string> processPPPOE( Packet inPkt );
+    std::string processPPPOE( Packet inPkt );
 }
 
 #endif

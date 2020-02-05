@@ -25,30 +25,7 @@ int main( int argc, char *argv[] ) {
     runtime->aaa = std::make_shared<AAA>( 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 );
     runtime->vpp = std::make_shared<VPPAPI>();
 
-    std::thread pppoe_dispatcher ([]() -> void {
-        while( !interrupted ) {
-            auto pkt = pppoe_incoming.pop();
-            if( auto const &[ reply, error ] = pppoe::processPPPOE( pkt ); !error.empty() ) {
-                log( error );
-            } else {
-                pppoe_outcoming.push( reply );
-            }
-        }
-    });
-
-    std::thread ppp_dispatcher ([]() -> void {
-        while( !interrupted ) {
-            auto pkt = ppp_incoming.pop();
-            if( auto const error = ppp::processPPP( pkt ); !error.empty() ) {
-                log( error );
-            }
-        }
-    });
-
     EVLoop loop;
-
-    pppoe_dispatcher.join();
-    ppp_dispatcher.join();
 
     return 0;
 }
