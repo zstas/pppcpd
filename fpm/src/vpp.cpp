@@ -85,5 +85,48 @@ bool VPPAPI::add_route( fpm::Message &m ) {
 }
 
 bool VPPAPI::del_route( fpm::Message &m ) {
+    vapi::Ip_route_add_del route( con, 0 );
+    auto &req = route.get_request().get_payload();
+    req.is_add = 0;
+
+    if( !m.has_delete_route() ) {
+        log( "Message doesn't have del_route value" );
+        return false;
+    }
+
+    auto &del_route = m.delete_route();
+    if( del_route.address_family() == qpb::AddressFamily::IPV4 ) {
+        req.route.table_id = 0;
+        req.route.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
+        req.is_multipath = 0;
+        // Filling up the route info
+        auto &prefix = del_route.key().prefix();
+        req.route.prefix.address.un.ip4[0] = prefix.bytes()[0];
+        req.route.prefix.address.un.ip4[1] = prefix.bytes()[1];
+        req.route.prefix.address.un.ip4[2] = prefix.bytes()[2];
+        req.route.prefix.address.un.ip4[3] = prefix.bytes()[3];
+        req.route.prefix.len = prefix.length();
+        log( std::to_string( prefix.length() ) );
+    } else if( del_route.address_family() == qpb::AddressFamily::IPV6 ) {
+
+    } else {
+        return false;
+    }
+
+    auto ret = route.execute();
+    if( ret != VAPI_OK ) {
+        log( "error!" );
+    }
+
+    do {
+        ret = con.wait_for_response( route );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = route.get_response().get_payload();
+    if( static_cast<int>( repl.stats_index ) == -1 ) {
+        log( "cannot del route" );
+        return false;
+    }
+    log( "successfully deleted route: " + std::to_string( repl.stats_index ) );
     return true;
 }
