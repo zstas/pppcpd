@@ -2,6 +2,7 @@
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_IP_API_JSON
+DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
 
 VPPAPI::VPPAPI() {
     log( "VPPAPI cstr" );
@@ -128,5 +129,29 @@ bool VPPAPI::del_route( fpm::Message &m ) {
         return false;
     }
     log( "successfully deleted route: " + std::to_string( repl.stats_index ) );
+    return true;
+}
+
+bool VPPAPI::create_tap( uint8_t id, const std::string &netns ) {
+    vapi::Tap_create_v2 tap{ con };
+    auto &req = tap.get_request().get_payload();
+    //std::copy( netns.begin(), netns.end(), req.host_namespace );
+    req.id = id;
+
+    auto ret = tap.execute();
+    if( ret != VAPI_OK ) {
+        log( "error!" );
+    }
+
+    do {
+        ret = con.wait_for_response( tap );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = tap.get_response().get_payload();
+    if( static_cast<int>( repl.sw_if_index ) == -1 ) {
+        log( "cannot add tap" );
+        return false;
+    }
+    log( "successfully added tap sw_if_index: " + std::to_string( repl.sw_if_index ) );
     return true;
 }
