@@ -2,6 +2,7 @@
 #include <string>
 #include <boost/asio.hpp>
 #include <list>
+#include <memory>
 
 using io_context = boost::asio::io_context;
 using acceptor = boost::asio::ip::tcp::acceptor;
@@ -12,12 +13,14 @@ using error_code = boost::system::error_code;
 using namespace std::string_literals;
 
 #include "connection.hpp"
+#include "packet.hpp"
+#include "utils.hpp"
 
 struct main_loop {
     io_context io;
     acceptor accpt;
     socket_tcp sock;
-    std::list<bgp_connection> conns;
+    std::list<std::shared_ptr<bgp_connection>> conns;
 
     main_loop( int port );
 
