@@ -24,4 +24,9 @@ struct bgp_packet {
     bgp_header *header = nullptr;
 
     std::vector<uint8_t> pkt;
+
+    bgp_packet( uint8_t *begin, std::size_t length ):
+        pkt( begin, begin + length )
+    {
+    }
 };

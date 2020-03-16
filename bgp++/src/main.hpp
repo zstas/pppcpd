@@ -20,7 +20,7 @@ struct main_loop {
     io_context io;
     acceptor accpt;
     socket_tcp sock;
-    std::list<std::shared_ptr<bgp_connection>> conns;
+    std::list<std::weak_ptr<bgp_connection>> conns;
 
     main_loop( int port );
 

@@ -6,7 +6,7 @@ main_loop::main_loop( int port ):
 {}
 
 void main_loop::run() {
-    log( "Starting event loop..." );
+    log( "Starting event loop" );
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
     io.run();
 }
@@ -18,6 +18,7 @@ void main_loop::on_accept( error_code ec ) {
     auto new_conn = std::make_shared<bgp_connection>( std::move( sock ) );
     conns.emplace_back( new_conn );
     new_conn->start();
+    accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
 }
 
 int main( int argc, char *argv[] ) {

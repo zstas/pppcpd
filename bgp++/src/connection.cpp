@@ -9,8 +9,34 @@ void bgp_connection::start() {
 void bgp_connection::on_receive( error_code ec, std::size_t length ) {
     if( ec ) {
         log( "Error on receiving data: "s + ec.message() );
+        return;
     }
     log( "Received message of size: "s + std::to_string( length ) );
+    bgp_packet pkt { buffer.begin(), length };
+    pkt.header = reinterpret_cast<bgp_header*>( pkt.pkt.data() );
+    auto &bgp_header = pkt.header;
+    for( auto &byte: bgp_header->marker ) {
+        if( byte != 0xFF ) {
+            log( "Incorrect bgp marker!" );
+        }
+    }
+    switch( bgp_header->type ) {
+    case bgp_type::OPEN:
+        log( "OPEN message" );
+        break;
+    case bgp_type::KEEPALIVE:
+        log( "KEEPALIVE message" );
+        break;
+    case bgp_type::UPDATE:
+        log( "UPDATE message" );
+        break;
+    case bgp_type::NOTIFICATION:
+        log( "NOTIFICATION message" );
+        break;
+    case bgp_type::ROUTE_REFRESH:
+        log( "ROUTE_REFRESH message" );
+        break;
+    }
     do_read();
 }
 

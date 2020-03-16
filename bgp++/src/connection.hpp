@@ -8,6 +8,10 @@ struct bgp_connection : public std::enable_shared_from_this<bgp_connection> {
         sock( std::move( s ) ) 
     {}
 
+    ~bgp_connection() {
+        log( "destructor bgp_connection" );
+    }
+
     void start();
     void on_receive( error_code ec, std::size_t length );
     void on_send();
