@@ -7,16 +7,16 @@
 std::ostream& operator<<( std::ostream & os, const LOG_APP & app ) {
     switch( app ) {
     case LOG_APP::APPLICATION:
-        os << "[APPLICATION]: ";
+        os << "[application]: ";
         break;
     case LOG_APP::FSM:
-        os << "[FSM]: ";
+        os << "[fsm]: ";
         break;
     case LOG_APP::CONNECTION:
-        os << "[CONNECTION]: ";
+        os << "[connection]: ";
         break;
     case LOG_APP::CONFIGURATION:
-        os << "[CONFIGURATION]: ";
+        os << "[configuration]: ";
         break;
     }
     return os;

@@ -12,6 +12,7 @@ using endpoint = boost::asio::ip::tcp::endpoint;
 using socket_tcp = boost::asio::ip::tcp::socket;
 using error_code = boost::system::error_code;
 using address_v4 = boost::asio::ip::address_v4;
+using timer = boost::asio::steady_timer;
 
 using namespace std::string_literals;
 
@@ -19,6 +20,7 @@ using namespace std::string_literals;
 #include "packet.hpp"
 #include "utils.hpp"
 #include "config.hpp"
+#include "fsm.hpp"
 
 struct main_loop {
     io_context io;
