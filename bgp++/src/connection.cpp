@@ -15,10 +15,9 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
     bgp_packet pkt { buffer.begin(), length };
     pkt.header = reinterpret_cast<bgp_header*>( pkt.pkt.data() );
     auto &bgp_header = pkt.header;
-    for( auto &byte: bgp_header->marker ) {
-        if( byte != 0xFF ) {
-            log( "Incorrect bgp marker!" );
-        }
+    if( std::any_of( bgp_header->marker.begin(), bgp_header->marker.end(), []( uint8_t el ) { return el != 0xFF; } ) ) {
+        log( "Wrong BGP marker in header!" );
+        return;
     }
     switch( bgp_header->type ) {
     case bgp_type::OPEN:

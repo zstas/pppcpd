@@ -1,5 +1,25 @@
 cmake_minimum_required(VERSION 3.10)
 
+include(FetchContent)
+FetchContent_Declare(
+		yaml-cpp
+		GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+		GIT_SHALLOW	ON
+		GIT_TAG yaml-cpp-0.6.3
+	)
+FetchContent_GetProperties(yaml-cpp)
+if(NOT yaml-cpp_POPULATED)
+	message(STATUS "Populating yaml-cpp...")
+	FetchContent_Populate(yaml-cpp)
+	# Add here options for yaml-cpp building
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "disable yaml tests")
+	add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR})
+	message(STATUS "Done.")
+endif()
+
+include_directories(BEFORE SYSTEM ${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR}/include)
+
+
 SET(CMAKE_CXX_FLAGS_DEBUG "-O0")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g")
 
@@ -16,3 +36,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 target_link_libraries(bgp++ PUBLIC boost_system)
 target_link_libraries(bgp++ PUBLIC pthread)
+target_link_libraries(bgp++ PUBLIC yaml-cpp)

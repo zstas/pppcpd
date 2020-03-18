@@ -1,3 +1,6 @@
+#ifndef PACKET_HPP_
+#define PACKET_HPP_
+
 enum class bgp_type : uint8_t {
     OPEN = 1,
     UPDATE = 2,
@@ -7,7 +10,7 @@ enum class bgp_type : uint8_t {
 };
 
 struct bgp_header {
-    uint8_t marker[16];
+    std::array<uint8_t,16> marker;
     uint16_t length;
     bgp_type type;
 }__attribute__((__packed__));
@@ -30,3 +33,5 @@ struct bgp_packet {
     {
     }
 };
+
+#endif
