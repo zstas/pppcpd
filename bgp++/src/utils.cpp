@@ -31,3 +31,11 @@ void log( const LOG_APP &app, const std::string &msg ) {
 
     std::cout << std::put_time( std::localtime( &in_time_t ), "%Y-%m-%d %X ") << app << msg << std::endl;
 }
+
+uint16_t bswap16( uint16_t value ) noexcept {
+    return __builtin_bswap16( value );
+}
+
+uint32_t bswap32( uint32_t value ) noexcept {
+    return __builtin_bswap32( value );
+}

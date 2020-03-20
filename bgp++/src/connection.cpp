@@ -13,8 +13,7 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
     }
     log( "Received message of size: "s + std::to_string( length ) );
     bgp_packet pkt { buffer.begin(), length };
-    pkt.header = reinterpret_cast<bgp_header*>( pkt.pkt.data() );
-    auto &bgp_header = pkt.header;
+    auto bgp_header = pkt.get_header();
     if( std::any_of( bgp_header->marker.begin(), bgp_header->marker.end(), []( uint8_t el ) { return el != 0xFF; } ) ) {
         log( "Wrong BGP marker in header!" );
         return;
@@ -22,6 +21,7 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
     switch( bgp_header->type ) {
     case bgp_type::OPEN:
         log( "OPEN message" );
+        process_open( pkt );
         break;
     case bgp_type::KEEPALIVE:
         log( "KEEPALIVE message" );
@@ -41,4 +41,12 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
 
 void bgp_connection::do_read() {
     sock.async_receive( boost::asio::buffer( buffer ), std::bind( &bgp_connection::on_receive, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ) );
+}
+
+void bgp_connection::process_open( bgp_packet &pkt ) {
+    auto open = pkt.get_open();
+
+    log( "BGP version: "s + std::to_string( open->version ) );
+    log( "Router ID: "s + address_v4( bswap32( open->bgp_id ) ).to_string() );
+    log( "Hold time: "s + std::to_string( bswap16( open->hold_time ) ) );
 }

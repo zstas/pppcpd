@@ -32,6 +32,15 @@ struct bgp_packet {
         pkt( begin, begin + length )
     {
     }
+
+    bgp_header* get_header() {
+        return reinterpret_cast<bgp_header*>( pkt.data() );
+    }
+
+    bgp_open* get_open() {
+        return reinterpret_cast<bgp_open*>( pkt.data() + sizeof( bgp_header ) );
+    }
+
 };
 
 #endif
