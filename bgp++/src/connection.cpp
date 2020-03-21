@@ -21,11 +21,10 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
     }
     switch( bgp_header->type ) {
     case bgp_type::OPEN:
-        log( "OPEN message" );
         rx_open( pkt );
         break;
     case bgp_type::KEEPALIVE:
-        log( "KEEPALIVE message" );
+        rx_keepalive( pkt );
         break;
     case bgp_type::UPDATE:
         log( "UPDATE message" );
@@ -57,6 +56,13 @@ void bgp_connection::rx_open( bgp_packet &pkt ) {
         sock.close();
         return;
     }
+
+    fsm.HoldTime = std::min( bswap16( open->hold_time ), fsm.HoldTime );
+    fsm.KeepaliveTime = fsm.HoldTime / 3;
+    log( "Negotiated timers - hold_time: "s + std::to_string( fsm.HoldTime ) + " keepalive_time: "s + std::to_string( fsm.KeepaliveTime ) );
+
+    tx_keepalive();
+    fsm.state = FSM_STATE::OPENCONFIRM;
 }
 
 void bgp_connection::tx_open() {
@@ -81,6 +87,7 @@ void bgp_connection::tx_open() {
 
     // send this msg
     sock.async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_connection::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
+    fsm.state = FSM_STATE::OPENSENT;
 }
 
 void bgp_connection::on_send( std::shared_ptr<std::vector<uint8_t>> pkt, error_code ec, std::size_t length ) {
@@ -89,5 +96,44 @@ void bgp_connection::on_send( std::shared_ptr<std::vector<uint8_t>> pkt, error_c
         return;
     }
     log( "Successfully sent a message with size: "s + std::to_string( length ) );
-    fsm.state = FSM_STATE::OPENSENT;
+}
+
+void bgp_connection::tx_keepalive() {
+    log( "Sending KEEPALIVE to peer: "s + sock.remote_endpoint().address().to_string() );
+    auto len = sizeof( bgp_header );
+    auto pkt_buf = std::make_shared<std::vector<uint8_t>>();
+    pkt_buf->resize( len );
+    bgp_packet pkt { pkt_buf->data(), pkt_buf->size() };
+
+    // header
+    auto header = pkt.get_header();
+    header->type = bgp_type::KEEPALIVE;
+    header->length = bswap16( len );
+    std::fill( header->marker.begin(), header->marker.end(), 0xFF );
+
+    // send this msg
+    sock.async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_connection::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
+}
+
+void bgp_connection::rx_keepalive( bgp_packet &pkt ) {
+    if( fsm.state == FSM_STATE::OPENCONFIRM || fsm.state == FSM_STATE::OPENSENT ) {
+        log( "BGP goes to ESTABLISHED state with peer: "s + sock.remote_endpoint().address().to_string() );
+        fsm.state = FSM_STATE::ESTABLISHED;
+        start_keepalive_timer();
+    } else if( fsm.state != FSM_STATE::ESTABLISHED ) {
+        log( "Received a KEEPALIVE in incorrect state, closing connection" );
+        sock.close();
+    }
+    log( "Received a KEEPALIVE message" );
+}
+
+void bgp_connection::on_keepalive_timer( error_code ec ) {
+    log( "Periodic KEEPALIVE" );
+    tx_keepalive();
+    
+}
+
+void bgp_connection::start_keepalive_timer() {
+    fsm.KeepaliveTimer.expires_from_now( std::chrono::seconds( fsm.KeepaliveTime ) );
+    fsm.KeepaliveTimer.async_wait( std::bind( &bgp_connection::on_keepalive_timer, shared_from_this(), std::placeholders::_1 ) );
 }

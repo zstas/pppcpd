@@ -33,6 +33,7 @@ static void config_init() {
     global_conf new_conf;
     new_conf.listen_on_port = 179;
     new_conf.my_as = 31337;
+    new_conf.hold_time = 180;
     new_conf.bgp_router_id = address_v4::from_string( "1.2.3.4" );
 
     bgp_neighbour_v4 bgp1;

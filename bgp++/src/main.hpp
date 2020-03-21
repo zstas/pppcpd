@@ -4,6 +4,7 @@
 #include <boost/asio.hpp>
 #include <list>
 #include <memory>
+#include <optional>
 #include <yaml-cpp/yaml.h>
 
 using io_context = boost::asio::io_context;

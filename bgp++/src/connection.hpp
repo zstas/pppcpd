@@ -15,17 +15,28 @@ struct bgp_connection : public std::enable_shared_from_this<bgp_connection> {
         gconf( g ),
         conf( c ),
         fsm( sock.get_io_context(), false )
-    {}
+    {
+        fsm.HoldTime = gconf.hold_time;
+        if( conf.hold_time.has_value() ) {
+            fsm.HoldTime = *conf.hold_time;
+        }
+    }
 
     ~bgp_connection() {
         log( "destructor bgp_connection" );
     }
 
     void start();
+    void on_keepalive_timer( error_code ec );
+    void start_keepalive_timer();
+
     void on_receive( error_code ec, std::size_t length );
     void on_send( std::shared_ptr<std::vector<uint8_t>> pkt, error_code ec, std::size_t length );
     void do_read();
 
     void rx_open( bgp_packet &pkt );
     void tx_open();
+
+    void rx_keepalive( bgp_packet &pkt );
+    void tx_keepalive();
 };
