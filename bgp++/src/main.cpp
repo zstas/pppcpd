@@ -1,7 +1,8 @@
 #include "main.hpp"
 
-main_loop::main_loop( int port ):
-    accpt( io, endpoint( boost::asio::ip::tcp::v4(), port ) ),
+main_loop::main_loop( global_conf &c ):
+    conf( c ),
+    accpt( io, endpoint( boost::asio::ip::tcp::v4(), c.listen_on_port ) ),
     sock( io )
 {}
 
@@ -15,28 +16,35 @@ void main_loop::on_accept( error_code ec ) {
     if( ec ) {
         std::cerr << "Error on accepting new connection: "s + ec.message() << std::endl;
     }
-    auto new_conn = std::make_shared<bgp_connection>( std::move( sock ) );
-    conns.emplace_back( new_conn );
-    new_conn->start();
+    auto const &remote_addr = sock.remote_endpoint().address().to_string();
+    auto const &nei_it = std::find_if( conf.neighbours.begin(), conf.neighbours.end(), [ &remote_addr ]( bgp_neighbour_v4 &n ) -> bool { return n.address.to_string() == remote_addr; } );
+    if( nei_it == conf.neighbours.end() ) {
+        log( "Connection not from our peers, so dropping it." );
+        sock.close();
+    } else {
+        auto new_conn = std::make_shared<bgp_connection>( std::move( sock ), conf, *nei_it );
+        conns.emplace_back( new_conn );
+        new_conn->start();
+    }
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
 }
 
 static void config_init() {
-    global_conf conf;
-    conf.listen_on_port = 179;
-    conf.my_as = 31337;
-    conf.bgp_router_id = address_v4::from_string( "1.2.3.4" );
+    global_conf new_conf;
+    new_conf.listen_on_port = 179;
+    new_conf.my_as = 31337;
+    new_conf.bgp_router_id = address_v4::from_string( "1.2.3.4" );
 
     bgp_neighbour_v4 bgp1;
     bgp1.remote_as = 31337;
-    bgp1.address = address_v4::from_string( "8.8.4.4" );
-    conf.neighbours.emplace_back( bgp1 );
+    bgp1.address = address_v4::from_string( "127.0.0.1" );
+    new_conf.neighbours.emplace_back( bgp1 );
 
     bgp1.address = address_v4::from_string( "8.8.8.8" );
-    conf.neighbours.emplace_back( bgp1 );
+    new_conf.neighbours.emplace_back( bgp1 );
 
     YAML::Node node;
-    node = conf;
+    node = new_conf;
     std::ofstream fout("config.yaml");
     fout << node << std::endl;
 }
@@ -56,8 +64,11 @@ int main( int argc, char *argv[] ) {
     log( "\tMy AS: "s + std::to_string( conf.my_as ) );
     log( "\tListen on port: "s + std::to_string( conf.listen_on_port ) );
     log( "\tBGP Router ID: "s + conf.bgp_router_id.to_string() );
+    for( auto const &n: conf.neighbours ) {
+        log( "\tNeighbour: "s + n.address.to_string() + "\tAS: "s + std::to_string( n.remote_as ) );
+    }
     try { 
-        main_loop loop { conf.listen_on_port };
+        main_loop loop { conf };
         loop.run();
     } catch( std::exception &e ) {
         std::cerr << "Error on run event loop: "s + e.what() << std::endl;

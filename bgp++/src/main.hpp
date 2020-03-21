@@ -26,9 +26,10 @@ struct main_loop {
     io_context io;
     acceptor accpt;
     socket_tcp sock;
+    global_conf &conf;
     std::list<std::weak_ptr<bgp_connection>> conns;
 
-    main_loop( int port );
+    main_loop( global_conf &c );
 
     void run(); 
     void on_accept( error_code ec );

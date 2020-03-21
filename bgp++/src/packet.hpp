@@ -26,19 +26,20 @@ struct bgp_open {
 struct bgp_packet {
     bgp_header *header = nullptr;
 
-    std::vector<uint8_t> pkt;
+    uint8_t *data;
+    std::size_t length;
 
-    bgp_packet( uint8_t *begin, std::size_t length ):
-        pkt( begin, begin + length )
-    {
-    }
+    bgp_packet( uint8_t *begin, std::size_t l ):
+        data( begin ),
+        length( l )
+    {}
 
     bgp_header* get_header() {
-        return reinterpret_cast<bgp_header*>( pkt.data() );
+        return reinterpret_cast<bgp_header*>( data );
     }
 
     bgp_open* get_open() {
-        return reinterpret_cast<bgp_open*>( pkt.data() + sizeof( bgp_header ) );
+        return reinterpret_cast<bgp_open*>( data + sizeof( bgp_header ) );
     }
 
 };

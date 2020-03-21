@@ -1,3 +1,6 @@
+#ifndef FSM_HPP_
+#define FSM_HPP_
+
 enum class FSM_STATE {
     IDLE,
     CONNECT,
@@ -7,7 +10,7 @@ enum class FSM_STATE {
     ESTABLISHED,
 };
 
-struct fsm {
+struct bgp_fsm {
     FSM_STATE state;
     bool admin_disabled;
 
@@ -24,5 +27,7 @@ struct fsm {
     uint16_t HoldTime;
     uint16_t KeepaliveTime;
 
-    fsm( io_context &io, bool status = false );
+    bgp_fsm( io_context &io, bool status = false );
 };
+
+#endif

@@ -2,10 +2,10 @@
 
 YAML::Node YAML::convert<global_conf>::encode(const global_conf& rhs) {
     Node node;
-    node["listen_on_port"]  = rhs.listen_on_port;
-    node["my_as"]           = rhs.my_as;
-    node["bgp_router_id"]   = rhs.bgp_router_id.to_string();
-    node["neighbours"]      = rhs.neighbours;
+    node[ "listen_on_port" ]  = rhs.listen_on_port;
+    node[ "my_as" ]           = rhs.my_as;
+    node[ "bgp_router_id" ]   = rhs.bgp_router_id.to_string();
+    node[ "neighbours" ]      = rhs.neighbours;
     return node;
 }
 
@@ -13,9 +13,10 @@ bool YAML::convert<global_conf>::decode(const YAML::Node& node, global_conf& rhs
     // if(!node.IsSequence() || node.size() != 3) {
     //     return false;
     // }
-    rhs.listen_on_port  = node["listen_on_port"].as<uint16_t>();
-    rhs.my_as           = node["my_as"].as<uint32_t>();
+    rhs.listen_on_port  = node[ "listen_on_port" ].as<uint16_t>();
+    rhs.my_as           = node[ "my_as" ].as<uint32_t>();
     rhs.bgp_router_id   = address_v4::from_string( node["bgp_router_id"].as<std::string>() );
+    rhs.neighbours      = node[ "neighbours" ].as<std::list<bgp_neighbour_v4>>();
     return true;
 } 
 

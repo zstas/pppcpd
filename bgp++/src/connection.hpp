@@ -1,12 +1,20 @@
 #include "utils.hpp"
 #include "packet.hpp"
+#include "config.hpp"
+#include "fsm.hpp"
 
 struct bgp_connection : public std::enable_shared_from_this<bgp_connection> {
     std::array<uint8_t,65535> buffer;
     socket_tcp sock;
+    global_conf &gconf;
+    bgp_neighbour_v4 &conf;
+    bgp_fsm fsm;
 
-    bgp_connection( socket_tcp s ):
-        sock( std::move( s ) ) 
+    bgp_connection( socket_tcp s, global_conf &g, bgp_neighbour_v4 &c ):
+        sock( std::move( s ) ),
+        gconf( g ),
+        conf( c ),
+        fsm( sock.get_io_context(), false )
     {}
 
     ~bgp_connection() {
@@ -15,8 +23,9 @@ struct bgp_connection : public std::enable_shared_from_this<bgp_connection> {
 
     void start();
     void on_receive( error_code ec, std::size_t length );
-    void on_send();
+    void on_send( std::shared_ptr<std::vector<uint8_t>> pkt, error_code ec, std::size_t length );
     void do_read();
 
-    void process_open( bgp_packet &pkt );
+    void rx_open( bgp_packet &pkt );
+    void tx_open();
 };
