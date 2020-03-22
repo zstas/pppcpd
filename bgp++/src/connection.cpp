@@ -27,7 +27,7 @@ void bgp_connection::on_receive( error_code ec, std::size_t length ) {
         rx_keepalive( pkt );
         break;
     case bgp_type::UPDATE:
-        log( "UPDATE message" );
+        rx_update( pkt );
         break;
     case bgp_type::NOTIFICATION:
         log( "NOTIFICATION message" );
@@ -140,4 +140,8 @@ void bgp_connection::on_keepalive_timer( error_code ec ) {
 void bgp_connection::start_keepalive_timer() {
     fsm.KeepaliveTimer.expires_from_now( std::chrono::seconds( fsm.KeepaliveTime ) );
     fsm.KeepaliveTimer.async_wait( std::bind( &bgp_connection::on_keepalive_timer, shared_from_this(), std::placeholders::_1 ) );
+}
+
+void bgp_connection::rx_update( bgp_packet &pkt ) {
+    
 }

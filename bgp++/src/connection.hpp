@@ -39,4 +39,6 @@ struct bgp_connection : public std::enable_shared_from_this<bgp_connection> {
 
     void rx_keepalive( bgp_packet &pkt );
     void tx_keepalive();
+
+    void rx_update( bgp_packet &pkt );
 };
