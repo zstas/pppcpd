@@ -143,5 +143,13 @@ void bgp_connection::start_keepalive_timer() {
 }
 
 void bgp_connection::rx_update( bgp_packet &pkt ) {
-    
+    auto const &[ withdrawn_routes, routes ] = pkt.process_update();
+    log( "Received UPDATE message with withdrawn routes and routes: "s + std::to_string( withdrawn_routes.size() ) + " "s + std::to_string( routes.size() ) );
+    for( auto const &route: routes ) {
+        std::string out;
+        for( auto const &byte: route.address ) {
+            out += std::to_string( byte ) + ".";
+        }
+        log( "Received route: "s + out + "/" + std::to_string( route.len ) );
+    }
 }
