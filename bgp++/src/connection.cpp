@@ -82,7 +82,11 @@ void bgp_connection::tx_open() {
     open->version = 4;
     open->bgp_id = bswap32( gconf.bgp_router_id.to_uint() );
     open->my_as = bswap16( gconf.my_as );
-    open->hold_time = 180;
+    if( conf.hold_time.has_value() ) {
+        open->hold_time = bswap16( *conf.hold_time );
+    } else {
+        open->hold_time = bswap16( gconf.hold_time );
+    }
     open->len = 0;
 
     // send this msg
@@ -130,7 +134,7 @@ void bgp_connection::rx_keepalive( bgp_packet &pkt ) {
 void bgp_connection::on_keepalive_timer( error_code ec ) {
     log( "Periodic KEEPALIVE" );
     tx_keepalive();
-    
+    start_keepalive_timer();
 }
 
 void bgp_connection::start_keepalive_timer() {
