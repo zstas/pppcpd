@@ -108,6 +108,7 @@ struct bgp_packet {
             std::memcpy( &address, update_data + offset + 1, bytes );
             routes.emplace_back( address_v4 { bswap32( address ) }, nlri_len );
             len -= sizeof( nlri_len ) + bytes;
+            offset += sizeof( nlri_len ) + bytes;
         }
 
         return { withdrawn_routes, routes };
