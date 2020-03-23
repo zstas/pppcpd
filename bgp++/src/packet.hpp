@@ -1,21 +1,6 @@
 #ifndef PACKET_HPP_
 #define PACKET_HPP_
 
-struct ip_prefix {
-    uint8_t len;
-    std::vector<uint8_t> address;
-
-    ip_prefix( uint8_t *data, uint8_t l ):
-        len( l )
-    {
-        auto bytes = l / 8;
-        if( l % 8 != 0 ) {
-            bytes++;
-        }
-        address = std::vector<uint8_t>{ data, data + bytes };
-    }
-};
-
 enum class path_attribute : uint8_t {
     ORIGIN = 1,
     AS_PATH = 2,
@@ -36,8 +21,8 @@ struct path_attr {
 
 }__attribute__((__packed__));
 
-using nlri = ip_prefix;
-using withdrawn_routes = ip_prefix;
+using nlri = prefix_v4;
+using withdrawn_routes = prefix_v4;
 
 enum class bgp_type : uint8_t {
     OPEN = 1,
@@ -97,7 +82,7 @@ struct bgp_packet {
                 return { {}, {} };
             }
             uint8_t nlri_len = *reinterpret_cast<uint8_t*>( update_data + offset );
-            withdrawn_routes.emplace_back( update_data + offset + 1, nlri_len );
+            //withdrawn_routes.emplace_back( update_data + offset + 1, nlri_len );
         }
         len = bswap16( *reinterpret_cast<uint16_t*>( update_data + offset ) );
         log( "Length of path attributes: "s + std::to_string( len ) );
@@ -115,11 +100,13 @@ struct bgp_packet {
                 return { {}, {} };
             }
             uint8_t nlri_len = *reinterpret_cast<uint8_t*>( update_data + offset );
-            routes.emplace_back( update_data + offset + 1, nlri_len );
+            uint32_t address = 0;
             auto bytes = nlri_len / 8;
             if( nlri_len % 8 != 0 ) {
                 bytes++;
             }
+            std::memcpy( &address, update_data + offset + 1, bytes );
+            routes.emplace_back( address_v4 { bswap32( address ) }, nlri_len );
             len -= sizeof( nlri_len ) + bytes;
         }
 

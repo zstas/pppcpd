@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/asio/ip/network_v4.hpp>
 #include <list>
 #include <memory>
 #include <optional>
@@ -13,6 +14,7 @@ using endpoint = boost::asio::ip::tcp::endpoint;
 using socket_tcp = boost::asio::ip::tcp::socket;
 using error_code = boost::system::error_code;
 using address_v4 = boost::asio::ip::address_v4;
+using prefix_v4 = boost::asio::ip::network_v4;
 using timer = boost::asio::steady_timer;
 
 using namespace std::string_literals;
