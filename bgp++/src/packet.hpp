@@ -1,7 +1,7 @@
 #ifndef PACKET_HPP_
 #define PACKET_HPP_
 
-enum class path_attribute : uint8_t {
+enum class PATH_ATTRIBUTE : uint8_t {
     ORIGIN = 1,
     AS_PATH = 2,
     NEXT_HOP = 3,
@@ -17,8 +17,17 @@ enum class ORIGIN : uint8_t {
     INCOMPLETE = 2,
 };
 
-struct path_attr {
-
+struct path_attr_header {
+    uint8_t optional:1;
+    uint8_t transitive:1;
+    uint8_t partial:1;
+    uint8_t extended_length:1;
+    uint8_t unused:4;
+    PATH_ATTRIBUTE type;
+    union {
+        uint16_t ext_len;
+        uint8_t len;
+    };
 }__attribute__((__packed__));
 
 using nlri = prefix_v4;
