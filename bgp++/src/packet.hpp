@@ -11,6 +11,10 @@ enum class PATH_ATTRIBUTE : uint8_t {
     AGGREGATOR = 7,
 };
 
+namespace std {
+    std::string to_string( PATH_ATTRIBUTE attr );
+}
+
 enum class ORIGIN : uint8_t {
     IGP = 0,
     EGP = 1,
@@ -18,17 +22,49 @@ enum class ORIGIN : uint8_t {
 };
 
 struct path_attr_header {
-    uint8_t optional:1;
-    uint8_t transitive:1;
-    uint8_t partial:1;
-    uint8_t extended_length:1;
     uint8_t unused:4;
+    uint8_t extended_length:1;
+    uint8_t partial:1;
+    uint8_t transitive:1;
+    uint8_t optional:1;
     PATH_ATTRIBUTE type;
     union {
         uint16_t ext_len;
         uint8_t len;
     };
 }__attribute__((__packed__));
+
+struct path_attr_t {
+    uint8_t optional:1;
+    uint8_t transitive:1;
+    uint8_t partial:1;
+    uint8_t extended_length:1;
+    uint8_t unused:4;
+    PATH_ATTRIBUTE type;
+    std::vector<uint8_t> bytes;
+
+    // path_attr_t() = default;
+    path_attr_t( path_attr_header *header ):
+        optional( header->optional ),
+        transitive( header->transitive ),
+        partial( header->partial ),
+        extended_length( header->extended_length ),
+        type( header->type )
+    {
+        auto len = ( header->extended_length == 1 ? bswap16( header->ext_len ) : header->len );
+        auto body = reinterpret_cast<uint8_t*>( header ) + 2 + ( header->extended_length ? 2 : 1 );
+        bytes = std::vector<uint8_t>( body, body + len );
+    }
+
+    std::string to_string() const {
+        std::string out;
+
+        out += "Type: "s + std::to_string( type ) + " ";
+        out += "Length: "s + std::to_string( bytes.size() );
+
+        return out;
+    }
+};
 
 using nlri = prefix_v4;
 using withdrawn_routes = prefix_v4;
@@ -74,7 +110,7 @@ struct bgp_packet {
         return reinterpret_cast<bgp_open*>( data + sizeof( bgp_header ) );
     }
 
-    std::tuple<std::vector<nlri>,std::vector<nlri>> process_update() {
+    std::tuple<std::vector<nlri>,std::vector<path_attr_t>,std::vector<nlri>> process_update() {
         std::vector<nlri> withdrawn_routes;
         auto header = get_header();
         auto update_data = data + sizeof( bgp_header );
@@ -88,16 +124,24 @@ struct bgp_packet {
         while( len > 0 ) {
             if( offset >= update_len ) {
                 log( "Error on parsing message" );
-                return { {}, {} };
+                return { {}, {}, {} };
             }
             uint8_t nlri_len = *reinterpret_cast<uint8_t*>( update_data + offset );
             //withdrawn_routes.emplace_back( update_data + offset + 1, nlri_len );
         }
+
+        // parsing bgp path attributes
+        std::vector<path_attr_t> paths;
         len = bswap16( *reinterpret_cast<uint16_t*>( update_data + offset ) );
         log( "Length of path attributes: "s + std::to_string( len ) );
-
-        // todo path attrs
-        offset += sizeof( len ) + len;
+        offset += sizeof( len );
+        while( len > 0 ) {
+            auto path = reinterpret_cast<path_attr_header*>( update_data + offset );
+            paths.emplace_back( path );
+            auto attr_len = 3 + ( path->extended_length == 1 ? ( bswap16( path->ext_len ) + 1 ) : path->len );
+            len -= attr_len;
+            offset += attr_len;
+        };
 
         // parsing NLRI
         len = update_len - offset;
@@ -106,7 +150,7 @@ struct bgp_packet {
         while( len > 0 ) {
             if( offset >= update_len ) {
                 log( "Error on parsing message" );
-                return { {}, {} };
+                return { {}, {}, {} };
             }
             uint8_t nlri_len = *reinterpret_cast<uint8_t*>( update_data + offset );
             uint32_t address = 0;
@@ -120,7 +164,7 @@ struct bgp_packet {
             offset += sizeof( nlri_len ) + bytes;
         }
 
-        return { withdrawn_routes, routes };
+        return { withdrawn_routes, paths, routes };
     }
 };
 
