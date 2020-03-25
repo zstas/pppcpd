@@ -56,13 +56,47 @@ struct path_attr_t {
         bytes = std::vector<uint8_t>( body, body + len );
     }
 
-    std::string to_string() const {
+    std::string to_string() {
         std::string out;
 
         out += "Type: "s + std::to_string( type ) + " ";
-        out += "Length: "s + std::to_string( bytes.size() );
+        out += "Length: "s + std::to_string( bytes.size() ) + " ";
+        out += "Value: ";
+        switch( type ) {
+        case PATH_ATTRIBUTE::ORIGIN:
+            out += origin_dump();
+            break;
+        case PATH_ATTRIBUTE::NEXT_HOP: 
+            out += address_v4( get_u32() ).to_string();
+            break;
+        case PATH_ATTRIBUTE::LOCAL_PREF:
+            out += std::to_string( get_u32() );
+            break;
+        case PATH_ATTRIBUTE::MULTI_EXIT_DISC:
+            out += std::to_string( get_u32() );
+            break;
+        default:
+            out += "NA";
+        }
 
         return out;
+    }
+
+    uint32_t get_u32() {
+        return bswap32( *reinterpret_cast<uint32_t*>( bytes.data() ) );
+    }
+
+    std::string origin_dump() const {
+        auto origin = static_cast<ORIGIN>( bytes[0] );
+        switch( origin ) {
+        case ORIGIN::EGP:
+            return "EGP";
+        case ORIGIN::IGP:
+            return "IGP";
+        case ORIGIN::INCOMPLETE:
+            return "INCOMPLETE";
+        }
+        return "ERROR";
     }
 };
 

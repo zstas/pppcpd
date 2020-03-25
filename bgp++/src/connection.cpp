@@ -143,16 +143,16 @@ void bgp_connection::start_keepalive_timer() {
 }
 
 void bgp_connection::rx_update( bgp_packet &pkt ) {
-    auto const &[ withdrawn_routes, path_attrs, routes ] = pkt.process_update();
+    auto [ withdrawn_routes, path_attrs, routes ] = pkt.process_update();
     log(    "Received UPDATE message with withdrawn routes, paths and routes: "s + 
             std::to_string( withdrawn_routes.size() ) + " "s + 
             std::to_string( path_attrs.size() ) + " "s + 
             std::to_string( routes.size() ) );
 
-    for( auto const &attr: path_attrs ) {
+    for( auto &attr: path_attrs ) {
         log( "Received path attribute: "s + attr.to_string() );
     }
-    for( auto const &route: routes ) {
+    for( auto &route: routes ) {
         log( "Received route: "s + route.to_string() );
     }
 }
