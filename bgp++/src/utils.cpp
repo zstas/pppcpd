@@ -59,3 +59,15 @@ std::string std::to_string( PATH_ATTRIBUTE attr ) {
     }
     return "NA";
 }
+
+std::string std::to_string( ORIGIN origin ) {
+switch( origin ) {
+    case ORIGIN::EGP:
+        return "EGP";
+    case ORIGIN::IGP:
+        return "IGP";
+    case ORIGIN::INCOMPLETE:
+        return "INCOMPLETE";
+    }
+    return "ERROR";
+}
