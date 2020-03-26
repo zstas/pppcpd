@@ -11,8 +11,12 @@ FetchContent_GetProperties(yaml-cpp)
 if(NOT yaml-cpp_POPULATED)
 	message(STATUS "Populating yaml-cpp...")
 	FetchContent_Populate(yaml-cpp)
+	
 	# Add here options for yaml-cpp building
     set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "disable yaml tests")
+	set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "disable yaml tools")
+	set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "disable yaml contrib")
+
 	add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR})
 	message(STATUS "Done.")
 endif()

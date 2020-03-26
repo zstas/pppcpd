@@ -24,13 +24,16 @@ using namespace std::string_literals;
 #include "utils.hpp"
 #include "config.hpp"
 #include "fsm.hpp"
+#include "table.hpp"
 
 struct main_loop {
     io_context io;
     acceptor accpt;
     socket_tcp sock;
     global_conf &conf;
+    bgp_table_v4 table;
     std::list<std::weak_ptr<bgp_connection>> conns;
+    std::map<address_v4,bgp_fsm> neighbours;
 
     main_loop( global_conf &c );
 

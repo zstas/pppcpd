@@ -4,7 +4,11 @@ main_loop::main_loop( global_conf &c ):
     conf( c ),
     accpt( io, endpoint( boost::asio::ip::tcp::v4(), c.listen_on_port ) ),
     sock( io )
-{}
+{
+    for( auto &nei: c.neighbours ) {
+        neighbours.emplace( std::piecewise_construct, std::forward_as_tuple( nei.address ), std::forward_as_tuple( io, c, nei ) );
+    }
+}
 
 void main_loop::run() {
     log( "Starting event loop" );
@@ -16,15 +20,15 @@ void main_loop::on_accept( error_code ec ) {
     if( ec ) {
         std::cerr << "Error on accepting new connection: "s + ec.message() << std::endl;
     }
-    auto const &remote_addr = sock.remote_endpoint().address().to_string();
-    auto const &nei_it = std::find_if( conf.neighbours.begin(), conf.neighbours.end(), [ &remote_addr ]( bgp_neighbour_v4 &n ) -> bool { return n.address.to_string() == remote_addr; } );
-    if( nei_it == conf.neighbours.end() ) {
+    auto const &remote_addr = sock.remote_endpoint().address().to_v4();
+    auto const &nei_it = neighbours.find( remote_addr );
+    if( nei_it == neighbours.end() ) {
         log( "Connection not from our peers, so dropping it." );
         sock.close();
     } else {
-        auto new_conn = std::make_shared<bgp_connection>( std::move( sock ), conf, *nei_it );
+        auto new_conn = std::make_shared<bgp_connection>( std::move( sock ) );
         conns.emplace_back( new_conn );
-        new_conn->start();
+        nei_it->second.place_connection( new_conn );
     }
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
 }
