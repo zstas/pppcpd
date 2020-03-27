@@ -32,8 +32,7 @@ struct main_loop {
     socket_tcp sock;
     global_conf &conf;
     bgp_table_v4 table;
-    std::list<std::weak_ptr<bgp_connection>> conns;
-    std::map<address_v4,bgp_fsm> neighbours;
+    std::map<address_v4,std::shared_ptr<bgp_fsm>> neighbours;
 
     main_loop( global_conf &c );
 

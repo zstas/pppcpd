@@ -17,7 +17,8 @@ struct bgp_fsm : public std::enable_shared_from_this<bgp_fsm> {
     global_conf &gconf;
     bgp_neighbour_v4 &conf;
 
-    std::weak_ptr<bgp_connection> connection;
+    std::array<uint8_t,65535> buffer;
+    std::optional<socket_tcp> sock;
 
     // counters
     uint64_t ConnectRetryCounter;
@@ -33,7 +34,7 @@ struct bgp_fsm : public std::enable_shared_from_this<bgp_fsm> {
     uint16_t KeepaliveTime;
 
     bgp_fsm( io_context &io, global_conf &g, bgp_neighbour_v4 &c );
-    void place_connection( std::shared_ptr<bgp_connection> conn );
+    void place_connection( socket_tcp s );
 
     void start_keepalive_timer();
     void on_keepalive_timer( error_code ec );

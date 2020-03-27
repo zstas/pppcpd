@@ -14,9 +14,9 @@ bgp_fsm::bgp_fsm( io_context &io,  global_conf &g, bgp_neighbour_v4 &c ):
     }
 }
 
-void bgp_fsm::place_connection( std::shared_ptr<bgp_connection> conn ) {
-    connection = conn;
-    auto const &endpoint = conn->sock.remote_endpoint();
+void bgp_fsm::place_connection( socket_tcp s ) {
+    sock.emplace( std::move( s ) );
+    auto const &endpoint = sock->remote_endpoint();
     log( "Incoming connection: "s + endpoint.address().to_string() + " "s + std::to_string( endpoint.port() ) );
     do_read();
     tx_open();
@@ -24,12 +24,12 @@ void bgp_fsm::place_connection( std::shared_ptr<bgp_connection> conn ) {
 
 void bgp_fsm::start_keepalive_timer() {
     KeepaliveTimer.expires_from_now( std::chrono::seconds( KeepaliveTime ) );
-    KeepaliveTimer.async_wait( std::bind( &bgp_fsm::on_keepalive_timer, this, std::placeholders::_1 ) );
+    KeepaliveTimer.async_wait( std::bind( &bgp_fsm::on_keepalive_timer, shared_from_this(), std::placeholders::_1 ) );
 }
 
 void bgp_fsm::on_keepalive_timer( error_code ec ) {
     log( "Periodic KEEPALIVE" );
-    if( auto sptr = connection.lock() ) {
+    if( sock.has_value() ) {
         tx_keepalive();
         start_keepalive_timer();
     } else {
@@ -40,21 +40,20 @@ void bgp_fsm::on_keepalive_timer( error_code ec ) {
 
 void bgp_fsm::rx_open( bgp_packet &pkt ) {
     auto open = pkt.get_open();
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
     }
 
-    log( "Incoming OPEN packet from: "s + sptr->sock.remote_endpoint().address().to_string() );
+    log( "Incoming OPEN packet from: "s + sock->remote_endpoint().address().to_string() );
     log( "BGP version: "s + std::to_string( open->version ) );
     log( "Router ID: "s + address_v4( bswap32( open->bgp_id ) ).to_string() );
     log( "Hold time: "s + std::to_string( bswap16( open->hold_time ) ) );
 
     if( bswap16( open->my_as ) != conf.remote_as ) {
         log( "Incorrect AS: "s + std::to_string( bswap16( open->my_as ) ) + ", we expected: "s + std::to_string( conf.remote_as ) );
-        sptr->sock.close();
+        sock->close();
         return;
     }
 
@@ -67,8 +66,7 @@ void bgp_fsm::rx_open( bgp_packet &pkt ) {
 }
 
 void bgp_fsm::tx_open() {
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
@@ -98,7 +96,7 @@ void bgp_fsm::tx_open() {
     open->len = 0;
 
     // send this msg
-    sptr->sock.async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_fsm::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
+    sock->async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_fsm::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
     state = FSM_STATE::OPENSENT;
 }
 
@@ -111,14 +109,13 @@ void bgp_fsm::on_send( std::shared_ptr<std::vector<uint8_t>> pkt, error_code ec,
 }
 
 void bgp_fsm::tx_keepalive() {
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
     }
 
-    log( "Sending KEEPALIVE to peer: "s + sptr->sock.remote_endpoint().address().to_string() );
+    log( "Sending KEEPALIVE to peer: "s + sock->remote_endpoint().address().to_string() );
     auto len = sizeof( bgp_header );
     auto pkt_buf = std::make_shared<std::vector<uint8_t>>();
     pkt_buf->resize( len );
@@ -131,24 +128,23 @@ void bgp_fsm::tx_keepalive() {
     std::fill( header->marker.begin(), header->marker.end(), 0xFF );
 
     // send this msg
-    sptr->sock.async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_fsm::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
+    sock->async_send( boost::asio::buffer( *pkt_buf ), std::bind( &bgp_fsm::on_send, shared_from_this(), pkt_buf, std::placeholders::_1, std::placeholders::_2 ) );
 }
 
 void bgp_fsm::rx_keepalive( bgp_packet &pkt ) {
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
     }
 
     if( state == FSM_STATE::OPENCONFIRM || state == FSM_STATE::OPENSENT ) {
-        log( "BGP goes to ESTABLISHED state with peer: "s + sptr->sock.remote_endpoint().address().to_string() );
+        log( "BGP goes to ESTABLISHED state with peer: "s + sock->remote_endpoint().address().to_string() );
         state = FSM_STATE::ESTABLISHED;
         start_keepalive_timer();
     } else if( state != FSM_STATE::ESTABLISHED ) {
         log( "Received a KEEPALIVE in incorrect state, closing connection" );
-        sptr->sock.close();
+        sock->close();
     }
     log( "Received a KEEPALIVE message" );
 }
@@ -174,15 +170,14 @@ void bgp_fsm::on_receive( error_code ec, std::size_t length ) {
         return;
     }
 
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
     }
 
     log( "Received message of size: "s + std::to_string( length ) );
-    bgp_packet pkt { sptr->buffer.begin(), length };
+    bgp_packet pkt { buffer.begin(), length };
     auto bgp_header = pkt.get_header();
     if( std::any_of( bgp_header->marker.begin(), bgp_header->marker.end(), []( uint8_t el ) { return el != 0xFF; } ) ) {
         log( "Wrong BGP marker in header!" );
@@ -209,12 +204,11 @@ void bgp_fsm::on_receive( error_code ec, std::size_t length ) {
 }
 
 void bgp_fsm::do_read() {
-    auto sptr = connection.lock();
-    if( !sptr ) {
+    if( !sock.has_value() ) {
         log( "Cannot acquire connection" );
         // todo: do something!
         return;
     }
 
-    sptr->sock.async_receive( boost::asio::buffer( sptr->buffer ), std::bind( &bgp_fsm::on_receive, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ) );
+    sock->async_receive( boost::asio::buffer( buffer ), std::bind( &bgp_fsm::on_receive, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ) );
 }

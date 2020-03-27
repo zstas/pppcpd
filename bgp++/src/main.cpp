@@ -6,7 +6,7 @@ main_loop::main_loop( global_conf &c ):
     sock( io )
 {
     for( auto &nei: c.neighbours ) {
-        neighbours.emplace( std::piecewise_construct, std::forward_as_tuple( nei.address ), std::forward_as_tuple( io, c, nei ) );
+        neighbours.emplace( nei.address, std::make_shared<bgp_fsm>( io, c, nei ) );
     }
 }
 
@@ -26,9 +26,7 @@ void main_loop::on_accept( error_code ec ) {
         log( "Connection not from our peers, so dropping it." );
         sock.close();
     } else {
-        auto new_conn = std::make_shared<bgp_connection>( std::move( sock ) );
-        conns.emplace_back( new_conn );
-        nei_it->second.place_connection( new_conn );
+        nei_it->second->place_connection( std::move( sock ) );
     }
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
 }
