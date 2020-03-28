@@ -14,13 +14,13 @@ struct less<prefix_v4> {
 }
 
 struct bgp_table_v4 {
-    std::multimap<prefix_v4,std::list<path_attr_t>> table;
+    std::multimap<prefix_v4,std::vector<path_attr_t>> table;
 
-    void add_path( prefix_v4 prefix, std::list<path_attr_t> attr ) {
+    void add_path( prefix_v4 prefix, std::vector<path_attr_t> attr ) {
         table.emplace( prefix, attr );
     }
 
-    void del_path( prefix_v4 prefix, std::list<path_attr_t> attr ) {
+    void del_path( prefix_v4 prefix, std::vector<path_attr_t> attr ) {
         auto const &range = table.equal_range( prefix );
         for( auto i = range.first; i != range.second; ++i ) {
             if( i->second != attr ) {

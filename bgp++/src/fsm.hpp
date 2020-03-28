@@ -1,6 +1,8 @@
 #ifndef FSM_HPP_
 #define FSM_HPP_
 
+#include "table.hpp"
+
 enum class FSM_STATE {
     IDLE,
     CONNECT,
@@ -14,6 +16,7 @@ struct bgp_fsm : public std::enable_shared_from_this<bgp_fsm> {
     FSM_STATE state;
     global_conf &gconf;
     bgp_neighbour_v4 &conf;
+    bgp_table_v4 table;
 
     std::array<uint8_t,65535> buffer;
     std::optional<socket_tcp> sock;

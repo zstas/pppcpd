@@ -156,11 +156,22 @@ void bgp_fsm::rx_update( bgp_packet &pkt ) {
             std::to_string( path_attrs.size() ) + " "s + 
             std::to_string( routes.size() ) );
 
-    for( auto &attr: path_attrs ) {
-        log( "Received path attribute: "s + attr.to_string() );
+    for( auto &wroute: withdrawn_routes ) {
+        log( "Received withdrawn route: "s + wroute.to_string() );
+        //table.del_path();
     }
+
     for( auto &route: routes ) {
         log( "Received route: "s + route.to_string() );
+        table.add_path( route, path_attrs );
+    }
+
+    log( "After update we have BGP table: " );
+    for( auto const &[ k, v ]: table.table ) {
+        log( "Route: "s + k.to_string() );
+        for( auto path: v ) {
+            log( "Path: "s + path.to_string() );
+        }
     }
 }
 
