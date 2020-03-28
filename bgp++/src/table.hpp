@@ -23,11 +23,10 @@ struct bgp_table_v4 {
     void del_path( prefix_v4 prefix, std::vector<path_attr_t> attr ) {
         auto const &range = table.equal_range( prefix );
         for( auto i = range.first; i != range.second; ++i ) {
-            if( i->second != attr ) {
-                continue;
+            if( i->second == attr ) {
+                table.erase( i );
+                break;
             }
-            table.erase( i );
-            break;
         }
     }
 };
