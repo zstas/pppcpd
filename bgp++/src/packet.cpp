@@ -139,3 +139,12 @@ std::tuple<std::vector<nlri>,std::vector<path_attr_t>,std::vector<nlri>> bgp_pac
 
     return { withdrawn_routes, paths, routes };
 }
+
+bool operator==( const path_attr_t &lhs, const path_attr_t &rhs ) {
+    return  lhs.optional == rhs.optional &&
+            lhs.transitive == rhs.transitive &&
+            lhs.partial == rhs.partial &&
+            lhs.extended_length == rhs.extended_length &&
+            lhs.type == rhs.type &&
+            lhs.bytes == rhs.bytes;
+}

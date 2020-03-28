@@ -1,8 +1,6 @@
 #ifndef FSM_HPP_
 #define FSM_HPP_
 
-#include "connection.hpp"
-
 enum class FSM_STATE {
     IDLE,
     CONNECT,

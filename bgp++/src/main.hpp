@@ -19,7 +19,6 @@ using timer = boost::asio::steady_timer;
 
 using namespace std::string_literals;
 
-#include "connection.hpp"
 #include "packet.hpp"
 #include "utils.hpp"
 #include "config.hpp"

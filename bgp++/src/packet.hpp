@@ -50,6 +50,8 @@ struct path_attr_t {
     uint32_t get_u32();
 };
 
+bool operator==( const path_attr_t &lhs, const path_attr_t &rhs );
+
 using nlri = prefix_v4;
 using withdrawn_routes = prefix_v4;
 
