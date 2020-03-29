@@ -24,6 +24,7 @@ using namespace std::string_literals;
 #include "config.hpp"
 #include "fsm.hpp"
 #include "table.hpp"
+#include "vpp.hpp"
 
 struct main_loop {
     io_context io;

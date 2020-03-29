@@ -70,6 +70,13 @@ int main( int argc, char *argv[] ) {
     for( auto const &n: conf.neighbours ) {
         log( "\tNeighbour: "s + n.address.to_string() + "\tAS: "s + std::to_string( n.remote_as ) );
     }
+
+    log( "Binding port in vpp" );
+    vpp_api vpp;
+    auto att = vpp.attach_application();
+    log( "Returned result: "s + std::to_string ( att ) );
+    auto ses_id = vpp.bind( conf.listen_on_port );
+    log( "Returned result: "s + std::to_string ( ses_id ) );
     try { 
         main_loop loop { conf };
         loop.run();
