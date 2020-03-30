@@ -8,6 +8,8 @@
 #include <optional>
 #include <yaml-cpp/yaml.h>
 
+#include <vcl/vppcom.h>
+
 using io_context = boost::asio::io_context;
 using acceptor = boost::asio::ip::tcp::acceptor;
 using endpoint = boost::asio::ip::tcp::endpoint;

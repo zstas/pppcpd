@@ -69,5 +69,9 @@ bool vpp_api::attach_application() {
     } while( ret == VAPI_EAGAIN );
 
     auto repl = attach.get_response().get_payload();
+    std::vector<uint8_t> segm { repl.segment_name, repl.segment_name + repl.segment_name_length };
+    for( auto const &b: segm ) {
+        log( std::to_string( b ) );
+    }
     return repl.app_index;
 }
