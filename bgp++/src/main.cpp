@@ -72,20 +72,6 @@ int main( int argc, char *argv[] ) {
     }
 
     log( "Binding port in vpp" );
-    int ret = 0;
-    ret = vppcom_app_create( "bgp++ vppcom" );
-    log( "app_create: "s + std::to_string( ret ) );
-    ret = vppcom_session_create( 0, 1 );
-    log( "session_create: "s + std::to_string( ret ) );
-    vppcom_endpt_t enp;
-    uint32_t addr = 0;
-    enp.parent_handle = 0;
-    enp.ip = reinterpret_cast<uint8_t*>( &addr );
-    enp.is_ip4 = 1;
-    enp.port = bswap16( conf.listen_on_port );
-    enp.is_cut_thru = 0;
-    ret = vppcom_session_bind( ret, &enp );
-    log( "session_bind: "s + std::to_string( ret ) );
     try { 
         main_loop loop { conf };
         loop.run();

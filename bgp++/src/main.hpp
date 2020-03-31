@@ -3,6 +3,7 @@
 #include <string>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/network_v4.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
 #include <list>
 #include <memory>
 #include <optional>
@@ -18,6 +19,7 @@ using error_code = boost::system::error_code;
 using address_v4 = boost::asio::ip::address_v4;
 using prefix_v4 = boost::asio::ip::network_v4;
 using timer = boost::asio::steady_timer;
+using stream_descriptor = boost::asio::posix::stream_descriptor;
 
 using namespace std::string_literals;
 
@@ -27,6 +29,7 @@ using namespace std::string_literals;
 #include "fsm.hpp"
 #include "table.hpp"
 #include "vpp.hpp"
+#include "vppcom_socket.hpp"
 
 struct main_loop {
     io_context io;
