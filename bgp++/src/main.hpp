@@ -4,6 +4,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ip/network_v4.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/bind.hpp>
 #include <list>
 #include <memory>
 #include <optional>

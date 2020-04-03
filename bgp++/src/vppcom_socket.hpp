@@ -1,3 +1,19 @@
+struct vppcom_service : public io_context::service {
+    explicit vppcom_service( io_context &ctx );
+    ~vppcom_service();
+    static boost::asio::io_service::id id;
+    void start();
+    void run_epoll();
+
+private:
+    boost::scoped_ptr<boost::asio::io_service::work> work;
+    boost::asio::io_service async_io_service;
+    std::thread thread;
+
+    // vppcom
+    int fd;
+};
+
 struct vppcom_worker {
     io_context &io;
     stream_descriptor stream;

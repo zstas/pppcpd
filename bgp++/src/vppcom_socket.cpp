@@ -1,24 +1,45 @@
 #include "main.hpp"
 
-void vppcom_worker::callback( boost::system::error_code &ec ) {
-    if( ec ) {
-        log( "Error on async wait: "s + ec.message() );
-    }
+vppcom_service::vppcom_service( io_context &ctx ):
+    boost::asio::io_service::service( ctx ),
+    work( new boost::asio::io_service::work( async_io_service ) ),
+    thread( boost::bind( &boost::asio::io_service::run, &async_io_service) )
+{
+    auto ret = vppcom_app_create( "bgp++ vppcom" );
+    log( "app_create: "s + std::to_string( ret ) );
+    fd = vppcom_epoll_create();
+}
 
+vppcom_service::~vppcom_service() {
+    work.reset();
+    async_io_service.stop();
+    thread.join();
+}
+
+void vppcom_service::start() {
+    async_io_service.post( boost::bind( &vppcom_service::run_epoll, this ) );
+}
+
+void vppcom_service::run_epoll() {
     struct epoll_event vcl_events[ 10 ];
     int num = vppcom_epoll_wait( fd, vcl_events, 10, 0 );
     if( num < 0 ) {
         log( "Error on vppcom_epoll_wait" );
         return;
     }
-    for( int i = 0; i < num; i++ ) {
-        auto &cur_event = vcl_events[ i ];
-        auto event_fd = cur_event.data.u32;
-        if( cur_event.events & EPOLLIN ) {
-            auto accepted_sess = vppcom_session_accept( event_fd, nullptr, 0 );
+    for( auto const &ev: vcl_events ) {
+        auto event_fd = ev.data.u32;
+        if( ev.events & EPOLLIN ) {
+            async_io_service.post();
         }
     }
 }
+
+void vppcom_worker::callback( boost::system::error_code &ec ) {
+    if( ec ) {
+        log( "Error on async wait: "s + ec.message() );
+    }
+}   
 
 vppcom_socket::vppcom_socket( uint16_t port ) {
     socket_handler = vppcom_session_create( 0, 1 );
