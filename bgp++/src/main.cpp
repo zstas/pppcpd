@@ -3,7 +3,10 @@
 main_loop::main_loop( global_conf &c ):
     conf( c ),
     accpt( io, endpoint( boost::asio::ip::tcp::v4(), c.listen_on_port ) ),
-    sock( io )
+    sock( io ),
+    vpp_io( io ),
+    vpp_accpt( vpp_io, endpoint( boost::asio::ip::tcp::v4(), c.listen_on_port ) ),
+    vpp_sock( vpp_io )
 {
     for( auto &nei: c.neighbours ) {
         neighbours.emplace( nei.address, std::make_shared<bgp_fsm>( io, c, nei ) );
@@ -13,6 +16,7 @@ main_loop::main_loop( global_conf &c ):
 void main_loop::run() {
     log( "Starting event loop" );
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
+    vpp_accpt.async_accept( vpp_sock, std::bind( &main_loop::on_vpp_accept, this, std::placeholders::_1 ) );
     io.run();
 }
 
@@ -29,6 +33,14 @@ void main_loop::on_accept( error_code ec ) {
         nei_it->second->place_connection( std::move( sock ) );
     }
     accpt.async_accept( sock, std::bind( &main_loop::on_accept, this, std::placeholders::_1 ) );
+}
+
+void main_loop::on_vpp_accept( error_code ec ) {
+    if( ec ) {
+        std::cerr << "Error on accepting new connection: "s + ec.message() << std::endl;
+    }
+    log( "successful accept vpp" );
+    vpp_accpt.async_accept( vpp_sock, std::bind( &main_loop::on_vpp_accept, this, std::placeholders::_1 ) );
 }
 
 static void config_init() {

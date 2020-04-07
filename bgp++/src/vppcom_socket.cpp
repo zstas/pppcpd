@@ -39,42 +39,63 @@ void vppcom_service::run_epoll() {
         if( ev.events & EPOLLHUP ) {
             process_events( event_fd, op_type::ERROR );
         }
-            if( auto const &listener = listeners.find( event_fd ); listener != listeners.end() ) {
-                vppcom_endpt_t peer_endpt;
-                auto new_session = vppcom_session_accept( event_fd, &peer_endpt, O_NONBLOCK );
-                sessions.try_emplace( event_fd, event_fd, listener->second.local, peer_endpt );
-
-                struct epoll_event event;
-                memset( &event, 0, sizeof( event ) );
-                event.events = EPOLLIN | EPOLLOUT;
-                event.data.u32 = new_session;
-
-                auto ret = vppcom_epoll_ctl( epoll_fd, EPOLL_CTL_ADD, new_session, &event );
-                if( ret != VPPCOM_OK ) {
-                    log( "Cannot add event to epoll" );
-                }
-                
-            }
     }
+}
+
+void vppcom_service::schedule_event( op &&operation ) {
+    incoming_ops.push_back( std::move( operation ) );
 }
 
 void vppcom_service::process_events( uint32_t fd, op_type op ) {
     for( auto const &ev: scheduled_ops ) {
         if( ev.socket == fd && ev.type == op ) {
-            ev.func(  );
+            ev.func();
             return;
         }
     }
+    std::remove_if( scheduled_ops.begin(), scheduled_ops.end(), [ fd, op ]( struct op val ) -> bool { return val.socket == fd && val.type == op; } );
     incoming_ops.emplace_back( fd, op );
 }
 
-void vppcom_listener::async_accept( accept_handler func ) {
-    //io.post();
-    
+void vppcom_service::process_accept( op &operation ) {
+    // accept the session
+    vppcom_endpt_t peer_endpt;
+    auto new_session = vppcom_session_accept( operation.socket, &peer_endpt, O_NONBLOCK );
+
+    // add to epoll
+    struct epoll_event event;
+    memset( &event, 0, sizeof( event ) );
+    event.events = EPOLLIN | EPOLLOUT;
+    event.data.u32 = new_session;
+
+    auto ret = vppcom_epoll_ctl( epoll_fd, EPOLL_CTL_ADD, new_session, &event );
+    if( ret != VPPCOM_OK ) {
+        log( "Cannot add event to epoll" );
+    }
+
+    // construct socket
+
 }
 
-void vppcom_worker::callback( boost::system::error_code &ec ) {
-    if( ec ) {
-        log( "Error on async wait: "s + ec.message() );
+void vppcom_listener::async_accept( vppcom_session &s, std::function<void( boost::system::error_code &ec )> func ) {
+    op new_op{ sock, op_type::READ };
+    new_op.func = boost::bind( &vppcom_listener::on_accept, this, s, func );
+    io.schedule_event( std::move( new_op ) );
+} 
+
+void vppcom_listener::on_accept( vppcom_session &s, std::function<void( boost::system::error_code &ec)> func ) {
+    // accept the session
+    vppcom_endpt_t peer_endpt;
+    boost::system::error_code ec;
+
+    auto new_session = vppcom_session_accept( sock, &peer_endpt, O_NONBLOCK );
+    if( new_session == 0xFFFFFFFF ) {
+        ec.assign( boost::system::errc::connection_aborted, boost::system::system_category() );
     }
-}   
+
+    // construct socket
+    s.sock = new_session;
+    s.remote = peer_endpt;
+
+    func( ec );
+}
