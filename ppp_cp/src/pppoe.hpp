@@ -9,4 +9,11 @@ namespace pppoe {
     std::string processPPPOE( Packet inPkt );
 }
 
+struct pppoe_key {
+    std::array<uint8_t,6> mac;
+    uint16_t session_id;
+    uint16_t outer_vlan;
+    uint16_t inner_vlan;
+};
+
 #endif

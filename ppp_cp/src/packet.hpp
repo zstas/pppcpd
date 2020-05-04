@@ -6,6 +6,7 @@
 /* Ethernet frame types according to RFC 2516 */
 #define ETH_PPPOE_DISCOVERY 0x8863
 #define ETH_PPPOE_SESSION   0x8864
+#define ETH_VLAN            0x8100
 
 enum class PPPOE_CODE: uint8_t {
     SESSION_DATA = 0x00,
@@ -233,6 +234,7 @@ struct IPCP_OPT_4B {
 
 struct Packet {
     ETHERNET_HDR *eth { nullptr };
+    VLAN_HDR *vlan { nullptr };
     PPPOEDISC_HDR *pppoe_discovery { nullptr };
     PPPOESESSION_HDR *pppoe_session { nullptr };
     PPP_LCP *lcp { nullptr };

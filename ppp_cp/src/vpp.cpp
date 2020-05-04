@@ -27,11 +27,12 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
 
     auto &req = pppoe.get_request().get_payload();
 
-    req.client_ip[0] = ( ip_address >> 24 ) & 0xFF;
-    req.client_ip[1] = ( ip_address >> 16 ) & 0xFF;
-    req.client_ip[2] = ( ip_address >> 8 ) & 0xFF;
-    req.client_ip[3] = ( ip_address ) & 0xFF;
-    req.is_ipv6 = 0;
+    req.client_ip.af = vapi_enum_address_family::ADDRESS_IP4;
+
+    req.client_ip.un.ip4[0] = ( ip_address >> 24 ) & 0xFF;
+    req.client_ip.un.ip4[1] = ( ip_address >> 16 ) & 0xFF;
+    req.client_ip.un.ip4[2] = ( ip_address >> 8 ) & 0xFF;
+    req.client_ip.un.ip4[3] = ( ip_address ) & 0xFF;
 
     req.client_mac[0] = mac[0]; req.client_mac[1] = mac[1]; req.client_mac[2] = mac[2]; 
     req.client_mac[3] = mac[3]; req.client_mac[4] = mac[4]; req.client_mac[5] = mac[5]; 

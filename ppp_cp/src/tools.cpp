@@ -30,3 +30,11 @@ uint32_t random_uin32_t() {
     std::uniform_int_distribution<uint32_t> distr;
     return distr( eng );
 }
+
+uint16_t bswap16( uint16_t value ) noexcept {
+    return __builtin_bswap16( value );
+}
+
+uint32_t bswap32( uint32_t value ) noexcept {
+    return __builtin_bswap32( value );
+}

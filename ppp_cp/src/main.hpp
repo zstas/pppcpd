@@ -92,8 +92,6 @@ struct PPPOERuntime {
     std::string setupPPPOESession();
 
     std::string ifName;
-    int PPPOEDiscFD { 0 };
-    int PPPOESessFD { 0 };
     std::array<uint8_t,ETH_ALEN> hwaddr { 0 };
     std::set<uint16_t> sessionSet;
     std::map<uint16_t,PPPOESession> sessions;
@@ -101,6 +99,9 @@ struct PPPOERuntime {
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;
+
+    std::map<pppoe_key,bool> pendingSession;
+    std::map<pppoe_key,uint16_t> activeSessions;
 
     std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
@@ -146,8 +147,10 @@ private:
 
     boost::asio::generic::raw_protocol pppoed { PF_PACKET, SOCK_RAW };
     boost::asio::generic::raw_protocol pppoes { PF_PACKET, SOCK_RAW };
+    boost::asio::generic::raw_protocol vlan { PF_PACKET, SOCK_RAW };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
+    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_vlan { io, vlan };
     boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
 public:
     EVLoop() {
@@ -162,6 +165,9 @@ public:
         sockaddr.sll_protocol = htons( ETH_PPPOE_SESSION );
         raw_sock_ppp.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
 
+        sockaddr.sll_protocol = htons( ETH_VLAN );
+        raw_sock_vlan.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
+
         signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
             interrupted = true;
             io.stop();
@@ -169,6 +175,7 @@ public:
 
         raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
         raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
+        raw_sock_vlan.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_vlan, this, std::placeholders::_1, std::placeholders::_2 ) );
         
         periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
 
@@ -195,6 +202,60 @@ public:
             }
         }
         raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
+    }
+
+    void receive_vlan( boost::system::error_code ec, std::size_t len ) {
+        if( !ec ) {
+            std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
+            if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
+                log( error );
+            }
+        }
+        raw_sock_vlan.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_vlan, this, std::placeholders::_1, std::placeholders::_2 ) );
+    }
+
+    std::string receive_packet( std::vector<uint8_t> pkt ) {
+        uint16_t outer_vlan = 0;
+        uint16_t inner_vlan = 0;
+        uint16_t type;
+        uint8_t len_to_strip = 0;
+
+        ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
+        type = bswap16( eth->ethertype );
+        len_to_strip += sizeof( *eth );
+        if( type == ETH_VLAN ) {
+            VLAN_HDR *vlan = reinterpret_cast<VLAN_HDR*>( eth->getPayload() );
+            outer_vlan = bswap16( vlan->vlan_id & 0xFF0F );
+            type = bswap16( vlan->ethertype );
+            len_to_strip += sizeof( *vlan );
+            if( type == ETH_VLAN ) {
+                vlan = reinterpret_cast<VLAN_HDR*>( vlan->getPayload() );
+                inner_vlan = bswap16( vlan->vlan_id & 0xFF0F );
+                type = bswap16( vlan->ethertype );
+                len_to_strip += sizeof( *vlan );
+            }
+        }
+
+        if( pkt.size() < len_to_strip ) {
+            return "Packet to small to process";
+        }
+        pkt.erase( pkt.begin(), pkt.begin() + len_to_strip );
+
+        switch( type ) {
+        case ETH_PPPOE_DISCOVERY:
+            if( auto const &error = pppoe::processPPPOE( pkt ); !error.empty() ) {
+                return error;
+            }
+            break;
+        case ETH_PPPOE_SESSION:
+        if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
+                return error;
+            }
+            break;
+        default:
+            return "Wrong ethertype for this service";
+        }
+        return {};
     }
 
     void periodic( boost::system::error_code ec ) {
