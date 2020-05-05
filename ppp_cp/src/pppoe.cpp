@@ -18,7 +18,7 @@ uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::s
 std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::vector<uint8_t> &pkt ) {
     std::map<PPPOE_TAG,std::string> tags;
     PPPOEDISC_TLV *tlv = nullptr;
-    auto offset = pkt.data() + sizeof( ETHERNET_HDR) + sizeof( PPPOEDISC_HDR );
+    auto offset = pkt.data();
     while( true ) {
         tlv = reinterpret_cast<PPPOEDISC_TLV*>( offset );
         auto tag = PPPOE_TAG { ntohs( tlv->type ) };
@@ -45,45 +45,114 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
     return { std::move( tags ), "" };
 }
 
-std::string pppoe::processPPPOE( Packet inPkt ) {
-    std::vector<uint8_t> reply;
-    reply.reserve( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) + 128 );
+static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan ) {
+    log( "Processing PADI packet" );
 
-    inPkt.eth = reinterpret_cast<ETHERNET_HDR*>( inPkt.bytes.data() );
-    if( inPkt.eth->ethertype != htons( ETH_PPPOE_DISCOVERY ) ) {
-        return "Not pppoe discovery packet";
+    outPkt.resize( sizeof( PPPOEDISC_HDR ) + 128 );
+    PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
+    
+    rep_pppoe->type = 1;
+    rep_pppoe->version = 1;
+    rep_pppoe->session_id = 0;
+    rep_pppoe->length = 0;    
+    rep_pppoe->code = PPPOE_CODE::PADO;
+    
+    if( inPkt.size() < sizeof( PPPOEDISC_HDR ) ) {
+        return "Too small packet";
+    }
+    inPkt.erase( inPkt.begin(), inPkt.begin() + sizeof( PPPOEDISC_HDR) );
+    auto [ tags, err ] = pppoe::parseTags( inPkt );
+    if( !err.empty() ) {
+        return "Cannot process PADI: " + err;
     }
 
-    inPkt.pppoe_discovery = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.eth->getPayload() );
+    // Inserting tags
+    auto taglen = 0;
 
-    reply.resize( sizeof( ETHERNET_HDR ) + sizeof( PPPOEDISC_HDR ) );
-    log( "Incoming " + std::to_string( inPkt.pppoe_discovery ) );
+    // At first we need to insert AC NAME
+    taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_NAME, runtime->pppoe_conf->ac_name );
+
+    // Check for HOST UNIQ
+    if( auto const &tagIt = tags.find( PPPOE_TAG::HOST_UNIQ ); tagIt != tags.end() ) {
+        taglen += pppoe::insertTag( outPkt, PPPOE_TAG::HOST_UNIQ, tagIt->second );
+    }
+
+    // Check for SERVICE NAME
+    if( auto const &tagIt = tags.find( PPPOE_TAG::SERVICE_NAME ); tagIt != tags.end() ) {
+        std::string selected_service;
+
+        for( auto const &service: runtime->pppoe_conf->service_name ) {
+            if( service == tagIt->second ) {
+                selected_service = tagIt->second;
+                break;
+            }
+        }
+
+        if( selected_service.empty() && runtime->pppoe_conf->ignoreServiceName ) {
+            selected_service = tagIt->second;
+        }
+
+        if( selected_service.empty() && !runtime->pppoe_conf->ignoreServiceName ) {
+            return "Wrong service name";
+        }
+
+        taglen += pppoe::insertTag( outPkt, PPPOE_TAG::SERVICE_NAME, selected_service );
+    }
+
+    // Check our policy if we need to insert AC COOKIE
+    std::string cookie;
+    if( runtime->pppoe_conf->insertCookie ) {
+        cookie = random_string( 16 );
+        taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_COOKIE, cookie );
+    }
+
+    if( auto const & err = runtime->pendeSession( mac, outer_vlan, inner_vlan, cookie); !err.empty() ) {
+        return "Cannot pende session: " + err;
+    }
+
+    rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
+    rep_pppoe->length = bswap16( taglen );
+
+    return {};
+}
+
+static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt ) {
+    log( "Processing PADR packet" );
+        
+    outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     
-    ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
-    rep_eth->ethertype = htons( ETH_PPPOE_DISCOVERY );
-    rep_eth->dst_mac = inPkt.eth->src_mac;
+    PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
 
-    PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
     rep_pppoe->type = 1;
     rep_pppoe->version = 1;
     rep_pppoe->session_id = 0;
     rep_pppoe->length = 0;
+    rep_pppoe->code = PPPOE_CODE::PADS;
+    
+    if( inPkt.size() < sizeof( PPPOEDISC_HDR ) ) {
+        return "Too small packet";
+    }
+    inPkt.erase( inPkt.begin(), inPkt.begin() + sizeof( PPPOEDISC_HDR) );
+    auto tags = pppoe::parseTags( inPkt );
 
+    return {};
+}
+
+std::string processPPPOE( std::vector<uint8_t> &inPkt, mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan ) {
+    std::vector<uint8_t> reply;
+    reply.reserve( sizeof( PPPOEDISC_HDR ) + 128 );
+
+    PPPOEDISC_HDR *disc = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.data() );
+
+    log( "Incoming " + std::to_string( disc ) );
+    
     // Starting to prepare the answer
-    switch( inPkt.pppoe_discovery->code ) {
+    switch( disc->code ) {
     case PPPOE_CODE::PADI:
-        log( "Processing PADI packet" );
-        rep_pppoe->code = PPPOE_CODE::PADO;
+        process_padi();
         break;
     case PPPOE_CODE::PADR:
-        log( "Processing PADR packet" );
-        rep_pppoe->code = PPPOE_CODE::PADS;
-        if( const auto &[ sid, err ] = runtime->allocateSession( inPkt.eth->src_mac ); !err.empty() ) {
-            return "Cannot process PPPOE pkt: " + err;
-        } else {
-            log( "Session " + std::to_string( sid ) + " is UP!" );
-            rep_pppoe->session_id = htons( sid );
-        }
+        process_padr();
         break;
     case PPPOE_CODE::PADT:
         log( "Processing PADT packet" );
@@ -98,69 +167,6 @@ std::string pppoe::processPPPOE( Packet inPkt ) {
         return "Incorrect code for packet";
     }
 
-    // Parsing tags
-    std::optional<std::string> chosenService;
-    std::optional<std::string> hostUniq;
-    if( auto const &[ tags, error ] = pppoe::parseTags( inPkt.bytes ); !error.empty() ) {
-        return "Cannot parse tags cause: " + error;
-    } else {
-        for( auto &[ tag, val ]: tags ) {
-            switch( tag ) {
-            case PPPOE_TAG::AC_NAME:
-                break;
-            case PPPOE_TAG::AC_COOKIE:
-                break;
-            case PPPOE_TAG::HOST_UNIQ:
-                if( !val.empty() ) {
-                    hostUniq = val;
-                }
-                break;
-            case PPPOE_TAG::VENDOR_SPECIFIC:
-                break;
-            case PPPOE_TAG::RELAY_SESSION_ID:
-                break;
-            case PPPOE_TAG::AC_SYSTEM_ERROR:
-                break;
-            case PPPOE_TAG::GENERIC_ERROR:
-                break;
-            case PPPOE_TAG::SERVICE_NAME:
-                // RFC 2516:
-                // If the Access Concentrator can not serve the PADI it MUST NOT respond with a PADO.
-                if( !val.empty() && val != runtime->pppoe_conf->service_name ) {
-                    if( runtime->pppoe_conf->ignoreServiceName ) {
-                        log( "Service name is differ, but we can ignore it" );
-                        chosenService = val;
-                    } else {
-                        return "Cannot serve \"" + val + "\" service, because in policy only \"" + runtime->pppoe_conf->service_name + "\"";
-                    }
-                }
-                break;
-            case PPPOE_TAG::SERVICE_NAME_ERROR:
-                break;
-            case PPPOE_TAG::END_OF_LIST:
-                break;
-            }
-        }
-    }
-
-    // Inserting tags
-    auto taglen = 0;
-    taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_NAME, runtime->pppoe_conf->ac_name );
-
-    if( chosenService.has_value() ) {
-        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, chosenService.value() );
-    } else {
-        taglen += pppoe::insertTag( reply, PPPOE_TAG::SERVICE_NAME, runtime->pppoe_conf->service_name );
-    }
-
-    if( hostUniq.has_value() ) {
-        taglen += pppoe::insertTag( reply, PPPOE_TAG::HOST_UNIQ, hostUniq.value() );
-    }
-
-    if( runtime->pppoe_conf->insertCookie ) {
-        taglen += pppoe::insertTag( reply, PPPOE_TAG::AC_COOKIE, random_string( 16 ) );
-    }
-
     // In case of vector is increased
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
     rep_pppoe->length = htons( taglen );
@@ -168,5 +174,5 @@ std::string pppoe::processPPPOE( Packet inPkt ) {
 
     pppoe_outcoming.push( std::move( reply ) );
 
-    return "";
+    return {};
 }

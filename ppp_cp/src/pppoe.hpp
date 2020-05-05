@@ -6,14 +6,7 @@
 namespace pppoe {
     uint8_t insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val );
     std::tuple<std::map<PPPOE_TAG,std::string>,std::string> parseTags( std::vector<uint8_t> &pkt );
-    std::string processPPPOE( Packet inPkt );
+    std::string processPPPOE( std::vector<uint8_t> &inPkt, mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan );
 }
-
-struct pppoe_key {
-    std::array<uint8_t,6> mac;
-    uint16_t session_id;
-    uint16_t outer_vlan;
-    uint16_t inner_vlan;
-};
 
 #endif

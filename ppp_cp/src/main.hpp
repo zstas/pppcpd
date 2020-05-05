@@ -45,7 +45,112 @@
 #include "vpp.hpp"
 
 using namespace std::string_literals;
+using mac_t = std::array<uint8_t,6>;
+
 extern std::atomic_bool interrupted;
+
+class encapsulation_t {
+    mac_t source_mac { 0, 0, 0, 0, 0, 0 };
+    mac_t destination_mac { 0, 0, 0, 0, 0, 0 };
+    uint16_t outer_vlan { 0 };
+    uint16_t inner_vlan { 0 };
+    uint16_t type;
+public:
+    encapsulation_t() = delete;
+
+    encapsulation_t( std::vector<uint8_t> &pkt ) {
+        if( pkt.size() < sizeof( ETHERNET_HDR ) ) {
+            return;
+        }
+
+        ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
+        std::copy( h->src_mac.begin(), h->src_mac.end(), source_mac );
+        std::copy( h->dst_mac.begin(), h->dst_mac.end(), destination_mac );
+
+        type = bswap16( h->ethertype );
+
+        if( type == ETH_VLAN ) {
+            VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
+            outer_vlan = 0x0FFF & bswap16( v->vlan_id );
+            type = bswap16( v->ethertype );
+            if( type == ETH_VLAN ) {
+                v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
+                inner_vlan = 0x0FFF & bswap16( v->vlan_id );
+                type = bswap16( v->ethertype );
+            }
+        }
+    }
+
+    std::vector<uint8_t> generate_header( mac_t mac, uint16_t ethertype ) {
+        std::vector<uint8_t> pkt;
+        auto len = sizeof( ETHERNET_HDR );
+
+        if( outer_vlan != 0 ) {
+            len += sizeof( VLAN_HDR );
+        }
+
+        if( inner_vlan != 0 ) {
+            len += sizeof( VLAN_HDR );
+        }
+
+        pkt.resize( len );
+        ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
+
+        std::copy( mac.begin(), mac.end(), h->src_mac );
+        std::copy( source_mac.begin(), source_mac.end(), h->dst_mac );
+        
+        if( outer_vlan == 0 ) {
+            h->ethertype = bswap16( ethertype );
+            return pkt;
+        }
+
+        h->ethertype = bswap16( ETH_VLAN );
+
+        VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
+        v->vlan_id = bswap16( outer_vlan );
+        if( inner_vlan == 0 ) {
+            v->ethertype = bswap16( ethertype );
+            return pkt;
+        }
+
+        v->ethertype = bswap16( ETH_VLAN );
+        v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
+        v->vlan_id = bswap16( inner_vlan );
+        v->ethertype = bswap16( ethertype );
+
+        return pkt;
+    }
+};
+
+class pppoe_conn_t {
+    mac_t mac;
+    uint16_t outer_vlan;
+    uint16_t inner_vlan;
+    std::string cookie;
+public:
+    pppoe_conn_t() = delete;
+    pppoe_conn_t( mac_t m, uint16_t o, uint16_t i, std::string c ):
+        mac( m ),
+        outer_vlan( o ),
+        inner_vlan( i ),
+        cookie( std::move( c ) )
+    {}
+};
+
+class pppoe_key_t {
+    mac_t mac;
+    uint16_t session_id;
+    uint16_t outer_vlan;
+    uint16_t inner_vlan;
+public:
+    pppoe_key_t() = delete;
+    pppoe_key_t( mac_t m, uint16_t s, uint16_t o, uint16_t i ):
+        mac( m ),
+        session_id( s ),
+        outer_vlan( o ),
+        inner_vlan( i )
+    {}
+};
 
 struct PPPOEQ {
     std::mutex mutex;
@@ -100,8 +205,28 @@ struct PPPOERuntime {
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;
 
-    std::map<pppoe_key,bool> pendingSession;
-    std::map<pppoe_key,uint16_t> activeSessions;
+    std::set<pppoe_conn_t> pendingSession;
+    std::map<pppoe_key_t,uint16_t> activeSessions;
+
+    // TODO: create periodic callback which will be clearing pending sessions
+    std::string pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
+        pppoe_conn_t key { mac, outer_vlan, inner_vlan, cookie };
+
+        if( auto const &[it, ret ] = pendingSession.emplace( key ); !ret ) {
+            return { "Cannot allocate new Pending session" };
+        }
+        return {};
+    }
+
+    bool checkSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
+        pppoe_conn_t key { mac, outer_vlan, inner_vlan, cookie };
+
+        if( auto const &it = pendingSession.find( key ); it != pendingSession.end() ) {
+            pendingSession.erase( it );
+            return true;
+        }
+        return false;
+    }
 
     std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
