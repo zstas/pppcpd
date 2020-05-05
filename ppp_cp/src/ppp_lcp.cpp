@@ -5,33 +5,25 @@ extern PPPOEQ ppp_outcoming;
 
 FSM_RET LCP_FSM::send_conf_req() {
     log( "LCP: send_conf_req current state: " + std::to_string( state ) );
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
-    Packet pkt{};
-    pkt.bytes.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + 256 );
-    // Fill ethernet part
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.eth->dst_mac = session.mac;
-    pkt.eth->src_mac = runtime->hwaddr;
-    pkt.eth->ethertype = htons( ETH_PPPOE_SESSION );
+    std::vector<uint8_t> pkt;
+    pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + 256 );
+
     // Fill pppoe part
-    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
-    pkt.pppoe_session->version = 1;
-    pkt.pppoe_session->type = 1;
-    pkt.pppoe_session->ppp_protocol = htons( static_cast<uint16_t>( PPP_PROTO::LCP ) );
-    pkt.pppoe_session->code = PPPOE_CODE::SESSION_DATA;
-    pkt.pppoe_session->session_id = htons( session_id );
+    PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
+    pppoe->version = 1;
+    pppoe->type = 1;
+    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::LCP ) );
+    pppoe->code = PPPOE_CODE::SESSION_DATA;
+    pppoe->session_id = bswap16( session_id );
 
     // Fill LCP part
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp->code = LCP_CODE::CONF_REQ;
-    pkt.lcp->identifier = pkt_id;
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp->code = LCP_CODE::CONF_REQ;
+    lcp->identifier = pkt_id;
+
     // Fill LCP options
     auto lcpOpts = 0;
-    auto mru = reinterpret_cast<LCP_OPT_2B*>( pkt.lcp->getPayload() );
+    auto mru = reinterpret_cast<LCP_OPT_2B*>( lcp->getPayload() );
     mru->set( LCP_OPTIONS::MRU, runtime->lcp_conf->MRU );
     lcpOpts += mru->len;
 
@@ -56,37 +48,33 @@ FSM_RET LCP_FSM::send_conf_req() {
     lcpOpts += mn->len;
 
     // After all fix lenght in headers
-    pkt.lcp->length = htons( sizeof( PPP_LCP ) + lcpOpts );
-    pkt.pppoe_session->length = htons( sizeof( PPP_LCP ) + lcpOpts + 2 ); // plus 2 bytes of ppp proto
-    pkt.bytes.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + lcpOpts  );
+    lcp->length = bswap16( sizeof( PPP_LCP ) + lcpOpts );
+    pppoe->length = bswap16( sizeof( PPP_LCP ) + lcpOpts + 2 ); // plus 2 bytes of ppp proto
+    pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + lcpOpts  );
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    pkt.insert( pkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( pkt.bytes );
+    ppp_outcoming.push( pkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_conf_ack( Packet &pkt ) {
+FSM_RET LCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
     log( "LCP: send_conf_ack current state: " + std::to_string( state ) );
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
 
-    // Fill ethernet part
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.eth->dst_mac = session.mac;
-    pkt.eth->src_mac = runtime->hwaddr;
-
-    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp->code = LCP_CODE::CONF_ACK;
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp->code = LCP_CODE::CONF_ACK;
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( pkt.bytes ) );
+    ppp_outcoming.push( std::move( inPkt ) );
     if( state == PPP_FSM_STATE::Opened ) {
         return { PPP_FSM_ACTION::LAYER_UP, "" };
     }
@@ -94,47 +82,37 @@ FSM_RET LCP_FSM::send_conf_ack( Packet &pkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_conf_nak( Packet &pkt ) {
+FSM_RET LCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
     log( "LCP: send_conf_nak current state: " + std::to_string( state ) );
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
 
-    // Fill ethernet part
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.eth->dst_mac = session.mac;
-    pkt.eth->src_mac = runtime->hwaddr;
-
-    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp->code = LCP_CODE::CONF_NAK;
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp->code = LCP_CODE::CONF_NAK;
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( pkt.bytes ) );
+    ppp_outcoming.push( std::move( inPkt ) );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::check_conf( Packet &pkt ) {
-    uint32_t len = ntohs( pkt.lcp->length ) - sizeof( PPP_LCP );
+FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+
+    uint32_t len = bswap16( lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
         return { PPP_FSM_ACTION::NONE, "There is no options" };
     }
 
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
-
     LCP_CODE code = LCP_CODE::CONF_ACK;
     uint32_t offset = 0;
     while( len > offset ) {
-        auto opt = reinterpret_cast<LCP_OPT_HDR*>( pkt.lcp->getPayload() + offset );
+        auto opt = reinterpret_cast<LCP_OPT_HDR*>( lcp->getPayload() + offset );
         offset += opt->len;
         if( opt->opt == LCP_OPTIONS::MRU ) {
             auto mru = reinterpret_cast<LCP_OPT_2B*>( opt );
@@ -156,7 +134,7 @@ FSM_RET LCP_FSM::check_conf( Packet &pkt ) {
             state = PPP_FSM_STATE::Ack_Sent;
         }
         nak_counter = 0;
-        return send_conf_ack( pkt );
+        return send_conf_ack( inPkt );
     } else {
         if( state != PPP_FSM_STATE::Ack_Rcvd ) {
             state = PPP_FSM_STATE::Req_Sent;
@@ -164,7 +142,7 @@ FSM_RET LCP_FSM::check_conf( Packet &pkt ) {
         if( code == LCP_CODE::CONF_NAK ) {
             nak_counter++;
         }
-        return send_conf_nak( pkt );
+        return send_conf_nak( inPkt );
     }
 }
 
@@ -180,56 +158,42 @@ FSM_RET LCP_FSM::send_term_req() {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_term_ack( Packet &pkt ) {
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
+FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->getPayload() );
 
-    // Fill ethernet part
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.eth->dst_mac = session.mac;
-    pkt.eth->src_mac = runtime->hwaddr;
-
-    // Fill LCP ECHO part
-    pkt.lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp_echo->code = LCP_CODE::TERM_ACK;
-    if( pkt.lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
+    lcp_echo->code = LCP_CODE::TERM_ACK;
+    if( lcp_echo->magic_number != bswap32( session.peer_magic_number ) ) {
         return { PPP_FSM_ACTION::NONE, "Magic number is wrong!" };
     }
-    pkt.lcp_echo->magic_number = htonl( session.our_magic_number );
+    lcp_echo->magic_number = bswap32( session.our_magic_number );
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
     log( "Sending LCP TERM ACK" );
-    ppp_outcoming.push( pkt.bytes );
+    ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_echo_rep( Packet &pkt ) {
-    auto const &sessIt = runtime->sessions.find( session_id );
-    if( sessIt == runtime->sessions.end() ) {
-        return { PPP_FSM_ACTION::NONE, "Cannot send conf req for unexisting session" };
-    }
-    auto &session = sessIt->second;
+FSM_RET LCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->getPayload() );
 
-    // Fill ethernet part
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.eth->dst_mac = session.mac;
-    pkt.eth->src_mac = runtime->hwaddr;
-
-    // Fill LCP ECHO part
-    pkt.lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pkt.pppoe_session->getPayload() );
-    pkt.lcp_echo->code = LCP_CODE::ECHO_REPLY;
-    if( pkt.lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
+    lcp_echo->code = LCP_CODE::ECHO_REPLY;
+    if( lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
         return { PPP_FSM_ACTION::NONE, "Magic number is wrong!" };
     }
-    pkt.lcp_echo->magic_number = htonl( session.our_magic_number );
+    lcp_echo->magic_number = htonl( session.our_magic_number );
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
     log( "Sending LCP ECHO REPLY" );
-    ppp_outcoming.push( pkt.bytes );
+    ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }

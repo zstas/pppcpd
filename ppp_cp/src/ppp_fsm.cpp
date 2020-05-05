@@ -3,9 +3,12 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
-FSM_RET PPP_FSM::receive( Packet &pkt ) {
+FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
     log( "receive pkt in state: " + std::to_string( state ) );
-    if( pkt.lcp == nullptr ) {
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+
+    if( lcp == nullptr ) {
         return { PPP_FSM_ACTION::NONE, "LCP pointer is incorrect" };
     }
 
@@ -14,12 +17,12 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
             return { PPP_FSM_ACTION::NONE, "Received packet in invalid state: "s + std::to_string( state ) };
     }
     
-    switch( pkt.lcp->code ) {
+    switch( lcp->code ) {
     case LCP_CODE::CONF_REQ:
-        return recv_conf_req( pkt );
+        return recv_conf_req( inPkt );
         break;
     case LCP_CODE::CONF_ACK:
-        return recv_conf_ack( pkt );
+        return recv_conf_ack( inPkt );
 	    break;
     
     case LCP_CODE::CONF_NAK:
@@ -28,7 +31,7 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
 	    break;
     
     case LCP_CODE::TERM_REQ:
-	    return recv_term_req( pkt );
+	    return recv_term_req( inPkt );
 	    break;
     
     case LCP_CODE::TERM_ACK:
@@ -39,7 +42,7 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
         //fsm_rcoderej
         break;
     case LCP_CODE::ECHO_REQ:
-        return send_echo_rep( pkt );
+        return send_echo_rep( inPkt );
     default:
         //send CODEREJ
         break;
@@ -49,7 +52,7 @@ FSM_RET PPP_FSM::receive( Packet &pkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET PPP_FSM::recv_conf_req( Packet &pkt ) {
+FSM_RET PPP_FSM::recv_conf_req( std::vector<uint8_t> &inPkt ) {
     log( "recv_conf_req current state: " + std::to_string( state ) );
     switch( state ){
     case PPP_FSM_STATE::Closing:
@@ -73,7 +76,7 @@ FSM_RET PPP_FSM::recv_conf_req( Packet &pkt ) {
         break;
     }
 
-    return check_conf( pkt );
+    return check_conf( inPkt );
 }
 
 void PPP_FSM::layer_up() {
@@ -126,15 +129,14 @@ void PPP_FSM::open() {
     }
 }
 
-FSM_RET PPP_FSM::recv_conf_ack( Packet &pkt ) {
+FSM_RET PPP_FSM::recv_conf_ack( std::vector<uint8_t> &inPkt ) {
     log( "recv_conf_ack current state: " + std::to_string( state ) );
 
     // Parse in case of moved data
-    pkt.eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    pkt.pppoe_session = reinterpret_cast<PPPOESESSION_HDR*>( pkt.eth->getPayload() );
-    pkt.lcp = reinterpret_cast<PPP_LCP*>( pkt.pppoe_session->getPayload() );
+    PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
-    if( pkt.lcp->identifier != pkt_id ) {
+    if( lcp->identifier != pkt_id ) {
         return { PPP_FSM_ACTION::NONE, "Packet identifier is not match with our" };
     }
 
@@ -170,7 +172,7 @@ FSM_RET PPP_FSM::recv_conf_ack( Packet &pkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET PPP_FSM::recv_term_req( Packet &pkt ) {
+FSM_RET PPP_FSM::recv_term_req( std::vector<uint8_t> &inPkt ) {
     switch( state ) {
     case PPP_FSM_STATE::Ack_Rcvd:
     case PPP_FSM_STATE::Ack_Sent:
@@ -178,13 +180,13 @@ FSM_RET PPP_FSM::recv_term_req( Packet &pkt ) {
 	    break;
     case PPP_FSM_STATE::Opened:
         state = PPP_FSM_STATE::Stopping;
-        send_term_ack( pkt );
+        send_term_ack( inPkt );
         return { PPP_FSM_ACTION::LAYER_DOWN, "" };
 	    break;
     default:
        break;
     }
 
-    send_term_ack( pkt );
+    send_term_ack( inPkt );
     return { PPP_FSM_ACTION::NONE, "" };
 }

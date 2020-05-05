@@ -13,7 +13,7 @@ enum class PPP_PROTO : uint16_t {
 };
 
 namespace ppp {
-    std::string processPPP( Packet inPkt );
+    std::string processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t &encap );
 }
 
 #endif

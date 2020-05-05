@@ -1,6 +1,13 @@
+#ifndef SESSION_HPP
+#define SESSION_HPP
+
+#include "ppp_lcp.hpp"
+#include "ppp_auth.hpp"
+#include "ppp_ipcp.hpp"
+
 struct PPPOESession {
     // General Data
-    std::array<uint8_t,6> mac;
+    encapsulation_t encap;
     bool started { false };
     uint32_t aaa_session_id{ UINT32_MAX };
 
@@ -23,12 +30,12 @@ struct PPPOESession {
     uint32_t our_magic_number;
     uint32_t peer_magic_number;
 
-    PPPOESession( std::array<uint8_t,6> m, uint16_t sid ): 
-        mac( m ),
+    PPPOESession( encapsulation_t e, uint16_t sid ): 
+        encap( e ),
         session_id( sid ),
-        lcp( sid ),
-        auth( sid ),
-        ipcp( sid )
+        lcp( *this ),
+        auth( *this ),
+        ipcp( *this )
     {
         log( "Session UP: " + std::to_string( sid ) );
     }
@@ -40,3 +47,5 @@ struct PPPOESession {
     std::string provision_dp();
     std::string deprovision_dp();
 };
+
+#endif

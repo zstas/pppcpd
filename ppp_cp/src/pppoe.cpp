@@ -7,8 +7,8 @@ uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::s
     std::vector<uint8_t> tagvec;
     tagvec.resize( 4 );
     auto tlv = reinterpret_cast<PPPOEDISC_TLV*>( tagvec.data() );
-    tlv->type = htons( static_cast<uint16_t>( tag ) );
-    tlv->length = htons( val.size() );
+    tlv->type = bswap16( static_cast<uint16_t>( tag ) );
+    tlv->length = bswap16( val.size() );
     tagvec.insert( tagvec.end(), val.begin(), val.end() );
     pkt.insert( pkt.end(), tagvec.begin(), tagvec.end() );     
 
@@ -45,7 +45,7 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
     return { std::move( tags ), "" };
 }
 
-static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan ) {
+static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
     log( "Processing PADI packet" );
 
     outPkt.resize( sizeof( PPPOEDISC_HDR ) + 128 );
@@ -106,7 +106,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
         taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_COOKIE, cookie );
     }
 
-    if( auto const & err = runtime->pendeSession( mac, outer_vlan, inner_vlan, cookie); !err.empty() ) {
+    if( auto const & err = runtime->pendeSession( encap.source_mac, encap.outer_vlan, encap.inner_vlan, cookie); !err.empty() ) {
         return "Cannot pende session: " + err;
     }
 
@@ -116,7 +116,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
     return {};
 }
 
-static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt ) {
+static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
     log( "Processing PADR packet" );
         
     outPkt.resize( sizeof( PPPOEDISC_HDR ) );
@@ -128,19 +128,33 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
     rep_pppoe->session_id = 0;
     rep_pppoe->length = 0;
     rep_pppoe->code = PPPOE_CODE::PADS;
-    
+
     if( inPkt.size() < sizeof( PPPOEDISC_HDR ) ) {
         return "Too small packet";
     }
     inPkt.erase( inPkt.begin(), inPkt.begin() + sizeof( PPPOEDISC_HDR) );
-    auto tags = pppoe::parseTags( inPkt );
+    auto [ tags, err ] = pppoe::parseTags( inPkt );
+    if( !err.empty() ) {
+        return "Cannot process PADR: " + err;
+    }
+
+    std::string cookie;
+    if( auto const &it = tags.find( PPPOE_TAG::AC_COOKIE ); it != tags.end() ) {
+        cookie = it->second;
+    }
+
+    if( !runtime->checkSession( encap.source_mac, encap.outer_vlan, encap.inner_vlan, cookie ) ) {
+        return "We don't expect this session";
+    }
+
+    
 
     return {};
 }
 
-std::string processPPPOE( std::vector<uint8_t> &inPkt, mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan ) {
-    std::vector<uint8_t> reply;
-    reply.reserve( sizeof( PPPOEDISC_HDR ) + 128 );
+std::string processPPPOE( std::vector<uint8_t> &inPkt, const encapsulation_t &encap ) {
+    std::vector<uint8_t> outPkt;
+    outPkt.reserve( sizeof( PPPOEDISC_HDR ) + 128 );
 
     PPPOEDISC_HDR *disc = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.data() );
 
@@ -149,30 +163,24 @@ std::string processPPPOE( std::vector<uint8_t> &inPkt, mac_t mac, uint16_t outer
     // Starting to prepare the answer
     switch( disc->code ) {
     case PPPOE_CODE::PADI:
-        process_padi();
+        process_padi( inPkt, outPkt, encap );
         break;
     case PPPOE_CODE::PADR:
-        process_padr();
+        process_padr( inPkt, outPkt, encap );
         break;
     case PPPOE_CODE::PADT:
         log( "Processing PADT packet" );
-        if( const auto &err = runtime->deallocateSession( inPkt.eth->src_mac, ntohs( inPkt.pppoe_discovery->session_id ) ); !err.empty() ) {
-            log( "Cannot terminate session: " + err );
-        } else {
-            log( "Terminated session " + std::to_string( ntohs( inPkt.pppoe_discovery->session_id ) ) );
-        }
+        // TODO
         return "Received PADT, send nothing";
     default:
         log( "Incorrect code for packet" );
         return "Incorrect code for packet";
     }
 
-    // In case of vector is increased
-    rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( reply.data() + sizeof( ETHERNET_HDR ) );
-    rep_pppoe->length = htons( taglen );
-    log( "Outcoming " + std::to_string( rep_pppoe ) );
+    auto header = encap.generate_header( runtime->hwaddr, ETH_PPPOE_DISCOVERY );
+    outPkt.insert( outPkt.begin(), header.begin(), header.end() );
 
-    pppoe_outcoming.push( std::move( reply ) );
+    pppoe_outcoming.push( std::move( outPkt ) );
 
     return {};
 }

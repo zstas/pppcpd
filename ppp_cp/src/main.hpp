@@ -28,6 +28,7 @@
 #include <boost/asio/basic_raw_socket.hpp>
 
 // Local headers
+#include "encap.hpp"
 #include "pppoe.hpp"
 #include "ethernet.hpp"
 #include "log.hpp"
@@ -45,82 +46,8 @@
 #include "vpp.hpp"
 
 using namespace std::string_literals;
-using mac_t = std::array<uint8_t,6>;
 
 extern std::atomic_bool interrupted;
-
-class encapsulation_t {
-    mac_t source_mac { 0, 0, 0, 0, 0, 0 };
-    mac_t destination_mac { 0, 0, 0, 0, 0, 0 };
-    uint16_t outer_vlan { 0 };
-    uint16_t inner_vlan { 0 };
-    uint16_t type;
-public:
-    encapsulation_t() = delete;
-
-    encapsulation_t( std::vector<uint8_t> &pkt ) {
-        if( pkt.size() < sizeof( ETHERNET_HDR ) ) {
-            return;
-        }
-
-        ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
-        std::copy( h->src_mac.begin(), h->src_mac.end(), source_mac );
-        std::copy( h->dst_mac.begin(), h->dst_mac.end(), destination_mac );
-
-        type = bswap16( h->ethertype );
-
-        if( type == ETH_VLAN ) {
-            VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
-            outer_vlan = 0x0FFF & bswap16( v->vlan_id );
-            type = bswap16( v->ethertype );
-            if( type == ETH_VLAN ) {
-                v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
-                inner_vlan = 0x0FFF & bswap16( v->vlan_id );
-                type = bswap16( v->ethertype );
-            }
-        }
-    }
-
-    std::vector<uint8_t> generate_header( mac_t mac, uint16_t ethertype ) {
-        std::vector<uint8_t> pkt;
-        auto len = sizeof( ETHERNET_HDR );
-
-        if( outer_vlan != 0 ) {
-            len += sizeof( VLAN_HDR );
-        }
-
-        if( inner_vlan != 0 ) {
-            len += sizeof( VLAN_HDR );
-        }
-
-        pkt.resize( len );
-        ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
-
-        std::copy( mac.begin(), mac.end(), h->src_mac );
-        std::copy( source_mac.begin(), source_mac.end(), h->dst_mac );
-        
-        if( outer_vlan == 0 ) {
-            h->ethertype = bswap16( ethertype );
-            return pkt;
-        }
-
-        h->ethertype = bswap16( ETH_VLAN );
-
-        VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
-        v->vlan_id = bswap16( outer_vlan );
-        if( inner_vlan == 0 ) {
-            v->ethertype = bswap16( ethertype );
-            return pkt;
-        }
-
-        v->ethertype = bswap16( ETH_VLAN );
-        v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
-        v->vlan_id = bswap16( inner_vlan );
-        v->ethertype = bswap16( ethertype );
-
-        return pkt;
-    }
-};
 
 class pppoe_conn_t {
     mac_t mac;
@@ -135,6 +62,13 @@ public:
         inner_vlan( i ),
         cookie( std::move( c ) )
     {}
+
+    bool operator<( const pppoe_conn_t &r ) const {
+        return  ( mac < r.mac ) || 
+                ( outer_vlan < r.outer_vlan ) || 
+                ( inner_vlan < r.inner_vlan ) || 
+                ( cookie < r.cookie );
+    }
 };
 
 class pppoe_key_t {
@@ -197,16 +131,15 @@ struct PPPOERuntime {
     std::string setupPPPOESession();
 
     std::string ifName;
-    std::array<uint8_t,ETH_ALEN> hwaddr { 0 };
+    mac_t hwaddr { 0, 0, 0, 0, 0, 0 };
     std::set<uint16_t> sessionSet;
-    std::map<uint16_t,PPPOESession> sessions;
+    std::set<pppoe_conn_t> pendingSession;
+    std::map<pppoe_key_t,PPPOESession> activeSessions;
+
     std::shared_ptr<PPPOEPolicy> pppoe_conf;
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;
-
-    std::set<pppoe_conn_t> pendingSession;
-    std::map<pppoe_key_t,uint16_t> activeSessions;
 
     // TODO: create periodic callback which will be clearing pending sessions
     std::string pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
@@ -228,13 +161,13 @@ struct PPPOERuntime {
         return false;
     }
 
-    std::tuple<uint16_t,std::string> allocateSession( std::array<uint8_t,6> mac ) {
+    std::tuple<uint16_t,std::string> allocateSession( encapsulation_t &encap ) {
         for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
             if( auto ret = sessionSet.find( i ); ret == sessionSet.end() ) {
                 if( auto const &[ it, ret ] = sessionSet.emplace( i ); !ret ) {
                     return { 0, "Cannot allocate session: cannot emplace value in set" };
                 }
-                if( auto const &[ it, ret ] = sessions.emplace( i, PPPOESession{ mac, i }); !ret ) {
+                if( auto const &[ it, ret ] = sessions.try_emplace( i, encap, i ); !ret ) {
                     return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
                 }
                 return { i, "" };
@@ -243,14 +176,10 @@ struct PPPOERuntime {
         return { 0, "Maximum of sessions" };
     }
 
-    std::string deallocateSession( std::array<uint8_t,6> mac, uint16_t sid ) {
-        auto const &it = sessions.find( sid );
-        if( it == sessions.end() ) {
+    std::string deallocateSession( uint16_t sid ) {
+        auto const &it = sessionSet.find( sid );
+        if( it == sessionSet.end() ) {
             return "Cannot find session with this session id";
-        }
-
-        if( it->second.mac != mac ) {
-            return "Wrong mac!";
         }
 
         sessions.erase( it );
@@ -309,78 +238,40 @@ public:
         }
     }
 
-    void receive_pppoe( boost::system::error_code ec, std::size_t len ) {
+    void generic_receive( boost::system::error_code ec, std::size_t len ) {
         if( !ec ) {
             std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
-            if( auto const &error = pppoe::processPPPOE( pkt ); !error.empty() ) {
-                log( error );
+            encapsulation_t encap { pkt };
+            switch( encap.type ) {
+            case ETH_PPPOE_DISCOVERY:
+                if( auto const &error = pppoe::processPPPOE( pkt, encap ); !error.empty() ) {
+                    log( error );
+                }
+                break;
+            case ETH_PPPOE_SESSION:
+                if( auto const &error = ppp::processPPP( pkt, encap ); !error.empty() ) {
+                    log( error );
+                }
+                break;
+            default:
+                log( "Received packet with unknown ethertype: " + std::to_string( encap.type ) );
             }
         }
+    }
+
+    void receive_pppoe( boost::system::error_code ec, std::size_t len ) {
+        generic_receive( ec, len );
         raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
     void receive_ppp( boost::system::error_code ec, std::size_t len ) {
-        if( !ec ) {
-            std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
-            if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
-                log( error );
-            }
-        }
+        generic_receive( ec, len );
         raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );
     }
 
     void receive_vlan( boost::system::error_code ec, std::size_t len ) {
-        if( !ec ) {
-            std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
-            if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
-                log( error );
-            }
-        }
+        generic_receive( ec, len );
         raw_sock_vlan.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_vlan, this, std::placeholders::_1, std::placeholders::_2 ) );
-    }
-
-    std::string receive_packet( std::vector<uint8_t> pkt ) {
-        uint16_t outer_vlan = 0;
-        uint16_t inner_vlan = 0;
-        uint16_t type;
-        uint8_t len_to_strip = 0;
-
-        ETHERNET_HDR *eth = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
-        type = bswap16( eth->ethertype );
-        len_to_strip += sizeof( *eth );
-        if( type == ETH_VLAN ) {
-            VLAN_HDR *vlan = reinterpret_cast<VLAN_HDR*>( eth->getPayload() );
-            outer_vlan = bswap16( vlan->vlan_id & 0xFF0F );
-            type = bswap16( vlan->ethertype );
-            len_to_strip += sizeof( *vlan );
-            if( type == ETH_VLAN ) {
-                vlan = reinterpret_cast<VLAN_HDR*>( vlan->getPayload() );
-                inner_vlan = bswap16( vlan->vlan_id & 0xFF0F );
-                type = bswap16( vlan->ethertype );
-                len_to_strip += sizeof( *vlan );
-            }
-        }
-
-        if( pkt.size() < len_to_strip ) {
-            return "Packet to small to process";
-        }
-        pkt.erase( pkt.begin(), pkt.begin() + len_to_strip );
-
-        switch( type ) {
-        case ETH_PPPOE_DISCOVERY:
-            if( auto const &error = pppoe::processPPPOE( pkt ); !error.empty() ) {
-                return error;
-            }
-            break;
-        case ETH_PPPOE_SESSION:
-        if( auto const &error = ppp::processPPP( pkt ); !error.empty() ) {
-                return error;
-            }
-            break;
-        default:
-            return "Wrong ethertype for this service";
-        }
-        return {};
     }
 
     void periodic( boost::system::error_code ec ) {
