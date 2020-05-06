@@ -158,7 +158,7 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
 
     PPPOEDISC_HDR *disc = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.data() );
 
-    log( "Incoming " + std::to_string( disc ) );
+    log( "Incoming PPPoE: " + std::to_string( disc ) );
     
     // Starting to prepare the answer
     switch( disc->code ) {
@@ -176,6 +176,9 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
         log( "Incorrect code for packet" );
         return "Incorrect code for packet";
     }
+
+    disc = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
+    log( "Outcoming PPPoE: " + std::to_string( disc ) );
 
     auto header = encap.generate_header( runtime->hwaddr, ETH_PPPOE_DISCOVERY );
     outPkt.insert( outPkt.begin(), header.begin(), header.end() );

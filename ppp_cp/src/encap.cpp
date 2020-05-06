@@ -1,6 +1,9 @@
 #include "main.hpp"
 
-encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt ) {
+encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt, uint16_t o, uint16_t i ):
+    outer_vlan( o ),
+    inner_vlan( i ) 
+{
     if( pkt.size() < sizeof( ETHERNET_HDR ) ) {
         return;
     }
