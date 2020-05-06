@@ -3,6 +3,11 @@
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
+LCP_FSM::LCP_FSM( PPPOESession &s ):
+	session( s ),
+    PPP_FSM( s.session_id )
+{}
+
 FSM_RET LCP_FSM::send_conf_req() {
     log( "LCP: send_conf_req current state: " + std::to_string( state ) );
     std::vector<uint8_t> pkt;

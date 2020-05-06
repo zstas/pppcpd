@@ -1,7 +1,7 @@
 #ifndef PPP_AUTH_HPP_
 #define PPP_AUTH_HPP_
 
-#include "session.hpp"
+struct PPPOESession;
 
 struct PPP_AUTH {
 private:

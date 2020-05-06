@@ -2,16 +2,13 @@
 #define PPP_LCP_H_
 
 #include "ppp_fsm.hpp"
-#include "packet.hpp"
-#include "session.hpp"
+
+struct PPPOESession;
 
 struct LCP_FSM: public PPP_FSM {
 	PPPOESession &session;
 
-    LCP_FSM( PPPOESession &s ):
-		session( s ),
-        PPP_FSM( s.session_id )
-    {}
+    LCP_FSM( PPPOESession &s );
 
 	FSM_RET send_conf_req() override;
 	FSM_RET send_conf_ack( std::vector<uint8_t> &inPkt ) override;

@@ -8,8 +8,8 @@ encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt ) {
     auto len = sizeof( ETHERNET_HDR );
 
     ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
-    std::copy( h->src_mac.begin(), h->src_mac.end(), source_mac );
-    std::copy( h->dst_mac.begin(), h->dst_mac.end(), destination_mac );
+    std::copy( h->src_mac.begin(), h->src_mac.end(), source_mac.begin() );
+    std::copy( h->dst_mac.begin(), h->dst_mac.end(), destination_mac.begin() );
 
     type = bswap16( h->ethertype );
 
@@ -44,8 +44,8 @@ std::vector<uint8_t> encapsulation_t::generate_header( mac_t mac, uint16_t ether
     pkt.resize( len );
     ETHERNET_HDR *h = reinterpret_cast<ETHERNET_HDR*>( pkt.data() );
 
-    std::copy( mac.begin(), mac.end(), h->src_mac );
-    std::copy( source_mac.begin(), source_mac.end(), h->dst_mac );
+    std::copy( mac.begin(), mac.end(), h->src_mac.begin() );
+    std::copy( source_mac.begin(), source_mac.end(), h->dst_mac.begin() );
         
     if( outer_vlan == 0 ) {
         h->ethertype = bswap16( ethertype );

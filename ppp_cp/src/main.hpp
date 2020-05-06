@@ -44,47 +44,11 @@
 #include "packet.hpp"
 #include "aaa.hpp"
 #include "vpp.hpp"
+#include "runtime.hpp"
 
 using namespace std::string_literals;
 
 extern std::atomic_bool interrupted;
-
-class pppoe_conn_t {
-    mac_t mac;
-    uint16_t outer_vlan;
-    uint16_t inner_vlan;
-    std::string cookie;
-public:
-    pppoe_conn_t() = delete;
-    pppoe_conn_t( mac_t m, uint16_t o, uint16_t i, std::string c ):
-        mac( m ),
-        outer_vlan( o ),
-        inner_vlan( i ),
-        cookie( std::move( c ) )
-    {}
-
-    bool operator<( const pppoe_conn_t &r ) const {
-        return  ( mac < r.mac ) || 
-                ( outer_vlan < r.outer_vlan ) || 
-                ( inner_vlan < r.inner_vlan ) || 
-                ( cookie < r.cookie );
-    }
-};
-
-class pppoe_key_t {
-    mac_t mac;
-    uint16_t session_id;
-    uint16_t outer_vlan;
-    uint16_t inner_vlan;
-public:
-    pppoe_key_t() = delete;
-    pppoe_key_t( mac_t m, uint16_t s, uint16_t o, uint16_t i ):
-        mac( m ),
-        session_id( s ),
-        outer_vlan( o ),
-        inner_vlan( i )
-    {}
-};
 
 struct PPPOEQ {
     std::mutex mutex;
@@ -113,77 +77,6 @@ struct PPPOEQ {
     bool empty() {
         std::lock_guard lg( mutex );
         return queue.empty();
-    }
-};
-
-struct PPPOERuntime {
-    PPPOERuntime() = delete;
-    PPPOERuntime( const PPPOERuntime& ) = delete;
-    PPPOERuntime( PPPOERuntime&& ) = default;
-    PPPOERuntime( std::string name ) : 
-        ifName( std::move( name ) )
-    {}
-
-    PPPOERuntime operator=( const PPPOERuntime& ) = delete;
-    PPPOERuntime& operator=( PPPOERuntime&& ) = default;
-
-    std::string setupPPPOEDiscovery();
-    std::string setupPPPOESession();
-
-    std::string ifName;
-    mac_t hwaddr { 0, 0, 0, 0, 0, 0 };
-    std::set<uint16_t> sessionSet;
-    std::set<pppoe_conn_t> pendingSession;
-    std::map<pppoe_key_t,PPPOESession> activeSessions;
-
-    std::shared_ptr<PPPOEPolicy> pppoe_conf;
-    std::shared_ptr<LCPPolicy> lcp_conf;
-    std::shared_ptr<AAA> aaa;
-    std::shared_ptr<VPPAPI> vpp;
-
-    // TODO: create periodic callback which will be clearing pending sessions
-    std::string pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
-        pppoe_conn_t key { mac, outer_vlan, inner_vlan, cookie };
-
-        if( auto const &[it, ret ] = pendingSession.emplace( key ); !ret ) {
-            return { "Cannot allocate new Pending session" };
-        }
-        return {};
-    }
-
-    bool checkSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
-        pppoe_conn_t key { mac, outer_vlan, inner_vlan, cookie };
-
-        if( auto const &it = pendingSession.find( key ); it != pendingSession.end() ) {
-            pendingSession.erase( it );
-            return true;
-        }
-        return false;
-    }
-
-    std::tuple<uint16_t,std::string> allocateSession( encapsulation_t &encap ) {
-        for( uint16_t i = 1; i < UINT16_MAX; i++ ) {
-            if( auto ret = sessionSet.find( i ); ret == sessionSet.end() ) {
-                if( auto const &[ it, ret ] = sessionSet.emplace( i ); !ret ) {
-                    return { 0, "Cannot allocate session: cannot emplace value in set" };
-                }
-                if( auto const &[ it, ret ] = sessions.try_emplace( i, encap, i ); !ret ) {
-                    return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
-                }
-                return { i, "" };
-            }
-        }
-        return { 0, "Maximum of sessions" };
-    }
-
-    std::string deallocateSession( uint16_t sid ) {
-        auto const &it = sessionSet.find( sid );
-        if( it == sessionSet.end() ) {
-            return "Cannot find session with this session id";
-        }
-
-        sessions.erase( it );
-        return "";
     }
 };
 

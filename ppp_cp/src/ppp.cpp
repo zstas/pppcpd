@@ -26,7 +26,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
     switch( static_cast<PPP_PROTO>( bswap16( pppoe->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
         log( "proto LCP for session " + std::to_string( session.session_id ) );
-        if( auto const& [ action, err ] = session.lcp.receive( inPkt, encap ); !err.empty() ) {
+        if( auto const& [ action, err ] = session.lcp.receive( inPkt ); !err.empty() ) {
             log( "Error while processing LCP packet: " + err );
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
@@ -41,7 +41,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
         break;
     case PPP_PROTO::PAP:
         log( "proto PAP" );
-        if( auto const& [ action, err ] = session.auth.receive( inPkt, encap ); !err.empty() ) {
+        if( auto const& [ action, err ] = session.auth.receive( inPkt ); !err.empty() ) {
             log( "Error while processing LCP packet: " + err );
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
@@ -54,7 +54,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
         break;
     case PPP_PROTO::IPCP:
         log( "proto IPCP" );
-        if( auto const &[ action, err ] = session.ipcp.receive( inPkt, encap ); !err.empty() ) {
+        if( auto const &[ action, err ] = session.ipcp.receive( inPkt ); !err.empty() ) {
             log( "Error while processing IPCP pkt: " + err );
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {

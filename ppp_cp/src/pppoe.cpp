@@ -152,7 +152,7 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
     return {};
 }
 
-std::string processPPPOE( std::vector<uint8_t> &inPkt, const encapsulation_t &encap ) {
+std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulation_t &encap ) {
     std::vector<uint8_t> outPkt;
     outPkt.reserve( sizeof( PPPOEDISC_HDR ) + 128 );
 

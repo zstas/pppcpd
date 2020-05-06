@@ -1,10 +1,6 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
-#include "ppp_lcp.hpp"
-#include "ppp_auth.hpp"
-#include "ppp_ipcp.hpp"
-
 struct PPPOESession {
     // General Data
     encapsulation_t encap;
@@ -20,9 +16,9 @@ struct PPPOESession {
     uint32_t address;
 
     // PPP FSM for all the protocols we support
-    LCP_FSM lcp;
-    PPP_AUTH auth;
-    IPCP_FSM ipcp;
+    struct LCP_FSM lcp;
+    struct PPP_AUTH auth;
+    struct IPCP_FSM ipcp;
 
     // LCP negotiated options
     uint16_t our_MRU;
