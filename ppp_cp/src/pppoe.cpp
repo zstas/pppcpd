@@ -113,6 +113,8 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
     rep_pppoe->length = bswap16( taglen );
 
+    outPkt.resize( sizeof( PPPOEDISC_HDR ) + taglen );
+
     return {};
 }
 
