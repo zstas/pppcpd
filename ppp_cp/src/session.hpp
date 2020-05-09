@@ -26,7 +26,7 @@ struct PPPOESession {
     uint32_t our_magic_number;
     uint32_t peer_magic_number;
 
-    PPPOESession( encapsulation_t e, uint16_t sid ): 
+    PPPOESession( const encapsulation_t &e, uint16_t sid ): 
         encap( e ),
         session_id( sid ),
         lcp( *this ),

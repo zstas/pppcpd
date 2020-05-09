@@ -149,6 +149,12 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
         return "We don't expect this session";
     }
 
+    if( auto const &[ sid, err ] = runtime->allocateSession( encap ); !err.empty() ) {
+        return "Cannot process PADR: " + err;
+    } else {
+        rep_pppoe->session_id = bswap16( sid );
+    }
+
     uint8_t taglen = 0;
 
     // Check for SERVICE NAME
