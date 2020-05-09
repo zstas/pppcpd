@@ -48,7 +48,7 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
 static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
     log( "Processing PADI packet" );
 
-    outPkt.resize( sizeof( PPPOEDISC_HDR ) + 128 );
+    outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
     
     rep_pppoe->type = 1;
@@ -149,8 +149,18 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
         return "We don't expect this session";
     }
 
-    
+    uint8_t taglen = 0;
 
+    // Check for SERVICE NAME
+    if( auto const &tagIt = tags.find( PPPOE_TAG::SERVICE_NAME ); tagIt != tags.end() ) {
+        taglen += pppoe::insertTag( outPkt, PPPOE_TAG::SERVICE_NAME, tagIt->second );
+    }
+
+    rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
+    rep_pppoe->length = bswap16( taglen );
+
+    outPkt.resize( sizeof( PPPOEDISC_HDR ) + taglen );
+    
     return {};
 }
 
