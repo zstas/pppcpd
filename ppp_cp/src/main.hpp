@@ -27,6 +27,9 @@
 #include <boost/asio.hpp>
 #include <boost/asio/basic_raw_socket.hpp>
 
+// Radius
+#include <radiuspp.hpp>
+
 // Local headers
 #include "encap.hpp"
 #include "pppoe.hpp"

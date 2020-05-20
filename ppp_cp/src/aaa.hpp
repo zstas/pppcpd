@@ -62,17 +62,25 @@ struct AAA_Session {
 };
 
 struct AAA {
-    AAA_METHODS method { AAA_METHODS::NONE };
+    std::set<AAA_METHODS> method { AAA_METHODS::NONE };
     IP_POOL pool1;
     std::map<uint32_t,AAA_Session> sessions;
+    std::map<uint8_t,AuthClient> auth;
 
     AAA( uint32_t s1, uint32_t s2, uint32_t d1, uint32_t d2 ):
         pool1( s1, s2, d1, d2 )
     {}
 
+    std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict );
+
     std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
     std::tuple<uint32_t,std::string> startSession( const std::string &user, const std::string &pass );
+    std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
+    std::tuple<uint32_t,std::string> startSessionRadius( const std::string &user, const std::string &pass );
     std::string dp_provision( uint32_t sid );
+
+    void changeAuthMethods( std::initializer_list<AAA_METHODS> m );
+
 };
 
 #endif
