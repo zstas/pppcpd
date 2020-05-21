@@ -8,7 +8,7 @@ FSM_RET PPP_AUTH::receive( std::vector<uint8_t> &inPkt ) {
     PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
     switch( auth->code ) {
     case PAP_CODE::AUTHENTICATE_REQ:
-        return recv_auth_req( inPkt );
+        recv_auth_req( inPkt );
         break;
     default:
         break;
@@ -16,7 +16,7 @@ FSM_RET PPP_AUTH::receive( std::vector<uint8_t> &inPkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
+void PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
 
@@ -27,18 +27,29 @@ FSM_RET PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
 
     session.username = username;
 
-    if( auto const &[ sid, err ] = runtime->aaa->startSession( username, password ); err.empty() ) {
+    runtime->aaa->startSession( username, password, std::bind( &PPP_AUTH::auth_callback, this, std::placeholders::_1, std::placeholders::_2 ) );
+}
+
+FSM_RET PPP_AUTH::auth_callback( uint32_t sid, const std::string &err ) {
+    if( err.empty() ) {
         session.aaa_session_id = sid;
-        return send_auth_ack( inPkt );
+        return send_auth_ack();
     } else {
-        return send_auth_nak( inPkt );
+        return send_auth_nak();
     }
 }
 
-FSM_RET PPP_AUTH::send_auth_ack( std::vector<uint8_t> &inPkt ) {
+FSM_RET PPP_AUTH::send_auth_ack() {
+    std::vector<uint8_t> inPkt;
+    inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_AUTH_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
 
+    pppoe->type = 1;
+    pppoe->version = 1;
+    pppoe->session_id = session.session_id;
+    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
+    pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_ACK;
 
     // append empty tag with message
@@ -54,10 +65,17 @@ FSM_RET PPP_AUTH::send_auth_ack( std::vector<uint8_t> &inPkt ) {
     return { PPP_FSM_ACTION::LAYER_UP, "" };
 }
 
-FSM_RET PPP_AUTH::send_auth_nak( std::vector<uint8_t> &inPkt ) {
+FSM_RET PPP_AUTH::send_auth_nak() {
+    std::vector<uint8_t> inPkt;
+    inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_AUTH_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
 
+    pppoe->type = 1;
+    pppoe->version = 1;
+    pppoe->session_id = session.session_id;
+    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
+    pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_NAK;
 
     // append empty tag with message

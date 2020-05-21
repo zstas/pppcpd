@@ -1,27 +1,26 @@
 #include "main.hpp"
 
-std::tuple<uint32_t,std::string> AAA::startSession( const std::string &user, const std::string &pass ) {
+void AAA::startSession( const std::string &user, const std::string &pass, aaa_callback callback ) {
     for( auto const &m: method ) {
         switch( m ) {
         case AAA_METHODS::NONE:
             if( auto const &[ sid, err ] = startSessionNone( user, pass ); !err.empty() ) {
                 continue;
             } else {
-                return { sid, err };
+                callback( sid, err );
             }
             break;
         case AAA_METHODS::RADIUS:
             if( auto const &[ sid, err ] = startSessionRadius( user, pass ); !err.empty() ) {
                 continue;
             } else {
-                return { sid, err };
+                callback( sid, err );
             }
             break;
         default:
             break;
         }
     }
-    return { 0, "Cannot start session: Unknown method" };
 }
 
 std::tuple<uint32_t,std::string> AAA::startSessionRadius( const std::string &user, const std::string &pass ) {

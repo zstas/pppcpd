@@ -3,6 +3,8 @@
 
 #define SESSION_ERROR UINT32_MAX
 
+using aaa_callback = std::function<void(uint32_t,std::string)>;
+
 enum class AAA_METHODS: uint8_t {
     NONE,
     LOCAL,
@@ -74,7 +76,7 @@ struct AAA {
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict );
 
     std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
-    std::tuple<uint32_t,std::string> startSession( const std::string &user, const std::string &pass );
+    void startSession( const std::string &user, const std::string &pass, aaa_callback callback );
     std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
     std::tuple<uint32_t,std::string> startSessionRadius( const std::string &user, const std::string &pass );
     std::string dp_provision( uint32_t sid );
