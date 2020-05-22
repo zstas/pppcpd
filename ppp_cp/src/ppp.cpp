@@ -1,6 +1,7 @@
 #include "main.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
+extern PPPOEQ ppp_outcoming;
 
 std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t &encap ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
@@ -66,7 +67,14 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
         }
         break;
     default:
-        log( "unknown proto" );
+        log( "Unknown PPP proto: rejecting by default" );
+        lcp->code = LCP_CODE::CODE_REJ;
+
+        auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+        inPkt.insert( inPkt.begin(), header.begin(), header.end() );
+
+        // Send this CONF REQ
+        ppp_outcoming.push( std::move( inPkt ) );
     }
 
     return "";
