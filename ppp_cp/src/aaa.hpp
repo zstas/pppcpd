@@ -46,10 +46,10 @@ struct IP_POOL {
 
 struct AAA_Session {
     std::string username;
-    uint32_t address;
+    address_v4 address;
 
-    uint32_t dns1;
-    uint32_t dns2;
+    address_v4 dns1;
+    address_v4 dns2;
 
     AAA_Session() = default;
     AAA_Session( const AAA_Session & ) = default;
@@ -57,11 +57,17 @@ struct AAA_Session {
     AAA_Session& operator=( const AAA_Session& ) = default;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( const std::string &u, uint32_t a, IP_POOL &p ):
+    AAA_Session( const std::string &u, address_v4 a, address_v4 d1 ):
         username( u ),
         address( a ),
-        dns1( p.dns1 ),
-        dns2( p.dns2 )
+        dns1( d1 )
+    {}
+
+    AAA_Session( const std::string &u, address_v4 a, address_v4 d1, address_v4 d2 ):
+        username( u ),
+        address( a ),
+        dns1( d1 ),
+        dns2( d2 )
     {}
 };
 
@@ -70,6 +76,7 @@ struct AAA {
     IP_POOL pool1;
     std::map<uint32_t,AAA_Session> sessions;
     std::map<uint8_t,AuthClient> auth;
+    std::optional<RadiusDict> dict;
 
     AAA( uint32_t s1, uint32_t s2, uint32_t d1, uint32_t d2 ):
         pool1( s1, s2, d1, d2 )
@@ -77,10 +84,11 @@ struct AAA {
         method.emplace( AAA_METHODS::NONE );
     }
 
-    AAA ( io_service &io, address_v4 radius_ip, uint16_t port, const std::string secret, RadiusDict d )
+    AAA ( io_service &io, address_v4 radius_ip, uint16_t port, const std::string secret, RadiusDict d ):
+        dict( std::move( d ) )
     {
         method.emplace( AAA_METHODS::RADIUS );
-        auth.emplace( std::piecewise_construct, std::forward_as_tuple( 0 ), std::forward_as_tuple( io, radius_ip, port, secret, d ) );
+        auth.emplace( std::piecewise_construct, std::forward_as_tuple( 0 ), std::forward_as_tuple( io, radius_ip, port, secret, *dict ) );
     }
 
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict );
@@ -88,8 +96,9 @@ struct AAA {
     std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, aaa_callback callback );
     std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
-    std::tuple<uint32_t,std::string> startSessionRadius( const std::string &user, const std::string &pass );
+    void startSessionRadius( const std::string &user, const std::string &pass, aaa_callback callback );
     std::string dp_provision( uint32_t sid );
+    void processRadiusAnswer( aaa_callback callback, std::string user, std::vector<uint8_t> v );
 
     void changeAuthMethods( std::initializer_list<AAA_METHODS> m );
 

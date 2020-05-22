@@ -43,6 +43,13 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
         return "Cannot find session with this session id";
     }
 
+    for( auto const &[ k, v ]: activeSessions ) {
+        if( v.session_id == *it ) {
+            activeSessions.erase( k );
+            break;
+        }
+    }
+
     sessionSet.erase( it );
     return "";
 }

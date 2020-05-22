@@ -87,17 +87,17 @@ FSM_RET IPCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
         switch( opt->opt ) {
         case IPCP_OPTIONS::IP_ADDRESS: {
             auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            ipad->val = htonl( aaa_session.address );
+            ipad->val = htonl( aaa_session.address.to_uint() );
             break;
         }
         case IPCP_OPTIONS::PRIMARY_DNS: {
             auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            dns1->val = htonl( aaa_session.dns1 );
+            dns1->val = htonl( aaa_session.dns1.to_uint() );
             break;
         }
         case IPCP_OPTIONS::SECONDARY_DNS: {
             auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            dns2->val = htonl( aaa_session.dns2 );
+            dns2->val = htonl( aaa_session.dns2.to_uint() );
             break;
         }
         default:
@@ -127,7 +127,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     if( !err.empty() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf nak cause: "s + err };
     } else {
-        session.address = aaa_session.address;
+        session.address = aaa_session.address.to_uint();
     }
 
     LCP_CODE code = LCP_CODE::CONF_ACK;
@@ -138,21 +138,21 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
         switch( opt->opt ) {
         case IPCP_OPTIONS::IP_ADDRESS: {
             auto ipad = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( ipad->val != htonl( aaa_session.address ) ) {
+            if( ipad->val != htonl( aaa_session.address.to_uint() ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
         }
         case IPCP_OPTIONS::PRIMARY_DNS: {
             auto dns1 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( dns1->val != htonl( aaa_session.dns1 ) ) {
+            if( dns1->val != htonl( aaa_session.dns1.to_uint() ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
         }
         case IPCP_OPTIONS::SECONDARY_DNS: {
             auto dns2 = reinterpret_cast<IPCP_OPT_4B*>( opt );
-            if( dns2->val != htonl( aaa_session.dns2 ) ) {
+            if( dns2->val != htonl( aaa_session.dns2.to_uint() ) ) {
                 code = LCP_CODE::CONF_NAK;
             }
             break;
