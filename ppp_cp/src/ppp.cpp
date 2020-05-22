@@ -45,8 +45,8 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
             log( "Error while processing LCP packet: " + err );
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
-                session.ipcp.open();
-                session.ipcp.layer_up();
+                // session.ipcp.open();
+                // session.ipcp.layer_up();
             } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
                 //session.ipcp.close();
             }

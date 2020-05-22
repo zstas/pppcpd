@@ -7,7 +7,9 @@ extern PPPOEQ ppp_incoming;
 extern PPPOEQ ppp_outcoming;
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-EVLoop::EVLoop() {
+EVLoop::EVLoop( io_service &i ):
+    io( i )
+{
     sockaddr_ll sockaddr;
     memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sll_family = PF_PACKET;
@@ -37,10 +39,6 @@ EVLoop::EVLoop() {
     raw_sock_pppoe.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1 ) );
     // raw_sock_ppp.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1 ) );
     periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
-
-    while( !interrupted ) {
-        io.run();
-    }
 }
 
 void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan ) {

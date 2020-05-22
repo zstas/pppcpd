@@ -18,6 +18,8 @@ struct IP_POOL {
     uint32_t dns2;
     std::set<uint32_t> ips;
 
+    IP_POOL() = default;
+    
     IP_POOL( uint32_t sta, uint32_t sto, uint32_t d1, uint32_t d2 ):
         start_ip( sta ),
         stop_ip( sto ),
@@ -64,14 +66,22 @@ struct AAA_Session {
 };
 
 struct AAA {
-    std::set<AAA_METHODS> method { AAA_METHODS::NONE };
+    std::set<AAA_METHODS> method;
     IP_POOL pool1;
     std::map<uint32_t,AAA_Session> sessions;
     std::map<uint8_t,AuthClient> auth;
 
     AAA( uint32_t s1, uint32_t s2, uint32_t d1, uint32_t d2 ):
         pool1( s1, s2, d1, d2 )
-    {}
+    {
+        method.emplace( AAA_METHODS::NONE );
+    }
+
+    AAA ( io_service &io, address_v4 radius_ip, uint16_t port, const std::string secret, RadiusDict d )
+    {
+        method.emplace( AAA_METHODS::RADIUS );
+        auth.emplace( std::piecewise_construct, std::forward_as_tuple( 0 ), std::forward_as_tuple( io, radius_ip, port, secret, d ) );
+    }
 
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict );
 

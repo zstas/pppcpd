@@ -35,7 +35,7 @@ struct PPPOEQ {
 
 class EVLoop {
 private:
-    boost::asio::io_context io;
+    io_service &io;
     boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
     std::array<uint8_t,1500> pktbuf;
 
@@ -47,7 +47,7 @@ private:
     // boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_vlan { io, vlan };
     boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
 public:
-    EVLoop();
+    EVLoop( io_service &i );
     void generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan );
     void receive_pppoe( boost::system::error_code ec );
     void receive_ppp( boost::system::error_code ec );

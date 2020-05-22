@@ -47,21 +47,25 @@ FSM_RET PPP_AUTH::send_auth_ack() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = session.session_id;
+    pppoe->session_id = bswap16( session.session_id );
     pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_ACK;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_AUTH_HDR) + 1 );
-    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 3 );
+    auth->length = bswap16( sizeof( PPP_AUTH_HDR) );
+    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 2 );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
     ppp_outcoming.push( std::move( inPkt ) );
+
+    session.ipcp.open();
+    session.ipcp.layer_up();
+    
     return { PPP_FSM_ACTION::LAYER_UP, "" };
 }
 
@@ -73,15 +77,15 @@ FSM_RET PPP_AUTH::send_auth_nak() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = session.session_id;
+    pppoe->session_id = bswap16( session.session_id );;
     pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_NAK;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_AUTH_HDR) + 1 );
-    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 3 );
+    auth->length = bswap16( sizeof( PPP_AUTH_HDR) );
+    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 2 );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
