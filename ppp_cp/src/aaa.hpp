@@ -91,12 +91,12 @@ struct AAA {
         auth.emplace( std::piecewise_construct, std::forward_as_tuple( 0 ), std::forward_as_tuple( io, radius_ip, port, secret, *dict ) );
     }
 
-    std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict );
+    std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict );
 
     std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
-    void startSession( const std::string &user, const std::string &pass, aaa_callback callback );
+    void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
-    void startSessionRadius( const std::string &user, const std::string &pass, aaa_callback callback );
+    void startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     std::string dp_provision( uint32_t sid );
     void processRadiusAnswer( aaa_callback callback, std::string user, std::vector<uint8_t> v );
 

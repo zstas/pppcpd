@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-void AAA::startSession( const std::string &user, const std::string &pass, aaa_callback callback ) {
+void AAA::startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
     for( auto const &m: method ) {
         switch( m ) {
         case AAA_METHODS::NONE:
@@ -11,7 +11,7 @@ void AAA::startSession( const std::string &user, const std::string &pass, aaa_ca
             }
             break;
         case AAA_METHODS::RADIUS:
-            startSessionRadius( user, pass, callback );
+            startSessionRadius( user, pass, sess, callback );
             break;
         default:
             break;
@@ -19,7 +19,7 @@ void AAA::startSession( const std::string &user, const std::string &pass, aaa_ca
     }
 }
 
-void AAA::startSessionRadius( const std::string &user, const std::string &pass, aaa_callback callback ) {
+void AAA::startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
     log( "AAA: RADIUS auth, starting session user: " + user + " password: " + pass );
 
     RadiusRequest req;
@@ -28,6 +28,23 @@ void AAA::startSessionRadius( const std::string &user, const std::string &pass, 
     req.framed_protocol = "PPP";
     req.nas_id = "vBNG";
     req.service_type = "Framed-User";
+    char buf[256];
+    snprintf( buf, sizeof( buf ), "%02x:%02x:%02x:%02x:%02x:%02x", 
+        sess.encap.destination_mac[ 0 ], 
+        sess.encap.destination_mac[ 1 ], 
+        sess.encap.destination_mac[ 2 ], 
+        sess.encap.destination_mac[ 3 ], 
+        sess.encap.destination_mac[ 4 ], 
+        sess.encap.destination_mac[ 5 ]
+    );
+    req.calling_station_id = buf;
+
+    if( sess.encap.outer_vlan == 0 ) {
+        req.nas_port_id = "ethernet";
+    } else {
+        snprintf( buf, sizeof( buf ), "vlan%d", sess.encap.outer_vlan );
+        req.nas_port_id = buf;
+    }
 
     for( auto &[ id, serv ]: auth ) {
         serv.request( req, std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1 ) );
@@ -48,7 +65,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, std::vec
         callback( i, "No space for new sessions" );
     }
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, address_v4::from_string( "8.8.8.8" ) ); !ret ) {
+    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2 ); !ret ) {
         log( "AAA: failer to emplace user " + user );
         callback( SESSION_ERROR, "Failed to emplace user" );
     }
@@ -85,7 +102,7 @@ std::tuple<AAA_Session,std::string> AAA::getSession( uint32_t sid ) {
     }
 }
 
-std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::string path_to_dict ) {
+std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict ) {
     uint8_t id = 0;
     for( auto const &[ k, v ]: auth ) {
         id++;
@@ -94,7 +111,7 @@ std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t 
         }
         break;
     }
-    RadiusDict dict { path_to_dict };
+    RadiusDict dict { paths_to_dict };
     auto ip = address_v4::from_string( server_ip );
     if( id != UINT8_MAX ) {
         auth.emplace( std::piecewise_construct, std::forward_as_tuple( id ), std::forward_as_tuple( io, ip, port, secret, dict ) );

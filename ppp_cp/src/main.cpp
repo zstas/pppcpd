@@ -24,7 +24,13 @@ int main( int argc, char *argv[] ) {
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
 
     //runtime->aaa = std::make_shared<AAA>( 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 );
-    RadiusDict dict { "/usr/share/freeradius/dictionary.rfc2865" };
+    std::vector<std::string> files = {
+        "/usr/share/freeradius/dictionary.rfc2865",
+        "/usr/share/freeradius/dictionary.rfc2869",
+        "/usr/share/freeradius/dictionary.ericsson.ab"
+    };
+
+    RadiusDict dict { files };
     runtime->aaa = std::make_shared<AAA>( io, address_v4::from_string( "127.0.0.1" ), 1812, "testing123", dict );
     runtime->vpp = std::make_shared<VPPAPI>();
 

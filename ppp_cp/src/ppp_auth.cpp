@@ -27,7 +27,7 @@ void PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
 
     session.username = username;
 
-    runtime->aaa->startSession( username, password, std::bind( &PPP_AUTH::auth_callback, this, std::placeholders::_1, std::placeholders::_2 ) );
+    runtime->aaa->startSession( username, password, session, std::bind( &PPP_AUTH::auth_callback, this, std::placeholders::_1, std::placeholders::_2 ) );
 }
 
 FSM_RET PPP_AUTH::auth_callback( uint32_t sid, const std::string &err ) {
