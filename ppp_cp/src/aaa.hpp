@@ -98,7 +98,8 @@ struct AAA {
     std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
     void startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     std::string dp_provision( uint32_t sid );
-    void processRadiusAnswer( aaa_callback callback, std::string user, std::vector<uint8_t> v );
+    void processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_CODE code, std::vector<uint8_t> v );
+    void processRadiusError( aaa_callback callback, const std::string &error );
 
     void changeAuthMethods( std::initializer_list<AAA_METHODS> m );
 

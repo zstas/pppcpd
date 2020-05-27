@@ -47,12 +47,20 @@ void AAA::startSessionRadius( const std::string &user, const std::string &pass, 
     }
 
     for( auto &[ id, serv ]: auth ) {
-        serv.request( req, std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1 ) );
+        serv.request( 
+            req, 
+            std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1, std::placeholders::_2 ),
+            std::bind( &AAA::processRadiusError, this, callback, std::placeholders::_1 )
+        );
     }
 }
 
-void AAA::processRadiusAnswer( aaa_callback callback, std::string user, std::vector<uint8_t> v ) {
+void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_CODE code, std::vector<uint8_t> v ) {
     auto res = deserialize<RadiusResponse>( *dict, v );
+
+    if( code != RADIUS_CODE::ACCESS_ACCEPT ) {
+        callback( 0, "RADIUS answered with no accept" );
+    }
 
     // Creating new session
     uint32_t i;
@@ -62,14 +70,20 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, std::vec
         }
     }
     if( i == UINT32_MAX ) {
-        callback( i, "No space for new sessions" );
+        callback( 0, "No space for new sessions" );
+        return;
     }
 
     if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2 ); !ret ) {
         log( "AAA: failer to emplace user " + user );
         callback( SESSION_ERROR, "Failed to emplace user" );
+        return;
     }
     callback( i, "" );
+}
+
+void AAA::processRadiusError( aaa_callback callback, const std::string &error ) {
+    callback( 0, "RADIUS error: " + error );
 }
 
 std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user, const std::string &pass ) {
