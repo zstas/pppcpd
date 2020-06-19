@@ -49,5 +49,6 @@
 #include "vpp.hpp"
 #include "runtime.hpp"
 #include "evloop.hpp"
+#include "yaml.hpp"
 
 using namespace std::string_literals;

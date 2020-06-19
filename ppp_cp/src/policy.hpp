@@ -1,8 +1,11 @@
+#ifndef POLICY_HPP
+#define POLICY_HPP
+
 struct PPPOEPolicy {
     std::string ac_name { "pppoecpd" };
     std::vector<std::string> service_name { "internet" };
-    bool insertCookie { false };
-    bool ignoreServiceName { false };
+    bool insert_cookie { false };
+    bool ignore_service_name { false };
 };
 
 struct LCPPolicy {
@@ -11,3 +14,5 @@ struct LCPPolicy {
     bool authCHAP { false };
     bool authPAP { true };
 };
+
+#endif

@@ -88,11 +88,11 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
             }
         }
 
-        if( selected_service.empty() && runtime->pppoe_conf->ignoreServiceName ) {
+        if( selected_service.empty() && runtime->pppoe_conf->ignore_service_name ) {
             selected_service = tagIt->second;
         }
 
-        if( selected_service.empty() && !runtime->pppoe_conf->ignoreServiceName ) {
+        if( selected_service.empty() && !runtime->pppoe_conf->ignore_service_name ) {
             return "Wrong service name";
         }
 
@@ -101,7 +101,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
 
     // Check our policy if we need to insert AC COOKIE
     std::string cookie;
-    if( runtime->pppoe_conf->insertCookie ) {
+    if( runtime->pppoe_conf->insert_cookie ) {
         cookie = random_string( 16 );
         taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_COOKIE, cookie );
     }
