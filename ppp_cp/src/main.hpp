@@ -26,9 +26,13 @@
 #include <poll.h>
 #include <boost/asio.hpp>
 #include <boost/asio/basic_raw_socket.hpp>
+#include <boost/asio/ip/address_v4.hpp>
 
 // Radius
 #include <radiuspp.hpp>
+
+using namespace std::string_literals;
+using address_v4_t = boost::asio::ip::address_v4;
 
 // Local headers
 #include "encap.hpp"
@@ -50,5 +54,3 @@
 #include "runtime.hpp"
 #include "evloop.hpp"
 #include "yaml.hpp"
-
-using namespace std::string_literals;

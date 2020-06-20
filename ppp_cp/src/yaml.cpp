@@ -19,18 +19,18 @@ bool YAML::convert<PPPOEPolicy>::decode( const YAML::Node &node, PPPOEPolicy &rh
 
 YAML::Node YAML::convert<FRAMED_POOL>::encode( const FRAMED_POOL &rhs ) {
     Node node;
-    node["start_ip"] = rhs.start_ip;
-    node["stop_ip"] = rhs.stop_ip;
-    node["dns1"] = rhs.dns1;
-    node["dns2"] = rhs.dns2;
+    node["start_ip"] = rhs.start_ip.to_string();
+    node["stop_ip"] = rhs.stop_ip.to_string();
+    node["dns1"] = rhs.dns1.to_string();
+    node["dns2"] = rhs.dns2.to_string();
     return node;
 }
 
 bool YAML::convert<FRAMED_POOL>::decode( const YAML::Node &node, FRAMED_POOL &rhs ) {
-    rhs.start_ip = node[ "start_ip" ].as<uint32_t>();
-    rhs.stop_ip = node[ "stop_ip" ].as<uint32_t>();
-    rhs.dns1 = node[ "dns1"].as<uint32_t>();
-    rhs.dns2 = node[ "dns2" ].as<uint32_t>();
+    rhs.start_ip = address_v4_t::from_string( node[ "start_ip" ].as<std::string>() ) ;
+    rhs.stop_ip = address_v4_t::from_string( node[ "stop_ip" ].as<std::string>() );
+    rhs.dns1 = address_v4_t::from_string( node[ "dns1"].as<std::string>() );
+    rhs.dns2 = address_v4_t::from_string( node[ "dns2" ].as<std::string>() );
     return true;
 }
 

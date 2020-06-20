@@ -12,10 +12,10 @@ enum class AAA_METHODS: uint8_t {
 };
 
 struct FRAMED_POOL {
-    uint32_t start_ip;
-    uint32_t stop_ip;
-    uint32_t dns1;
-    uint32_t dns2;
+    address_v4_t start_ip;
+    address_v4_t stop_ip;
+    address_v4_t dns1;
+    address_v4_t dns2;
     std::set<uint32_t> ips;
 
     FRAMED_POOL() = default;
@@ -28,7 +28,7 @@ struct FRAMED_POOL {
     {}
 
     uint32_t allocate_ip() {
-        for( uint32_t i = start_ip; i <= stop_ip; i++ ) {
+        for( uint32_t i = start_ip.to_uint(); i <= stop_ip.to_uint(); i++ ) {
             if( const auto &iIt = ips.find( i ); iIt == ips.end() ) {
                 ips.emplace( i );
                 return i;
