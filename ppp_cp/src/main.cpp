@@ -20,11 +20,23 @@ static void conf_init() {
     pppoe_pol.ignore_service_name = true;
     pppoe_pol.service_name = { "inet", "pppoe" };
 
-    AAA aaa { 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 };
+    PPPOELocalTemplate pppoe_template;
+    pppoe_template.framed_pool = "pppoe_pool1";
+    pppoe_template.dns1 = address_v4_t::from_string( "8.8.8.8" );
+    pppoe_template.dns2 = address_v4_t::from_string( "1.1.1.1" );
+    AAAConf aaa_conf;
+    aaa_conf.local_template.emplace( std::move( pppoe_template ) );
+    aaa_conf.method = { AAA_METHODS::NONE };
+    aaa_conf.pools.emplace( std::piecewise_construct,
+        std::forward_as_tuple( "pppoe_pool1" ),
+        std::forward_as_tuple( "100.64.0.10", "100.64.0.255" ) );
+    aaa_conf.pools.emplace( std::piecewise_construct,
+        std::forward_as_tuple( "pppoe_pool2" ),
+        std::forward_as_tuple( "100.64.1.10", "100.64.1.255" ) );
 
     YAML::Node config;
     config[ "PPPOEPolicy" ] = pppoe_pol;
-    config[ "AAA" ] = aaa;
+    config[ "AAAConf" ] = aaa_conf;
 
     std::ofstream fout("config.yaml");
     fout << config << std::endl;
@@ -32,6 +44,8 @@ static void conf_init() {
 
 int main( int argc, char *argv[] ) {
     conf_init();
+
+    YAML::Node config = YAML::LoadFile( "config.yaml" );
 
     io_service io;
     runtime = std::make_shared<PPPOERuntime>( "pppoe-cp" );
@@ -53,7 +67,7 @@ int main( int argc, char *argv[] ) {
     };
 
     RadiusDict dict { files };
-    runtime->aaa = std::make_shared<AAA>( io, address_v4::from_string( "127.0.0.1" ), 1812, "testing123", dict );
+    runtime->aaa = std::make_shared<AAA>( config[ "AAAConf" ].as<AAAConf>() );
     runtime->vpp = std::make_shared<VPPAPI>();
 
     EVLoop loop( io );

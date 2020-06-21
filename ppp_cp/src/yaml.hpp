@@ -26,10 +26,17 @@ namespace YAML {
     };
 
     template <>
-    struct convert<AAA>
+    struct convert<PPPOELocalTemplate>
     {
-        static Node encode(const AAA &rhs);
-        static bool decode(const Node &node, AAA &rhs);
+        static Node encode(const PPPOELocalTemplate &rhs);
+        static bool decode(const Node &node, PPPOELocalTemplate &rhs);
+    };
+
+    template <>
+    struct convert<AAAConf>
+    {
+        static Node encode(const AAAConf &rhs);
+        static bool decode(const Node &node, AAAConf &rhs);
     };
 }
 

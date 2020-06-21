@@ -1,7 +1,28 @@
 #include "main.hpp"
 
+FRAMED_POOL::FRAMED_POOL( std::string sta, std::string sto ) {
+    start_ip = address_v4_t::from_string( sta );
+    stop_ip = address_v4_t::from_string( sto );
+}
+
+uint32_t FRAMED_POOL::allocate_ip() {
+    for( uint32_t i = start_ip.to_uint(); i <= stop_ip.to_uint(); i++ ) {
+        if( const auto &iIt = ips.find( i ); iIt == ips.end() ) {
+            ips.emplace( i );
+            return i;
+        }
+    }
+    return 0;
+}
+
+void FRAMED_POOL::deallocate_ip( uint32_t i ) {
+    if( const auto &iIt = ips.find( i ); iIt != ips.end() ) {
+        ips.erase( iIt );
+    }
+}
+
 void AAA::startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
-    for( auto const &m: method ) {
+    for( auto const &m: conf.method ) {
         switch( m ) {
         case AAA_METHODS::NONE:
             if( auto const &[ sid, err ] = startSessionNone( user, pass ); !err.empty() ) {
@@ -88,7 +109,14 @@ void AAA::processRadiusError( aaa_callback callback, const std::string &error ) 
 
 std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user, const std::string &pass ) {
     log( "AAA: NONE auth, starting session user: " + user + " password: " + pass );
-    address_v4 address { pool1.allocate_ip() };
+    if( !conf.local_template.has_value() ) {
+        return { SESSION_ERROR, "No template for non-radius pppoe user" };
+    }
+    auto const &fr_pool = conf.pools.find( conf.local_template.value().framed_pool );
+    if( fr_pool == conf.pools.end() ) {
+        return { SESSION_ERROR, "Framed pool with name " + conf.local_template.value().framed_pool + " wasn't found" };
+    }
+    address_v4 address { fr_pool->second.allocate_ip() };
 
     // Creating new session
     uint32_t i;
@@ -98,10 +126,10 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
         }
     }
     if( i == UINT32_MAX ) {
-        return { i, "No space for new sessions" };
+        return { SESSION_ERROR, "No space for new sessions" };
     }
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, address_v4{ pool1.dns1 }, address_v4{ pool1.dns2 } ); !ret ) {
+    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, conf.local_template.value().dns1, conf.local_template.value().dns2 ); !ret ) {
         log( "AAA: failer to emplace user " + user );
         return { SESSION_ERROR, "Failed to emplace user" };
     }
@@ -131,8 +159,4 @@ std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t 
         auth.emplace( std::piecewise_construct, std::forward_as_tuple( id ), std::forward_as_tuple( io, ip, port, secret, dict ) );
     }
     return {};
-}
-
-void AAA::changeAuthMethods( std::initializer_list<AAA_METHODS> m ) {
-    method = { m };
 }
