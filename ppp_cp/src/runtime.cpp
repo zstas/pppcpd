@@ -45,6 +45,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
 
     for( auto const &[ k, v ]: activeSessions ) {
         if( v.session_id == *it ) {
+            aaa->stopSession( v.aaa_session_id );
             activeSessions.erase( k );
             break;
         }

@@ -36,24 +36,34 @@ struct AAA_Session {
     address_v4 dns1;
     address_v4 dns2;
 
+    std::function<void(void)> on_stop;
+
     AAA_Session() = default;
     AAA_Session( const AAA_Session & ) = default;
     AAA_Session( AAA_Session && ) = default;
     AAA_Session& operator=( const AAA_Session& ) = default;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( const std::string &u, address_v4 a, address_v4 d1 ):
-        username( u ),
-        address( a ),
-        dns1( d1 )
-    {}
-
-    AAA_Session( const std::string &u, address_v4 a, address_v4 d1, address_v4 d2 ):
+    AAA_Session( const std::string &u, address_v4 a, address_v4 d1, std::function<void()> s ):
         username( u ),
         address( a ),
         dns1( d1 ),
-        dns2( d2 )
+        on_stop( s )
     {}
+
+    AAA_Session( const std::string &u, address_v4 a, address_v4 d1, address_v4 d2, std::function<void()> s ):
+        username( u ),
+        address( a ),
+        dns1( d1 ),
+        dns2( d2 ),
+        on_stop( s )
+    {}
+
+    ~AAA_Session() {
+        if( on_stop != nullptr ) {
+            on_stop();
+        }
+    }
 };
 
 struct PPPOELocalTemplate {
@@ -90,6 +100,7 @@ public:
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict );
     std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
+    void stopSession( uint32_t sid );
 };
 
 #endif

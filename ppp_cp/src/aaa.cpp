@@ -95,7 +95,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
         return;
     }
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2 ); !ret ) {
+    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2, nullptr ); !ret ) {
         log( "AAA: failer to emplace user " + user );
         callback( SESSION_ERROR, "Failed to emplace user" );
         return;
@@ -129,7 +129,9 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
         return { SESSION_ERROR, "No space for new sessions" };
     }
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, conf.local_template.value().dns1, conf.local_template.value().dns2 ); !ret ) {
+    auto on_stop = std::bind( &FRAMED_POOL::deallocate_ip, &fr_pool->second, address.to_uint() );
+
+    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, conf.local_template.value().dns1, conf.local_template.value().dns2, on_stop ); !ret ) {
         log( "AAA: failer to emplace user " + user );
         return { SESSION_ERROR, "Failed to emplace user" };
     }
@@ -159,4 +161,10 @@ std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t 
         auth.emplace( std::piecewise_construct, std::forward_as_tuple( id ), std::forward_as_tuple( io, ip, port, secret, dict ) );
     }
     return {};
+}
+
+void AAA::stopSession( uint32_t sid ) {
+    if( auto const &it = sessions.find( sid ); it != sessions.end() ) {
+        sessions.erase( it );
+    }
 }
