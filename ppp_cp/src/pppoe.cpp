@@ -162,6 +162,11 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
         taglen += pppoe::insertTag( outPkt, PPPOE_TAG::SERVICE_NAME, tagIt->second );
     }
 
+    // Check for HOST UNIQ
+    if( auto const &tagIt = tags.find( PPPOE_TAG::HOST_UNIQ ); tagIt != tags.end() ) {
+        taglen += pppoe::insertTag( outPkt, PPPOE_TAG::HOST_UNIQ, tagIt->second );
+    }
+
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
     rep_pppoe->length = bswap16( taglen );
 
@@ -181,14 +186,18 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
     // Starting to prepare the answer
     switch( disc->code ) {
     case PPPOE_CODE::PADI:
-        process_padi( inPkt, outPkt, encap );
+        if( auto const &err = process_padi( inPkt, outPkt, encap ); !err.empty() ) {
+            return err;
+        }
         break;
     case PPPOE_CODE::PADR:
-        process_padr( inPkt, outPkt, encap );
+        if( auto const &err = process_padr( inPkt, outPkt, encap ); !err.empty() ) {
+            return err;
+        }
         break;
     case PPPOE_CODE::PADT:
         log( "Processing PADT packet" );
-        // TODO
+        runtime->deallocateSession( bswap16( disc->session_id ) );
         return "Received PADT, send nothing";
     default:
         log( "Incorrect code for packet" );
