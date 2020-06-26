@@ -48,7 +48,7 @@ int main( int argc, char *argv[] ) {
     YAML::Node config = YAML::LoadFile( "config.yaml" );
 
     io_service io;
-    runtime = std::make_shared<PPPOERuntime>( "pppoe-cp" );
+    runtime = std::make_shared<PPPOERuntime>( "pppoe-cp", io );
 
     // At this point all the config lies here
     runtime->pppoe_conf = std::make_shared<PPPOEPolicy>();

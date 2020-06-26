@@ -41,10 +41,8 @@ private:
 
     boost::asio::generic::raw_protocol pppoed { PF_PACKET, SOCK_RAW };
     boost::asio::generic::raw_protocol pppoes { PF_PACKET, SOCK_RAW };
-    // boost::asio::generic::raw_protocol vlan { PF_PACKET, SOCK_RAW };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
-    // boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_vlan { io, vlan };
     boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
 public:
     EVLoop( io_service &i );

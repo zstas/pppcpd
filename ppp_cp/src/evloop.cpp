@@ -31,6 +31,7 @@ EVLoop::EVLoop( io_service &i ):
 
     signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
         interrupted = true;
+        log( "Got signal to interrupt, exiting" );
         io.stop();
     });
 
@@ -134,6 +135,6 @@ void EVLoop::periodic( boost::system::error_code ec ) {
         auto reply = ppp_outcoming.pop();
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
     }
-    periodic_callback.expires_from_now( boost::asio::chrono::seconds( 1 ) );
+    periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 100 ) );
     periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
 }

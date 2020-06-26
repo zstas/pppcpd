@@ -1,11 +1,28 @@
 #include "main.hpp"
 
+std::string pppoe_conn_t::to_string() {
+    std::ostringstream out;
+
+    out << "MAC: ";
+    for( auto const &el: mac ) {
+        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
+    }
+    out << " outer_vlan: " << outer_vlan;
+    out << " inner_vlan: " << inner_vlan;
+    out << " cookie: " << cookie;
+
+    return out.str();
+}
+
 std::string PPPOERuntime::pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
     pppoe_conn_t key { mac, outer_vlan, inner_vlan, cookie };
 
     if( auto const &[it, ret ] = pendingSession.emplace( key ); !ret ) {
         return { "Cannot allocate new Pending session" };
     }
+
+    auto timer_to_delete = std::make_shared<boost::asio::steady_timer>( io, boost::asio::chrono::seconds( 3 ) );
+    timer_to_delete->async_wait( std::bind( &PPPOERuntime::clearPendingSession, this, timer_to_delete, key ) );
     return {};
 }
 
@@ -53,4 +70,11 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
 
     sessionSet.erase( it );
     return "";
+}
+
+void PPPOERuntime::clearPendingSession( std::shared_ptr<boost::asio::steady_timer> timer, pppoe_conn_t key ) {
+    if( auto const &it = pendingSession.find( key ); it != pendingSession.end() ) {
+        log( "Deleting pending session due timeout: " + key.to_string() );
+        pendingSession.erase( it );
+    }
 }
