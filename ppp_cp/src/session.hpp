@@ -26,7 +26,13 @@ struct PPPOESession {
     uint32_t our_magic_number;
     uint32_t peer_magic_number;
 
-    PPPOESession( const encapsulation_t &e, uint16_t sid ): 
+    // EVLoop
+    io_service &io;
+    boost::asio::steady_timer timer;
+
+    PPPOESession( io_service &i, const encapsulation_t &e, uint16_t sid ): 
+        io( i ),
+        timer( io ),
         encap( e ),
         session_id( sid ),
         lcp( *this ),

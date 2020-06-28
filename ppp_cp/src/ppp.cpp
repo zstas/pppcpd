@@ -63,6 +63,8 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
                 if( auto const &err = session.provision_dp(); !err.empty() ) {
                     log("Cannot get ip config for session: " + err );
                 }
+                // session.started = true;
+                // session.timer.async_wait( PPPOESession:: );
             }
         }
         break;

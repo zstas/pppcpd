@@ -44,7 +44,7 @@ std::tuple<uint16_t,std::string> PPPOERuntime::allocateSession( const encapsulat
             }
             if( auto const &[ it, ret ] = activeSessions.emplace( std::piecewise_construct,
                     std::forward_as_tuple( encap, i ),
-                    std::forward_as_tuple( encap, i )
+                    std::forward_as_tuple( io, encap, i )
             ); !ret ) {
                 return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
             }
