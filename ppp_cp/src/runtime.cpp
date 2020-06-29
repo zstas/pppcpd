@@ -21,7 +21,7 @@ std::string PPPOERuntime::pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t
         return { "Cannot allocate new Pending session" };
     }
 
-    auto timer_to_delete = std::make_shared<boost::asio::steady_timer>( io, boost::asio::chrono::seconds( 3 ) );
+    auto timer_to_delete = std::make_shared<boost::asio::steady_timer>( io, boost::asio::chrono::seconds( 10 ) );
     timer_to_delete->async_wait( std::bind( &PPPOERuntime::clearPendingSession, this, timer_to_delete, key ) );
     return {};
 }

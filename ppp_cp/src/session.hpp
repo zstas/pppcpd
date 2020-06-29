@@ -1,7 +1,7 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
-struct PPPOESession {
+struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     // General Data
     encapsulation_t encap;
     bool started { false };
@@ -48,6 +48,7 @@ struct PPPOESession {
 
     std::string provision_dp();
     std::string deprovision_dp();
+    bool sendEchoReq( const boost::system::error_code& error );
 };
 
 #endif
