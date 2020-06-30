@@ -6,6 +6,7 @@ struct PPPOESession;
 struct PPP_AUTH {
 private:
     uint8_t pkt_id { 1U };
+    bool started { false };
     PPPOESession &session;
 
 public:

@@ -17,6 +17,10 @@ FSM_RET PPP_AUTH::receive( std::vector<uint8_t> &inPkt ) {
 }
 
 void PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
+    if( started ) {
+        send_auth_ack();
+        return;
+    }
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
 
@@ -33,6 +37,7 @@ void PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
 FSM_RET PPP_AUTH::auth_callback( uint32_t sid, const std::string &err ) {
     if( err.empty() ) {
         session.aaa_session_id = sid;
+        started = true;
         return send_auth_ack();
     } else {
         return send_auth_nak();

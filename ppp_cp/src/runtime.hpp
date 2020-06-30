@@ -15,14 +15,9 @@ public:
         cookie( std::move( c ) )
     {}
 
-    bool operator<( const pppoe_conn_t &r ) const {
-        return  ( mac < r.mac ) || 
-                ( outer_vlan < r.outer_vlan ) || 
-                ( inner_vlan < r.inner_vlan ) || 
-                ( cookie < r.cookie );
-    }
+    friend bool operator<( const pppoe_conn_t &l, const pppoe_conn_t &r );
 
-    std::string to_string();
+    std::string to_string() const;
 };
 
 class pppoe_key_t {
@@ -46,12 +41,9 @@ public:
         inner_vlan( encap.inner_vlan )
     {}
 
-    bool operator<( const pppoe_key_t &r ) const {
-        return  ( mac < r.mac ) || 
-                ( outer_vlan < r.outer_vlan ) || 
-                ( inner_vlan < r.inner_vlan ) || 
-                ( session_id < r.session_id );
-    }
+    friend bool operator<( const pppoe_key_t &l, const pppoe_key_t &r );
+
+    std::string to_string() const;
 };
 
 class PPPOERuntime {

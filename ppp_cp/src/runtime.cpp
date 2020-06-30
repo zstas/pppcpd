@@ -1,6 +1,14 @@
 #include "main.hpp"
 
-std::string pppoe_conn_t::to_string() {
+bool operator<( const pppoe_key_t &l, const pppoe_key_t &r ) {
+    return std::tie( l.session_id, l.outer_vlan, l.inner_vlan, l.mac ) < std::tie( r.session_id, r.outer_vlan, r.inner_vlan, r.mac );
+}
+
+bool operator<( const pppoe_conn_t &l, const pppoe_conn_t &r ) {
+    return std::tie( l.cookie, l.outer_vlan, l.inner_vlan, l.mac ) < std::tie( r.cookie, r.outer_vlan, r.inner_vlan, r.mac );
+}
+
+std::string pppoe_conn_t::to_string() const {
     std::ostringstream out;
 
     out << "MAC: ";
@@ -10,6 +18,20 @@ std::string pppoe_conn_t::to_string() {
     out << " outer_vlan: " << outer_vlan;
     out << " inner_vlan: " << inner_vlan;
     out << " cookie: " << cookie;
+
+    return out.str();
+}
+
+std::string pppoe_key_t::to_string() const {
+    std::ostringstream out;
+
+    out << "MAC: ";
+    for( auto const &el: mac ) {
+        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
+    }
+    out << " session_id: " << session_id;
+    out << " outer_vlan: " << outer_vlan;
+    out << " inner_vlan: " << inner_vlan;
 
     return out.str();
 }
@@ -47,6 +69,8 @@ std::tuple<uint16_t,std::string> PPPOERuntime::allocateSession( const encapsulat
                     std::forward_as_tuple( io, encap, i )
             ); !ret ) {
                 return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
+            } else {
+                log( "Allocated PPPOE Session: " + it->first.to_string() );
             }
             return { i, "" };
         }
@@ -63,6 +87,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
     for( auto const &[ k, v ]: activeSessions ) {
         if( v.session_id == *it ) {
             aaa->stopSession( v.aaa_session_id );
+            log( "Dellocated PPPOE Session: " + k.to_string() );
             activeSessions.erase( k );
             break;
         }

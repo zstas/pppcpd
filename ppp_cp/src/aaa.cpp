@@ -6,6 +6,7 @@ FRAMED_POOL::FRAMED_POOL( std::string sta, std::string sto ) {
 }
 
 uint32_t FRAMED_POOL::allocate_ip() {
+    log( "Allocation IP from Pool" );
     for( uint32_t i = start_ip.to_uint(); i <= stop_ip.to_uint(); i++ ) {
         if( const auto &iIt = ips.find( i ); iIt == ips.end() ) {
             ips.emplace( i );
@@ -16,6 +17,7 @@ uint32_t FRAMED_POOL::allocate_ip() {
 }
 
 void FRAMED_POOL::deallocate_ip( uint32_t i ) {
+    log( "Deallocating IP from Pool" );
     if( const auto &iIt = ips.find( i ); iIt != ips.end() ) {
         ips.erase( iIt );
     }
@@ -117,6 +119,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
         return { SESSION_ERROR, "Framed pool with name " + conf.local_template.value().framed_pool + " wasn't found" };
     }
     address_v4 address { fr_pool->second.allocate_ip() };
+    log( "AAA: Allocated ip " + address.to_string() );
 
     // Creating new session
     uint32_t i;
@@ -138,11 +141,11 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     return { i, "" };
 }
 
-std::tuple<AAA_Session,std::string> AAA::getSession( uint32_t sid ) {
+std::tuple<AAA_Session*,std::string> AAA::getSession( uint32_t sid ) {
     if( auto const &it = sessions.find( sid); it == sessions.end() ) {
-        return { AAA_Session{}, "Cannot find session id " + std::to_string( sid ) };
+        return { nullptr, "Cannot find session id " + std::to_string( sid ) };
     } else {
-        return { it->second, "" };
+        return { &it->second, "" };
     }
 }
 

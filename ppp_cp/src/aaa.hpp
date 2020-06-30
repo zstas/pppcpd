@@ -39,9 +39,9 @@ struct AAA_Session {
     std::function<void(void)> on_stop;
 
     AAA_Session() = default;
-    AAA_Session( const AAA_Session & ) = default;
+    AAA_Session( const AAA_Session & ) = delete;
     AAA_Session( AAA_Session && ) = default;
-    AAA_Session& operator=( const AAA_Session& ) = default;
+    AAA_Session& operator=( const AAA_Session& ) = delete;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
     AAA_Session( const std::string &u, address_v4 a, address_v4 d1, std::function<void()> s ):
@@ -98,9 +98,10 @@ public:
     {}
 
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict );
-    std::tuple<AAA_Session,std::string> getSession( uint32_t sid );
+    std::tuple<AAA_Session*,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     void stopSession( uint32_t sid );
+
 };
 
 #endif
