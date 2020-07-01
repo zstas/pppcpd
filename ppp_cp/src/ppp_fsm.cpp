@@ -103,9 +103,6 @@ void PPP_FSM::layer_down() {
 }
 
 void PPP_FSM::open() {
-    std::chrono::milliseconds timespan( 1000 ); 
-    std::this_thread::sleep_for( timespan );
-
     switch( state ) {
     case PPP_FSM_STATE::Initial:
         state = PPP_FSM_STATE::Starting;

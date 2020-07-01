@@ -4,18 +4,18 @@
 extern std::atomic_bool interrupted;
 
 struct PPPOEQ {
-    std::mutex mutex;
-    std::condition_variable cond;
+    // std::mutex mutex;
+    // std::condition_variable cond;
     std::queue<std::vector<uint8_t>> queue;
 
     void push( std::vector<uint8_t> pkt ) {
-        std::lock_guard lg( mutex );
+        // std::lock_guard lg( mutex );
         queue.push( std::move( pkt ) );
         // cond.notify_one();
     }
 
     std::vector<uint8_t> pop() {
-        std::lock_guard lg( mutex );
+        // std::lock_guard lg( mutex );
         // while( queue.empty() ) {
         //     cond.wait_for( lg, std::chrono::seconds( 1 ) );
         //     if( interrupted ) {
@@ -28,7 +28,7 @@ struct PPPOEQ {
     }
 
     bool empty() {
-        std::lock_guard lg( mutex );
+        // std::lock_guard lg( mutex );
         return queue.empty();
     }
 };
@@ -43,7 +43,7 @@ private:
     boost::asio::generic::raw_protocol pppoes { PF_PACKET, SOCK_RAW };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
     boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
-    boost::asio::steady_timer periodic_callback{ io, boost::asio::chrono::seconds( 1 ) };
+    boost::asio::steady_timer periodic_callback{ io };
 public:
     EVLoop( io_service &i );
     void generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan );

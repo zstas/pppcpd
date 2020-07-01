@@ -39,6 +39,7 @@ EVLoop::EVLoop( io_service &i ):
     //raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );        
     raw_sock_pppoe.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1 ) );
     // raw_sock_ppp.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1 ) );
+    periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 20 ) );
     periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
 }
 
