@@ -9,7 +9,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
     // Determine this session
     uint16_t sessionId = bswap16( pppoe->session_id );
     pppoe_key_t key{ encap.source_mac, sessionId, encap.outer_vlan, encap.inner_vlan };
-    log( "Looking up for session: " + key.to_string() );
+    // log( "Looking up for session: " + key.to_string() );
 
     auto const &sessionIt = runtime->activeSessions.find( key );
     if( sessionIt == runtime->activeSessions.end() ) {
@@ -27,7 +27,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
 
     switch( static_cast<PPP_PROTO>( bswap16( pppoe->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
-        log( "proto LCP for session " + std::to_string( session.session_id ) );
+        // log( "proto LCP for session " + std::to_string( session.session_id ) );
         if( auto const& [ action, err ] = session.lcp.receive( inPkt ); !err.empty() ) {
             log( "Error while processing LCP packet: " + err );
         } else {

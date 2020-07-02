@@ -197,7 +197,7 @@ FSM_RET LCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    log( "Sending LCP ECHO REPLY" );
+    // log( "Sending LCP ECHO REPLY" );
     ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };

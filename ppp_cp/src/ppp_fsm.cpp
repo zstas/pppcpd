@@ -4,7 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
-    log( "receive pkt in state: " + std::to_string( state ) );
+    // log( "receive pkt in state: " + std::to_string( state ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
