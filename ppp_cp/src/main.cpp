@@ -6,6 +6,7 @@
 // Some global vars
 std::shared_ptr<PPPOERuntime> runtime;
 std::atomic_bool interrupted { false };
+Logger logger;
 
 // Queues for packets
 PPPOEQ pppoe_incoming;
@@ -44,6 +45,7 @@ static void conf_init() {
 
 int main( int argc, char *argv[] ) {
     conf_init();
+    logger.setLevel( LOGL::INFO );
 
     YAML::Node config = YAML::LoadFile( "config.yaml" );
 
