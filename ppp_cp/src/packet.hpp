@@ -135,14 +135,14 @@ struct PPP_LCP {
         do {
             auto opt = reinterpret_cast<LCP_OPT_HDR*>( getPayload( offset ) );
             offset += opt->len;
-        } while( offset + sizeof( *this ) < ntohs( length ) );
+        } while( offset + sizeof( *this ) < bswap( length ) );
         return options;
     }
 
     std::set<IPCP_OPT_HDR*> parseIPCPOptions() {
         std::set<IPCP_OPT_HDR*> options;
         size_t offset = 0;
-        while( offset + sizeof( *this ) < ntohs( length ) ) {
+        while( offset + sizeof( *this ) < bswap( length ) ) {
             auto opt = reinterpret_cast<IPCP_OPT_HDR*>( getPayload( offset ) );
             offset += opt->len;
             options.emplace( opt );
@@ -191,7 +191,7 @@ struct LCP_OPT_2B {
 
     void set( LCP_OPTIONS o, uint16_t v ) {
         opt = o;
-        val = htons( v );
+        val = bswap( v );
         len = 4;
     }
 
@@ -207,7 +207,7 @@ struct LCP_OPT_4B {
 
     void set( LCP_OPTIONS o, uint32_t v ) {
         opt = o;
-        val = htonl( v );
+        val = bswap( v );
         len = 6;
     }
 
@@ -223,7 +223,7 @@ struct IPCP_OPT_4B {
 
     void set( IPCP_OPTIONS o, uint32_t v ) {
         opt = o;
-        val = htonl( v );
+        val = bswap( v );
         len = 6;
     }
 
@@ -243,8 +243,7 @@ struct Packet {
     
     std::vector<uint8_t> bytes;
 
-    Packet() {
-    }
+    Packet() = default;
 
     Packet( std::vector<uint8_t> p ):
         bytes( std::move( p ) )
@@ -252,6 +251,8 @@ struct Packet {
 
     Packet( const Packet & ) = delete;
     Packet& operator=( const Packet& ) = delete;
+
+    friend std::ostream& operator<<( std::ostream &stream, Packet &pkt ); 
 };
 
 #endif

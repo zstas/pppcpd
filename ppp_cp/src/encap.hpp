@@ -3,8 +3,6 @@
 
 #include "packet.hpp"
 
-using mac_t = std::array<uint8_t,6>;
-
 class encapsulation_t {
 public:
     mac_t source_mac { 0, 0, 0, 0, 0, 0 };
