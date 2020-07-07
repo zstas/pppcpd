@@ -6,7 +6,6 @@
 // Some global vars
 std::shared_ptr<PPPOERuntime> runtime;
 std::atomic_bool interrupted { false };
-Logger logger;
 
 // Queues for packets
 PPPOEQ pppoe_incoming;
@@ -45,8 +44,6 @@ static void conf_init() {
 
 int main( int argc, char *argv[] ) {
     conf_init();
-    logger.setLevel( LOGL::INFO );
-
     YAML::Node config = YAML::LoadFile( "config.yaml" );
 
     io_service io;
@@ -57,6 +54,8 @@ int main( int argc, char *argv[] ) {
     runtime->pppoe_conf->ac_name = "vBNG AC PPPoE";
     runtime->pppoe_conf->insert_cookie = true;
     runtime->pppoe_conf->ignore_service_name = true;
+    runtime->logger = std::make_unique<Logger>();
+    runtime->logger->setLevel( LOGL::INFO );
 
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();

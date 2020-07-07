@@ -17,6 +17,21 @@ enum class PPPOE_CODE: uint8_t {
     PADT = 0xa7
 };
 
+std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &pkt ); 
+
+enum class PPP_PROTO : uint16_t {
+    IPV4 = 0x0021,
+    IPV6 = 0x0057,
+    IPV6CP = 0x8057,
+    LCP = 0xc021,
+    PAP = 0xc023,
+    CHAP = 0xc223,
+    IPCP = 0x8021,
+    LQR = 0xc025,
+};
+
+std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &pkt ); 
+
 enum class PPPOE_TAG: uint16_t {
     END_OF_LIST = 0x0000,
     SERVICE_NAME = 0x0101,
@@ -251,8 +266,16 @@ struct Packet {
 
     Packet( const Packet & ) = delete;
     Packet& operator=( const Packet& ) = delete;
+};
 
-    friend std::ostream& operator<<( std::ostream &stream, Packet &pkt ); 
+struct PacketPrint {
+    std::vector<uint8_t> &bytes;
+
+    PacketPrint( std::vector<uint8_t> &p ):
+        bytes( p )
+    {}
+
+    friend std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt ); 
 };
 
 #endif

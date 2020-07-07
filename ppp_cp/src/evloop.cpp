@@ -46,6 +46,8 @@ EVLoop::EVLoop( io_service &i ):
 void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan ) {
     if( !ec ) {
         std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
+        PacketPrint pkt_print { pkt };
+        runtime->logger->logInfo() << pkt_print << std::endl;
         encapsulation_t encap { pkt, outer_vlan, inner_vlan };
         switch( encap.type ) {
         case ETH_PPPOE_DISCOVERY:
@@ -127,6 +129,8 @@ void EVLoop::periodic( boost::system::error_code ec ) {
     // Sending pppoe discovery packets
     while( !pppoe_outcoming.empty() ) {
         auto reply = pppoe_outcoming.pop();
+        PacketPrint pkt { reply };
+        runtime->logger->logInfo() << pkt << std::endl;
         // ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
         // rep_eth->src_mac = runtime->hwaddr;
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
@@ -134,6 +138,8 @@ void EVLoop::periodic( boost::system::error_code ec ) {
     // Sending pppoe session control packets
     while( !ppp_outcoming.empty() ) {
         auto reply = ppp_outcoming.pop();
+        PacketPrint pkt { reply };
+        runtime->logger->logInfo() << pkt << std::endl;
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
     }
     periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 20 ) );
