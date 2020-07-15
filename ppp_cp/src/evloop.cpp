@@ -47,17 +47,17 @@ void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uin
     if( !ec ) {
         std::vector<uint8_t> pkt { pktbuf.begin(), pktbuf.begin() + len };
         PacketPrint pkt_print { pkt };
-        runtime->logger->logInfo() << pkt_print << std::endl;
+        runtime->logger->logInfo() << LOGS::PACKET << pkt_print << std::endl;
         encapsulation_t encap { pkt, outer_vlan, inner_vlan };
         switch( encap.type ) {
         case ETH_PPPOE_DISCOVERY:
             if( auto const &error = pppoe::processPPPOE( pkt, encap ); !error.empty() ) {
-                log( error );
+                runtime->logger->logError() << LOGS::MAIN << error;
             }
             break;
         case ETH_PPPOE_SESSION:
             if( auto const &error = ppp::processPPP( pkt, encap ); !error.empty() ) {
-                log( error );
+                runtime->logger->logError() << LOGS::MAIN << error;
             }
             break;
         default:
@@ -81,7 +81,15 @@ void EVLoop::receive_pppoe( boost::system::error_code ec ) {
         char            buf[CMSG_SPACE(sizeof(struct tpacket_auxdata))];
     } cmsg_buf;
 
-    struct msghdr msgh = { .msg_iov = &iov, .msg_iovlen = 1, .msg_control = &cmsg, .msg_controllen = sizeof(cmsg_buf) };
+    struct msghdr msgh = { 
+        .msg_name = nullptr,
+        .msg_namelen = 0,
+        .msg_iov = &iov, 
+        .msg_iovlen = 1, 
+        .msg_control = &cmsg, 
+        .msg_controllen = sizeof(cmsg_buf),
+        .msg_flags = 0,
+    };
     int received = recvmsg( raw_sock_pppoe.native_handle(), &msgh, 0 );
     
     for( auto cmsg = CMSG_FIRSTHDR( &msgh ); cmsg != nullptr; cmsg = CMSG_NXTHDR( &msgh, cmsg ) ) {
@@ -107,7 +115,21 @@ void EVLoop::receive_ppp( boost::system::error_code ec ) {
 
     struct iovec iov = { .iov_base = pktbuf.data(), .iov_len = pktbuf.size() };
     struct cmsghdr *cmsg;
-    struct msghdr msgh = { .msg_iov = &iov, .msg_iovlen = 1, .msg_control = cmsg, .msg_controllen = sizeof(*cmsg) };
+        union {
+        struct cmsghdr  cmsg;
+        char            buf[CMSG_SPACE(sizeof(struct tpacket_auxdata))];
+    } cmsg_buf;
+
+    struct msghdr msgh = { 
+        .msg_name = nullptr,
+        .msg_namelen = 0,
+        .msg_iov = &iov, 
+        .msg_iovlen = 1, 
+        .msg_control = &cmsg, 
+        .msg_controllen = sizeof(cmsg_buf),
+        .msg_flags = 0,
+    };
+
     int received = recvmsg( raw_sock_ppp.native_handle(), &msgh, 0 );
     
     for( cmsg = CMSG_FIRSTHDR( &msgh ); cmsg != nullptr; cmsg = CMSG_NXTHDR( &msgh, cmsg ) ) {

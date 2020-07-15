@@ -11,6 +11,7 @@ enum class LOGL: uint8_t {
 
 enum class LOGS: uint8_t {
     MAIN,
+    PACKET,
     PPPOED,
     PPP,
     LCP,
@@ -20,6 +21,7 @@ enum class LOGS: uint8_t {
 };
 
 std::ostream& operator<<( std::ostream &os, const LOGL &l );
+std::ostream& operator<<( std::ostream &os, const LOGS &l );
 
 class Logger {
 private:
@@ -28,9 +30,9 @@ private:
     bool noop;
     using endl_type = decltype( std::endl<char, std::char_traits<char>> );
 
-    Logger& printTime( const LOGL &level ) {
+    Logger& printTime() {
         auto in_time_t = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
-        *this << std::put_time( std::localtime( &in_time_t ), "%Y-%m-%d %X: ") << level;
+        *this << std::put_time( std::localtime( &in_time_t ), "%Y-%m-%d %X: ");
         return *this;
     }
 
@@ -71,21 +73,28 @@ public:
         if( minimum > LOGL::INFO ) {
             noop = true;
         }
-        return printTime( LOGL::INFO );
+        return printTime();
     }
 
     Logger& logDebug() {
         if( minimum > LOGL::DEBUG ) {
             noop = true;
         }
-        return printTime( LOGL::DEBUG );
+        return printTime();
+    }
+
+    Logger& logError() {
+        if( minimum > LOGL::ERROR ) {
+            noop = true;
+        }
+        return printTime();
     }
 
     Logger& logAlert() {
         if( minimum > LOGL::ALERT ) {
             noop = true;
         }
-        return printTime( LOGL::ALERT );
+        return printTime();
     }
 };
 

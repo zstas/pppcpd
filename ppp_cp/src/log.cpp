@@ -14,6 +14,20 @@ std::ostream& operator<<( std::ostream &os, const LOGL &l ) {
     return os;
 }
 
+std::ostream& operator<<( std::ostream &os, const LOGS &l ) {
+    switch( l ) {
+    case LOGS::AAA: return os << "[AAA] ";
+    case LOGS::PACKET: return os << "[PACKET] ";
+    case LOGS::PPPOED: return os << "[PPPOED] ";
+    case LOGS::PPP: return os << "[PPP] ";
+    case LOGS::LCP: return os << "[LCP] ";
+    case LOGS::IPCP: return os << "[IPCP] ";
+    case LOGS::PPP_AUTH: return os << "[PPP_AUTH] ";
+    case LOGS::MAIN: return os << "[MAIN] ";
+    }
+    return os;
+}
+
 void log( const std::string &msg ) {
     auto in_time_t = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
 
