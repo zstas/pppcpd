@@ -16,6 +16,7 @@ public:
     {}
 
     friend bool operator<( const pppoe_conn_t &l, const pppoe_conn_t &r );
+    friend std::ostream& operator<<( std::ostream &stream, const pppoe_conn_t &conn ); 
 
     std::string to_string() const;
 };
@@ -42,6 +43,7 @@ public:
     {}
 
     friend bool operator<( const pppoe_key_t &l, const pppoe_key_t &r );
+    friend std::ostream& operator<<( std::ostream &stream, const pppoe_key_t &key ); 
 
     std::string to_string() const;
 };

@@ -19,26 +19,16 @@ EVLoop::EVLoop( io_service &i ):
     int one = 1;
     raw_sock_pppoe.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
     if( setsockopt( raw_sock_pppoe.native_handle(), SOL_PACKET, PACKET_AUXDATA, &one, sizeof(one)) < 0 ) {
-        log( "Cannot set option PACKET_AUXDATA" );
+        runtime->logger->logError() << LOGS::MAIN << "Cannot set option PACKET_AUXDATA";
     }
-
-    // sockaddr.sll_protocol = bswap16( ETH_P_ALL );
-    // raw_sock_ppp.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
-    // one = 1;
-    // if( setsockopt( raw_sock_ppp.native_handle(), SOL_PACKET, PACKET_AUXDATA, &one, sizeof(one)) < 0 ) {
-    //     log( "Cannot set option PACKET_AUXDATA" );
-    // }
 
     signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
         interrupted = true;
-        log( "Got signal to interrupt, exiting" );
+        runtime->logger->logInfo() << "Got signal to interrupt, exiting";
         io.stop();
     });
 
-    //raw_sock_pppoe.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1, std::placeholders::_2 ) );
-    //raw_sock_ppp.async_receive( boost::asio::buffer( pktbuf ), std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1, std::placeholders::_2 ) );        
     raw_sock_pppoe.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1 ) );
-    // raw_sock_ppp.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_ppp, this, std::placeholders::_1 ) );
     periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 20 ) );
     periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
 }
@@ -61,14 +51,14 @@ void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uin
             }
             break;
         default:
-            log( "Received packet with unknown ethertype: " + std::to_string( encap.type ) );
+            runtime->logger->logInfo() << LOGS::MAIN << "Received packet with unknown ethertype: " << std::hex << std::showbase << encap.type;
         }
     }
 }
 
 void EVLoop::receive_pppoe( boost::system::error_code ec ) {
     if( ec ) {
-        log( "Error on receiving pppoe: " + ec.message() );
+        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message();
         return;
     }
     uint16_t outer_vlan { 0 };
@@ -106,7 +96,7 @@ void EVLoop::receive_pppoe( boost::system::error_code ec ) {
 
 void EVLoop::receive_ppp( boost::system::error_code ec ) {
     if( ec ) {
-        log( "Error on receiving pppoe: " + ec.message() );
+        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message();
         return;
     }
 
@@ -152,7 +142,7 @@ void EVLoop::periodic( boost::system::error_code ec ) {
     while( !pppoe_outcoming.empty() ) {
         auto reply = pppoe_outcoming.pop();
         PacketPrint pkt { reply };
-        runtime->logger->logInfo() << pkt << std::endl;
+        runtime->logger->logInfo() << LOGS::PACKET << pkt << std::endl;
         // ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
         // rep_eth->src_mac = runtime->hwaddr;
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
@@ -161,7 +151,7 @@ void EVLoop::periodic( boost::system::error_code ec ) {
     while( !ppp_outcoming.empty() ) {
         auto reply = ppp_outcoming.pop();
         PacketPrint pkt { reply };
-        runtime->logger->logInfo() << pkt << std::endl;
+        runtime->logger->logInfo() << LOGS::PACKET << pkt << std::endl;
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
     }
     periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 20 ) );

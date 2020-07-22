@@ -9,7 +9,7 @@ IPCP_FSM::IPCP_FSM( PPPOESession &s ):
 {}
 
 FSM_RET IPCP_FSM::send_conf_req() {
-    log( "IPCP: send_conf_req current state: " + std::to_string( state ) );
+    runtime->logger->logDebug() << LOGS::IPCP << "send_conf_req current state: " << state;
     std::vector<uint8_t> pkt;
     pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + 256 );
 
@@ -47,7 +47,7 @@ FSM_RET IPCP_FSM::send_conf_req() {
 
 
 FSM_RET IPCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
-    log( "IPCP: send_conf_ack current state: " + std::to_string( state ) );
+    runtime->logger->logDebug() << LOGS::IPCP << "send_conf_ack current state: " << state;
 
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
@@ -69,7 +69,7 @@ FSM_RET IPCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
 }
 
 FSM_RET IPCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
-    log( "IPCP: send_conf_nak current state: " + std::to_string( state ) );
+    runtime->logger->logDebug() << LOGS::IPCP << "send_conf_nak current state: " << state;
     auto const &[ aaa_session, err ] = runtime->aaa->getSession( session.aaa_session_id );
     if( !err.empty() ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf nak cause: "s + err };

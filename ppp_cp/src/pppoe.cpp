@@ -46,7 +46,7 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
 }
 
 static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
-    log( "Processing PADI packet" );
+    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADI packet";
 
     outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
@@ -119,7 +119,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
 }
 
 static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
-    log( "Processing PADR packet" );
+    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADR packet";
         
     outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     
@@ -181,7 +181,7 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
 
     PPPOEDISC_HDR *disc = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.data() );
 
-    log( "Incoming PPPoE: " + std::to_string( disc ) );
+    runtime->logger->logDebug() << LOGS::PPPOED << "Incoming PPPoE: " << disc;
     
     // Starting to prepare the answer
     switch( disc->code ) {
@@ -196,16 +196,15 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
         }
         break;
     case PPPOE_CODE::PADT:
-        log( "Processing PADT packet" );
+        runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADT packet";
         runtime->deallocateSession( bswap16( disc->session_id ) );
         return "Received PADT, send nothing";
     default:
-        log( "Incorrect code for packet" );
+        runtime->logger->logDebug() << LOGS::PPPOED << "Incorrect code for packet";
         return "Incorrect code for packet";
     }
 
     disc = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
-    log( "Outcoming PPPoE: " + std::to_string( disc ) );
 
     auto header = encap.generate_header( runtime->hwaddr, ETH_PPPOE_DISCOVERY );
     outPkt.insert( outPkt.begin(), header.begin(), header.end() );

@@ -1,6 +1,11 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include "ppp_auth.hpp"
+#include "ppp_ipcp.hpp"
+#include "ppp_lcp.hpp"
+#include "ppp_fsm.hpp"
+
 struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     // General Data
     encapsulation_t encap;
@@ -30,17 +35,7 @@ struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     io_service &io;
     boost::asio::steady_timer timer;
 
-    PPPOESession( io_service &i, const encapsulation_t &e, uint16_t sid ): 
-        io( i ),
-        timer( io ),
-        encap( e ),
-        session_id( sid ),
-        lcp( *this ),
-        auth( *this ),
-        ipcp( *this )
-    {
-        log( "Session UP: " + std::to_string( sid ) );
-    }
+    PPPOESession( io_service &i, const encapsulation_t &e, uint16_t sid );
 
     ~PPPOESession() {
         deprovision_dp();

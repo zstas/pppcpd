@@ -24,6 +24,7 @@ std::ostream& operator<<( std::ostream &os, const LOGS &l ) {
     case LOGS::IPCP: return os << "[IPCP] ";
     case LOGS::PPP_AUTH: return os << "[PPP_AUTH] ";
     case LOGS::MAIN: return os << "[MAIN] ";
+    case LOGS::VPP: return os << "[VPP] ";
     }
     return os;
 }

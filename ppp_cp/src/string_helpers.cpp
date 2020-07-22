@@ -26,30 +26,32 @@ std::string std::to_string( PPP_FSM_STATE state ) {
     return "Unknown state";
 }
 
-std::string std::to_string( const PPPOEDISC_HDR *hdr ) {
-    std::ostringstream out;
-    out << "discovery packet: ";
-    out << "Type = " << hdr->type << " ";
-    out << "Version = " << hdr->version << " ";
-    out << "Code = ";
-    switch( hdr->code ) {
-        case PPPOE_CODE::PADI:
-            out << "PADI "; break;
-        case PPPOE_CODE::PADO:
-            out << "PADO "; break;
-        case PPPOE_CODE::PADR:
-            out << "PADR "; break;
-        case PPPOE_CODE::PADS:
-            out << "PADS "; break;
-        case PPPOE_CODE::PADT:
-            out << "PADT "; break;
-        default:
-            out << "UNKNOWN ";
+std::ostream& operator<<( std::ostream &stream, const PPP_FSM_STATE &state ) {
+    switch( state ) {
+    case PPP_FSM_STATE::Initial:    stream << "Initial"; break;
+    case PPP_FSM_STATE::Starting:   stream << "Starting"; break;
+    case PPP_FSM_STATE::Closed:     stream << "Closed"; break;
+    case PPP_FSM_STATE::Stopped:    stream << "Stopped"; break;
+    case PPP_FSM_STATE::Closing:    stream << "Closing"; break;
+    case PPP_FSM_STATE::Stopping:   stream << "Stopping"; break;
+    case PPP_FSM_STATE::Req_Sent:   stream << "Req_Sent"; break;
+    case PPP_FSM_STATE::Ack_Rcvd:   stream << "Ack_Rcvd"; break;
+    case PPP_FSM_STATE::Ack_Sent:   stream << "Ack_Sent"; break;
+    case PPP_FSM_STATE::Opened:     stream << "Opened"; break;
     }
-    out << "Session id = " << hdr->session_id << " ";
-    out << "length = " << htons( hdr->length );
 
-    return out.str();
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const PPPOEDISC_HDR &disc ) {
+    stream << "discovery packet: ";
+    stream << "Type = " << disc.type << " ";
+    stream << "Version = " << disc.version << " ";
+    stream << "Code = " << disc.code;
+    stream << "Session id = " << disc.session_id << " ";
+    stream << "length = " << bswap16( disc.length );
+
+    return stream;
 }
 
 std::string std::to_string( ETHERNET_HDR *eth ) {

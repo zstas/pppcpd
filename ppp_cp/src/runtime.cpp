@@ -8,6 +8,16 @@ bool operator<( const pppoe_conn_t &l, const pppoe_conn_t &r ) {
     return std::tie( l.cookie, l.outer_vlan, l.inner_vlan, l.mac ) < std::tie( r.cookie, r.outer_vlan, r.inner_vlan, r.mac );
 }
 
+std::ostream& operator<<( std::ostream &stream, const pppoe_key_t &key ) {
+    stream << "PPPoE Key: mac: " << key.mac << " session id: " << key.session_id << " outer vlan: " << key.outer_vlan << " inner vlan: " << key.inner_vlan;
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const pppoe_conn_t &conn ) {
+    stream << "PPPoE Connection: mac: " << conn.mac << " cookie: " << conn.cookie << " outer vlan: " << conn.outer_vlan << " inner vlan: " << conn.inner_vlan;
+    return stream;
+}
+
 std::string pppoe_conn_t::to_string() const {
     std::ostringstream out;
 
@@ -70,7 +80,7 @@ std::tuple<uint16_t,std::string> PPPOERuntime::allocateSession( const encapsulat
             ); !ret ) {
                 return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
             } else {
-                log( "Allocated PPPOE Session: " + it->first.to_string() );
+                logger->logDebug() << LOGS::MAIN << "Allocated PPPOE Session: " << it->first.to_string();
             }
             return { i, "" };
         }
@@ -87,7 +97,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
     for( auto const &[ k, v ]: activeSessions ) {
         if( v.session_id == *it ) {
             aaa->stopSession( v.aaa_session_id );
-            log( "Dellocated PPPOE Session: " + k.to_string() );
+            logger->logDebug() << LOGS::MAIN << "Dellocated PPPOE Session: " << k.to_string();
             activeSessions.erase( k );
             break;
         }
@@ -99,7 +109,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
 
 void PPPOERuntime::clearPendingSession( std::shared_ptr<boost::asio::steady_timer> timer, pppoe_conn_t key ) {
     if( auto const &it = pendingSession.find( key ); it != pendingSession.end() ) {
-        log( "Deleting pending session due timeout: " + key.to_string() );
+        logger->logDebug() << LOGS::MAIN << "Deleting pending session due timeout: " << key.to_string();
         pendingSession.erase( it );
     }
 }

@@ -3,22 +3,23 @@
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 
+extern std::shared_ptr<PPPOERuntime> runtime;
+
 VPPAPI::VPPAPI() {
-    log( "VPPAPI cstr" );
     auto ret = con.connect( "vbng", nullptr, 32, 32 );
     if( ret == VAPI_OK ) {
-        log("VPP API: connected");
+        runtime->logger->logDebug() << LOGS::VPP << "VPP API: connected";
     } else {
-        log( "VPP API: Cannot connect to vpp" );
+        runtime->logger->logDebug() << LOGS::VPP << "VPP API: Cannot connect to vpp";
     }
 }
 
 VPPAPI::~VPPAPI() {
     auto ret = con.disconnect();
     if( ret == VAPI_OK ) {
-        log("VPP API: disconnected");
+        runtime->logger->logDebug() << LOGS::VPP << "VPP API: disconnected";
     } else {
-        log("VPP API: something went wrong, cannot disconnect");
+        runtime->logger->logDebug() << LOGS::VPP << "VPP API: something went wrong, cannot disconnect";
     }
 }
 
@@ -47,7 +48,7 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     
     auto ret = pppoe.execute();
     if( ret != VAPI_OK ) {
-        log( "error!" );
+        runtime->logger->logError() << LOGS::VPP << "Error on executing add_pppoe_session api method";
     }
 
     do {
@@ -55,7 +56,7 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     } while( ret == VAPI_EAGAIN );
 
     auto repl = pppoe.get_response().get_payload();
-    log( "added pppoe session: " + std::to_string( repl.sw_if_index ) );
+    runtime->logger->logDebug() << LOGS::VPP << "Added pppoe session: " + repl.sw_if_index;
     if( static_cast<int>( repl.sw_if_index ) == -1 ) {
         return false;
     }

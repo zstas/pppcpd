@@ -17,7 +17,8 @@ enum class LOGS: uint8_t {
     LCP,
     IPCP,
     PPP_AUTH,
-    AAA
+    AAA,
+    VPP
 };
 
 std::ostream& operator<<( std::ostream &os, const LOGL &l );
