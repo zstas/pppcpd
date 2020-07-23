@@ -47,16 +47,20 @@ endif()
 include_directories(BEFORE SYSTEM ${radiuspp_SOURCE_DIR}/src)
 
 # set the project name
-project(ppp_cp)
+project(pppcpd)
 
 file(GLOB SOURCES src/*.cpp)
+list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 
 # add the executable
-add_executable(ppp_cp ${SOURCES})
+add_executable(pppcpd ${SOURCES})
+add_executable(pppctl ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 
-target_link_libraries(ppp_cp PUBLIC boost_system)
-target_link_libraries(ppp_cp PUBLIC yaml-cpp)
-target_link_libraries(ppp_cp PUBLIC pthread)
-target_link_libraries(ppp_cp PUBLIC vapiclient)
-target_link_libraries(ppp_cp PUBLIC vppcom)
-target_link_libraries(ppp_cp PUBLIC radiuspp)
+target_link_libraries(pppcpd PUBLIC boost_system)
+target_link_libraries(pppcpd PUBLIC yaml-cpp)
+target_link_libraries(pppcpd PUBLIC pthread)
+target_link_libraries(pppcpd PUBLIC vapiclient)
+target_link_libraries(pppcpd PUBLIC vppcom)
+target_link_libraries(pppcpd PUBLIC radiuspp)
+
+target_link_libraries(pppctl PUBLIC pthread)
