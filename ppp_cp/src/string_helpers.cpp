@@ -54,21 +54,11 @@ std::ostream& operator<<( std::ostream &stream, const PPPOEDISC_HDR &disc ) {
     return stream;
 }
 
-std::string std::to_string( ETHERNET_HDR *eth ) {
-    std::ostringstream out;
-    out << "dst mac: ";
-    for( auto const &el: eth->dst_mac) {
-        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
-    }
-    out.seekp( -1, std::ios::end );
-    out << std::endl;
-    out << "src mac: ";
-    for( auto const &el: eth->src_mac) {
-        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
-    }
-    out.seekp( -1, std::ios::end );
-    out << std::endl;
-    out << "ethertype: 0x" << std::hex << std::setw(2) << htons( eth->ethertype ) << std::endl;
+std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &eth ) {
+    auto flags = stream.flags();
+    stream << eth.src_mac << " -> " << eth.dst_mac;
+    stream << " ethertype: " << std::hex << std::showbase <<std::setw(2) << bswap16( eth.ethertype );
+    stream.flags( flags );
 
-    return out.str();
+    return stream;
 }

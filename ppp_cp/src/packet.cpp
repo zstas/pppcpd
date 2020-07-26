@@ -5,6 +5,8 @@
 #include <radiuspp.hpp>
 #include "packet.hpp"
 
+extern std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &disc ); 
+
 std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &code ) {
     switch( code ) {
     case PPPOE_CODE::PADI: stream << "PADI"; break;
@@ -32,22 +34,22 @@ std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &code ) {
 
 std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt ) {
     auto eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    stream << eth->src_mac << " -> " << eth->dst_mac;
+    stream << *eth;
     uint8_t* payload = eth->getPayload();
     auto eth_type = bswap( eth->ethertype );
     if( eth_type == ETH_VLAN ) {
         auto vlan = reinterpret_cast<VLAN_HDR*>( eth->getPayload() );
-        stream << " vlan " << std::hex << ( 0xFFF & bswap( vlan->vlan_id ) );
+        stream << " vlan " << (int)( 0xFFF & bswap( vlan->vlan_id ) );
         payload = vlan->getPayload();
         eth_type = bswap( vlan->ethertype );
     }
 
     if( eth_type == ETH_PPPOE_DISCOVERY ) {
         auto disc = reinterpret_cast<PPPOEDISC_HDR*>( payload );
-        stream << "PPPoE Discovery: " << disc->code;
+        stream << " PPPoE Discovery: " << disc->code;
     } else if( eth_type == ETH_PPPOE_SESSION ) {
         auto sess = reinterpret_cast<PPPOESESSION_HDR*>( payload );
-        stream << "PPPoE Session: " << bswap( sess->session_id ) << " proto: " << static_cast<PPP_PROTO>( bswap( sess->ppp_protocol ) );
+        stream << " PPPoE Session: " << bswap( sess->session_id ) << " proto: " << static_cast<PPP_PROTO>( bswap( sess->ppp_protocol ) );
     }
 
     return stream;

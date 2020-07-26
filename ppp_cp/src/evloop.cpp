@@ -19,12 +19,12 @@ EVLoop::EVLoop( io_service &i ):
     int one = 1;
     raw_sock_pppoe.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
     if( setsockopt( raw_sock_pppoe.native_handle(), SOL_PACKET, PACKET_AUXDATA, &one, sizeof(one)) < 0 ) {
-        runtime->logger->logError() << LOGS::MAIN << "Cannot set option PACKET_AUXDATA";
+        runtime->logger->logError() << LOGS::MAIN << "Cannot set option PACKET_AUXDATA" << std::endl;
     }
 
     signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
         interrupted = true;
-        runtime->logger->logInfo() << "Got signal to interrupt, exiting";
+        runtime->logger->logInfo() << "Got signal to interrupt, exiting" << std::endl;
         io.stop();
     });
 
@@ -42,12 +42,12 @@ void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uin
         switch( encap.type ) {
         case ETH_PPPOE_DISCOVERY:
             if( auto const &error = pppoe::processPPPOE( pkt, encap ); !error.empty() ) {
-                runtime->logger->logError() << LOGS::MAIN << error;
+                runtime->logger->logError() << LOGS::MAIN << error << std::endl;
             }
             break;
         case ETH_PPPOE_SESSION:
             if( auto const &error = ppp::processPPP( pkt, encap ); !error.empty() ) {
-                runtime->logger->logError() << LOGS::MAIN << error;
+                runtime->logger->logError() << LOGS::MAIN << error << std::endl;
             }
             break;
         default:
@@ -58,7 +58,7 @@ void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uin
 
 void EVLoop::receive_pppoe( boost::system::error_code ec ) {
     if( ec ) {
-        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message();
+        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message() << std::endl;
         return;
     }
     uint16_t outer_vlan { 0 };
@@ -96,7 +96,7 @@ void EVLoop::receive_pppoe( boost::system::error_code ec ) {
 
 void EVLoop::receive_ppp( boost::system::error_code ec ) {
     if( ec ) {
-        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message();
+        runtime->logger->logError() << LOGS::MAIN << "Error on receiving pppoe: " << ec.message() << std::endl;
         return;
     }
 
