@@ -54,3 +54,4 @@ using address_v4_t = boost::asio::ip::address_v4;
 #include "runtime.hpp"
 #include "evloop.hpp"
 #include "yaml.hpp"
+#include "cli.hpp"

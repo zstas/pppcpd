@@ -56,6 +56,7 @@ int main( int argc, char *argv[] ) {
     runtime->pppoe_conf->ignore_service_name = true;
     runtime->logger = std::make_unique<Logger>();
     runtime->logger->setLevel( LOGL::INFO );
+    runtime->logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
 
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();

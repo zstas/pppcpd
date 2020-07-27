@@ -22,6 +22,8 @@ EVLoop::EVLoop( io_service &i ):
         runtime->logger->logError() << LOGS::MAIN << "Cannot set option PACKET_AUXDATA" << std::endl;
     }
 
+    runtime->logger->logInfo() << LOGS::MAIN << "Listening on interface " << runtime->ifName << std::endl;
+
     signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
         interrupted = true;
         runtime->logger->logInfo() << "Got signal to interrupt, exiting" << std::endl;
@@ -51,7 +53,7 @@ void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uin
             }
             break;
         default:
-            runtime->logger->logInfo() << LOGS::MAIN << "Received packet with unknown ethertype: " << std::hex << std::showbase << encap.type;
+            runtime->logger->logInfo() << LOGS::MAIN << "Received packet with unknown ethertype: " << std::hex << std::showbase << encap.type << std::endl;
         }
     }
 }
