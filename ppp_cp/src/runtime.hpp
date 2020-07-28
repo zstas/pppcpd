@@ -53,22 +53,19 @@ public:
     PPPOERuntime() = delete;
     PPPOERuntime( const PPPOERuntime& ) = delete;
     PPPOERuntime( PPPOERuntime&& ) = default;
-    PPPOERuntime( std::string name, io_service &i ) : 
-        ifName( std::move( name ) ),
-        io( i )
-    {}
+    PPPOERuntime( std::string name, io_service &i );
 
     PPPOERuntime operator=( const PPPOERuntime& ) = delete;
     PPPOERuntime& operator=( PPPOERuntime&& ) = default;
 
     std::string ifName;
     mac_t hwaddr { 0, 0, 0, 0, 0, 0 };
+    std::unique_ptr<Logger> logger;
     std::map<pppoe_key_t,PPPOESession> activeSessions;
     std::shared_ptr<PPPOEPolicy> pppoe_conf;
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;
-    std::unique_ptr<Logger> logger;
 
     void clearPendingSession( std::shared_ptr<boost::asio::steady_timer> timer, pppoe_conn_t key );
     std::string pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie );

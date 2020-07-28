@@ -21,7 +21,11 @@ int main( int argc, char *argv[] ) {
 
         while( cmd != "exit" ) {
             std::cout << greeting;
-            std::cin >> cmd;
+            std::getline( std::cin, cmd );
+            socket << cmd;
+            std::string buf;
+            socket >> buf;
+            std::cout << buf << std::endl;
         }
 
     } catch( std::exception &e ) {

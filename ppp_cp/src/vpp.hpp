@@ -6,12 +6,16 @@
 
 #include "vapi/pppoe.api.vapi.hpp"
 
-struct VPPAPI {
-    vapi::Connection con;
-    VPPAPI();
+class VPPAPI {
+public:
+    VPPAPI( std::unique_ptr<Logger> &l );
+
     ~VPPAPI();
 
     bool add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );
+private:
+    std::unique_ptr<Logger> &logger;
+    vapi::Connection con;
 };
 
 #endif

@@ -54,9 +54,6 @@ int main( int argc, char *argv[] ) {
     runtime->pppoe_conf->ac_name = "vBNG AC PPPoE";
     runtime->pppoe_conf->insert_cookie = true;
     runtime->pppoe_conf->ignore_service_name = true;
-    runtime->logger = std::make_unique<Logger>();
-    runtime->logger->setLevel( LOGL::INFO );
-    runtime->logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
 
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
@@ -70,9 +67,10 @@ int main( int argc, char *argv[] ) {
 
     RadiusDict dict { files };
     runtime->aaa = std::make_shared<AAA>( config[ "AAAConf" ].as<AAAConf>() );
-    runtime->vpp = std::make_shared<VPPAPI>();
 
     EVLoop loop( io );
+    std::remove( "/var/run/pppcpd.sock" );
+    CLIServer cli { io, "/var/run/pppcpd.sock" };
 
     while( !interrupted ) {
         io.run();
