@@ -29,22 +29,35 @@ void CLISession::do_read() {
         boost::asio::buffer( data_ ),
         [ this, self ]( boost::system::error_code ec, std::size_t length ) {
             if( !ec ) {
-                do_write( length );
+                run_cmd( { data_.begin(), data_.begin() + length } );
             }
         }
     );
 }
 
-void CLISession::do_write( std::size_t length ) {
+void CLISession::do_write( std::string &out ) {
     auto self( shared_from_this() );
-    runtime->logger->logInfo() << LOGS::MAIN << "Writing response: " << std::string( data_.begin(), data_.begin() + length ) << " with len: " << length << std::endl;
-    data_[ length ] = '\n';
+    out.append( "\r\n\r\n" );
     socket_.async_write_some(
-        boost::asio::buffer( data_, length + 1 ),
+        boost::asio::buffer( out.data(), out.size() ),
         [ this, self ]( boost::system::error_code ec, std::size_t ) {
             if( !ec ) {
                 do_read();
             }
         }
     );
+}
+
+inline bool startWith( const std::string &s1, const std::string &s2 ) {
+    return s1.find( s2 ) == 0;
+}
+
+void CLISession::run_cmd( const std::string &cmd ) {
+    std::string output;
+    if( startWith( cmd, "show subscribers" ) ) {
+        output = "show subscribers output...";
+    } else {
+        output = "unknown command";
+    }
+    do_write( output );
 }

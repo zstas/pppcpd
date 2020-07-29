@@ -12,9 +12,12 @@ int main( int argc, char *argv[] ) {
     std::string cmd;
 
     try {
+        boost::asio::io_context io;
+
         stream_protocol::endpoint endpoint( unix_socket_path );
-        stream_protocol::iostream socket( endpoint );
-        if( !socket ) {
+        stream_protocol::socket socket( io );
+        socket.connect( endpoint );
+        if( !socket.is_open() ) {
             std::cerr << "Cannot connect to unix socket: " << unix_socket_path << std::endl;
             return 1;
         }
@@ -22,10 +25,10 @@ int main( int argc, char *argv[] ) {
         while( cmd != "exit" ) {
             std::cout << greeting;
             std::getline( std::cin, cmd );
-            socket << cmd;
+            boost::asio::write( socket, boost::asio::buffer( cmd ) );
             std::string buf;
-            socket >> buf;
-            std::cout << buf << std::endl;
+            auto n = boost::asio::read_until( socket, boost::asio::dynamic_buffer( buf ), "\r\n\r\n" );
+            std::cout << buf;
         }
 
     } catch( std::exception &e ) {

@@ -24,7 +24,8 @@ public:
 
 private:
     void do_read();
-    void do_write(std::size_t length);
+    void do_write( std::string &out );
+    void run_cmd( const std::string &cmd );
 
     stream_protocol::socket socket_;
     std::array<char, 1024> data_;
