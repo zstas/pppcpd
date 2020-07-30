@@ -54,8 +54,22 @@ inline bool startWith( const std::string &s1, const std::string &s2 ) {
 
 void CLISession::run_cmd( const std::string &cmd ) {
     std::string output;
+    std::ostringstream stream;
     if( startWith( cmd, "show subscribers" ) ) {
-        output = "show subscribers output...";
+        stream.width( 20 );
+        stream << std::setw( 6 ) << std::setfill( ' ' ) << std::left << "ID";
+        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "MAC";
+        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "Username"; 
+        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "IP-Address"; 
+        stream << std::endl;
+        for( auto const &[ key, session ]: runtime->activeSessions ) {
+            stream << std::setw( 6 ) << std::setfill( ' ' ) << std::left << session.session_id;
+            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.encap.destination_mac;
+            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.username;
+            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << address_v4_t( session.address );
+            stream << std::endl;
+        }
+        output = stream.str();
     } else {
         output = "unknown command";
     }

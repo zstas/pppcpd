@@ -1,14 +1,7 @@
 #include "main.hpp"
 
 std::ostream& operator<<( std::ostream &stream, const mac_t &mac ) {
-    auto flags = stream.flags();
-    stream << std::hex; 
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 0 ] << ":";
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 1 ] << ":";
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 2 ] << ":";
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 3 ] << ":";
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 4 ] << ":";
-    stream << std::setw( 2 ) << std::setfill( '0' ) << ( int )mac[ 5 ];
-    stream.flags( flags );
-    return stream;
+    char buf[ 18 ];
+    snprintf( buf, sizeof( buf ), "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
+    return stream << buf;
 }
