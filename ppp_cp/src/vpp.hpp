@@ -8,12 +8,15 @@
 
 class VPPAPI {
 public:
-    VPPAPI( std::unique_ptr<Logger> &l );
+    VPPAPI( boost::asio::io_context &io, std::unique_ptr<Logger> &l );
 
     ~VPPAPI();
 
     bool add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );
 private:
+    void process_msgs( boost::system::error_code err );
+    boost::asio::io_context &io;
+    boost::asio::steady_timer timer;
     std::unique_ptr<Logger> &logger;
     vapi::Connection con;
 };

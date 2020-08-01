@@ -3,23 +3,44 @@
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 
-VPPAPI::VPPAPI( std::unique_ptr<Logger> &l ):
+VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
+        io( i ),
+        timer( io ),
         logger( l )
 {
     auto ret = con.connect( "vbng", nullptr, 32, 32 );
     if( ret == VAPI_OK ) {
-        logger->logDebug() << LOGS::VPP << "VPP API: connected" << std::endl;
+        logger->logInfo() << LOGS::VPP << "Connected to VPP API" << std::endl;
     } else {
-        logger->logDebug() << LOGS::VPP << "VPP API: Cannot connect to vpp" << std::endl;
+        logger->logError() << LOGS::VPP << "Cannot connect to VPP API" << std::endl;
     }
+    timer.expires_after( std::chrono::seconds( 10 ) );
+    timer.async_wait( std::bind( &VPPAPI::process_msgs, this, std::placeholders::_1 ) );
+}
+
+void VPPAPI::process_msgs( boost::system::error_code err ) {
+    logger->logError() << LOGS::VPP << "Periodic timer to ping VPP API" << std::endl;
+    vapi::Control_ping ping { con };
+
+    auto ret = ping.execute(); 
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Control_ping api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( ping );
+    } while( ret == VAPI_EAGAIN );
+
+    timer.expires_after( std::chrono::seconds( 10 ) );
+    timer.async_wait( std::bind( &VPPAPI::process_msgs, this, std::placeholders::_1 ) );
 }
 
 VPPAPI::~VPPAPI() {
     auto ret = con.disconnect();
     if( ret == VAPI_OK ) {
-        logger->logDebug() << LOGS::VPP << "VPP API: disconnected" << std::endl;
+        logger->logInfo() << LOGS::VPP << "Disconnected from VPP API" << std::endl;
     } else {
-        logger->logDebug() << LOGS::VPP << "VPP API: something went wrong, cannot disconnect" << std::endl;
+        logger->logError() << LOGS::VPP << "Something went wrong, cannot disconnect from VPP API" << std::endl;
     }
 }
 
@@ -48,7 +69,7 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     
     auto ret = pppoe.execute();
     if( ret != VAPI_OK ) {
-        logger->logError() << LOGS::VPP << "Error on executing add_pppoe_session api method";
+        logger->logError() << LOGS::VPP << "Error on executing add_pppoe_session api method" << std::endl;
     }
 
     do {
@@ -56,7 +77,7 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     } while( ret == VAPI_EAGAIN );
 
     auto repl = pppoe.get_response().get_payload();
-    logger->logDebug() << LOGS::VPP << "Added pppoe session: " + repl.sw_if_index;
+    logger->logDebug() << LOGS::VPP << "Added pppoe session: " << repl.sw_if_index << std::endl;
     if( static_cast<int>( repl.sw_if_index ) == -1 ) {
         return false;
     }
