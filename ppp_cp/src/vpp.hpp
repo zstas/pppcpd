@@ -4,6 +4,7 @@
 #include "vapi/vapi.hpp"
 #include "vapi/vpe.api.vapi.hpp"
 
+#include "vapi/interface.api.vapi.hpp"
 #include "vapi/pppoe.api.vapi.hpp"
 
 class VPPAPI {
@@ -13,6 +14,7 @@ public:
     ~VPPAPI();
 
     bool add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );
+    bool add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan );
 private:
     void process_msgs( boost::system::error_code err );
     boost::asio::io_context &io;

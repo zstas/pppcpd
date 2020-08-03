@@ -1,6 +1,7 @@
 #include "main.hpp"
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
+DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 
 VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
@@ -78,6 +79,39 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
 
     auto repl = pppoe.get_response().get_payload();
     logger->logDebug() << LOGS::VPP << "Added pppoe session: " << repl.sw_if_index << std::endl;
+    if( static_cast<int>( repl.sw_if_index ) == -1 ) {
+        return false;
+    }
+
+    return true;
+}
+
+bool VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan ) {
+    vapi::Create_subif subif{ con };
+
+    auto &req = subif.get_request().get_payload();
+    req.sw_if_index = iface;
+    req.outer_vlan_id = outer_vlan;
+    req.inner_vlan_id = inner_vlan;
+    req.sub_id = 0;
+    req.sub_if_flags = vapi_enum_sub_if_flags::SUB_IF_API_FLAG_EXACT_MATCH;
+    if( inner_vlan != 0 ) {
+        req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_TWO_TAGS );
+    } else {
+        req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_ONE_TAG );
+    }
+
+    auto ret = subif.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Create_subif api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( subif );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = subif.get_response().get_payload();
+    logger->logDebug() << LOGS::VPP << "Added subif: " << repl.sw_if_index << std::endl;
     if( static_cast<int>( repl.sw_if_index ) == -1 ) {
         return false;
     }
