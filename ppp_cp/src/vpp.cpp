@@ -2,7 +2,29 @@
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON
+DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
+
+std::ostream& operator<<( std::ostream &stream, const IfaceType &iface ) {
+    switch( iface ) {
+    case IfaceType::HW_IFACE: stream << "HW_IFACE"; break;
+    case IfaceType::LOOPBACK: stream << "LOOPBACK"; break;
+    case IfaceType::TAP: stream << "TAP"; break;
+    default: stream << "UNKNOWN"; break;
+    }
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface ) {
+    stream << "VPP interface " << iface.name;
+    stream << "; Device: " << iface.device;
+    stream << "; mac: " << iface.mac;
+    stream << "; ifindex: " << iface.sw_if_index;
+    stream << "; speed: " << iface.speed;
+    stream << "; MTU: " << iface.mtu;
+    stream << "; type: " << iface.type;
+    return stream;
+}
 
 VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
         io( i ),
@@ -117,4 +139,88 @@ bool VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan
     }
 
     return true;
+}
+
+std::tuple<bool,uint32_t> VPPAPI::create_tap( const std::string &host_name ) {
+    vapi::Tap_create_v2 tap{ con };
+
+    auto &req = tap.get_request().get_payload();
+    strncpy( (char*)req.host_if_name, host_name.c_str(), host_name.length() );
+    req.host_if_name_set = true;
+
+    auto ret = tap.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Tap_create_v2 api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( tap );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = tap.get_response().get_payload();
+    logger->logDebug() << LOGS::VPP << "Added tap: " << repl.sw_if_index << std::endl;
+    if( repl.retval < 0 ) {
+        return { false, 0 };
+    }
+
+    return { true, uint32_t{ repl.sw_if_index } };
+}
+
+bool VPPAPI::delete_tap( uint32_t id ) {
+    vapi::Tap_delete_v2 tap{ con };
+
+    auto &req = tap.get_request().get_payload();
+    req.sw_if_index = id;
+
+    auto ret = tap.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Tap_delete_v2 api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( tap );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = tap.get_response().get_payload();
+    logger->logDebug() << LOGS::VPP << "Deleted tap: " << id << std::endl;
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
+    return true;
+}
+
+std::vector<VPPInterface> VPPAPI::get_ifaces() {
+    std::vector<VPPInterface> output;
+    vapi::Sw_interface_dump dump{ con };
+
+    auto &req = dump.get_request().get_payload();
+
+    auto ret = dump.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing dump_delete_v2 api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( dump );
+    } while( ret == VAPI_EAGAIN );
+
+    for( auto &el: dump.get_result_set() ) {
+        auto &vip = el.get_payload();
+        VPPInterface new_iface;
+        new_iface.speed = vip.link_speed;
+        new_iface.mtu = vip.mtu[ 0 ];
+        new_iface.sw_if_index = vip.sw_if_index;
+        new_iface.device = std::string{ (char*)vip.interface_dev_type, strlen( (char*)vip.interface_dev_type ) };
+        new_iface.name = std::string{ (char*)vip.interface_name, strlen( (char*)vip.interface_name ) };
+        for( auto i = 0; i < 6; i++ ) {
+            new_iface.mac[i] = vip.l2_address[i];
+        }
+
+        logger->logDebug() << LOGS::VPP << "Dumped interface: " << new_iface << std::endl;
+        output.push_back( std::move( new_iface ) );
+    }
+
+
+    return output;
 }

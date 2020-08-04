@@ -8,6 +8,11 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
     logger->setLevel( LOGL::INFO );
     logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
     vpp = std::make_shared<VPPAPI>( io, logger );
+    vpp->create_tap( ifName );
+    auto temp = vpp->get_ifaces();
+    for( auto const &el: temp ) {
+        logger->logInfo() << LOGS::VPP << "Dumped interface: " << el << std::endl;
+    }
 }
 
 bool operator<( const pppoe_key_t &l, const pppoe_key_t &r ) {
