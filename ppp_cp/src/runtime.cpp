@@ -8,6 +8,10 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
     logger->setLevel( LOGL::INFO );
     logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
     vpp = std::make_shared<VPPAPI>( io, logger );
+    for( auto const &tapid: vpp->get_tap_interfaces() ) {
+        logger->logInfo() << LOGS::MAIN << "Deleting TAP interface with id " << tapid << std::endl;
+        vpp->delete_tap( tapid );
+    }
     vpp->create_tap( ifName );
     auto temp = vpp->get_ifaces();
     for( auto const &el: temp ) {

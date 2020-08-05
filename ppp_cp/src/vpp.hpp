@@ -37,6 +37,7 @@ public:
     bool add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan );
     std::tuple<bool,uint32_t> create_tap( const std::string &host_name );
     bool delete_tap( uint32_t id );
+    std::set<uint32_t> get_tap_interfaces();
     std::vector<VPPInterface> get_ifaces();
 private:
     void process_msgs( boost::system::error_code err );

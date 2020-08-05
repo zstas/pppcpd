@@ -190,6 +190,29 @@ bool VPPAPI::delete_tap( uint32_t id ) {
     return true;
 }
 
+std::set<uint32_t> VPPAPI::get_tap_interfaces() {
+    std::set<uint32_t> output;
+    vapi::Sw_interface_tap_v2_dump dump{ con };
+
+    auto &req = dump.get_request().get_payload();
+    req.sw_if_index = ~0;
+
+    auto ret = dump.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_tap_v2_dump api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( dump );
+    } while( ret == VAPI_EAGAIN );
+
+    for( auto &el: dump.get_result_set() ) {
+        output.emplace( uint32_t{ el.get_payload().id } );
+    }
+
+    return output;
+}
+
 std::vector<VPPInterface> VPPAPI::get_ifaces() {
     std::vector<VPPInterface> output;
     vapi::Sw_interface_dump dump{ con };
@@ -198,7 +221,7 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
 
     auto ret = dump.execute();
     if( ret != VAPI_OK ) {
-        logger->logError() << LOGS::VPP << "Error on executing dump_delete_v2 api method" << std::endl;
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_dump api method" << std::endl;
     }
 
     do {
@@ -220,7 +243,6 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
         logger->logDebug() << LOGS::VPP << "Dumped interface: " << new_iface << std::endl;
         output.push_back( std::move( new_iface ) );
     }
-
 
     return output;
 }
