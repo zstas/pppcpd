@@ -207,7 +207,7 @@ std::set<uint32_t> VPPAPI::get_tap_interfaces() {
     } while( ret == VAPI_EAGAIN );
 
     for( auto &el: dump.get_result_set() ) {
-        output.emplace( uint32_t{ el.get_payload().id } );
+        output.emplace( uint32_t{ el.get_payload().sw_if_index } );
     }
 
     return output;
@@ -245,4 +245,63 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
     }
 
     return output;
+}
+
+bool VPPAPI::set_ip( uint32_t id, network_v4_t address ) {
+    vapi::Sw_interface_add_del_address setaddr{ con };
+
+    auto &req = setaddr.get_request().get_payload();
+    req.sw_if_index = id;
+    req.is_add = true;
+    // req.del_all = true;
+    req.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
+    req.prefix.address.un.ip4[0] = address.address().to_bytes()[0];
+    req.prefix.address.un.ip4[1] = address.address().to_bytes()[1];
+    req.prefix.address.un.ip4[2] = address.address().to_bytes()[2];
+    req.prefix.address.un.ip4[3] = address.address().to_bytes()[3];
+    req.prefix.len = address.prefix_length();
+
+    auto ret = setaddr.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_add_del_address api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( setaddr );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = setaddr.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
+    return true;
+}
+
+bool VPPAPI::set_state( uint32_t ifi, bool admin_state ) {
+    vapi::Sw_interface_set_flags setstate{ con };
+
+    auto &req = setstate.get_request().get_payload();
+    req.sw_if_index = ifi;
+    if( admin_state ) {
+        req.flags = vapi_enum_if_status_flags::IF_STATUS_API_FLAG_ADMIN_UP;
+    } else {
+        req.flags = static_cast<vapi_enum_if_status_flags>( 0 );
+    }
+
+    auto ret = setstate.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_set_flags api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( setstate );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = setstate.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
+    return true;
 }

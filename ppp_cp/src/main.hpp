@@ -33,6 +33,7 @@
 
 using namespace std::string_literals;
 using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
 
 // Local headers
 #include "encap.hpp"
