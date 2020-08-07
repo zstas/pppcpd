@@ -54,5 +54,6 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "vpp.hpp"
 #include "runtime.hpp"
 #include "evloop.hpp"
+#include "config.hpp"
 #include "yaml.hpp"
 #include "cli.hpp"

@@ -90,3 +90,24 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
     }
     return true;
 }
+
+YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
+    Node node;
+    node[ "device" ] = rhs.device;
+    node[ "mtu" ] = rhs.mtu;
+    if( rhs.address.has_value() ) {
+        node[ "address" ] = rhs.address.value().to_string();
+    }
+    node[ "vlans" ] = rhs.vlans;
+    return node;
+}
+
+bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf &rhs ) {
+    rhs.device = node[ "device" ].as<std::string>();
+    rhs.mtu = node[ "mtu" ].as<uint16_t>();
+    if( node[ "address" ].IsDefined() ) {
+        rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
+    }
+    rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
+    return true;
+}

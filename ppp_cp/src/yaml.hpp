@@ -38,6 +38,13 @@ namespace YAML {
         static Node encode(const AAAConf &rhs);
         static bool decode(const Node &node, AAAConf &rhs);
     };
+
+    template <>
+    struct convert<InterfaceConf>
+    {
+        static Node encode(const InterfaceConf &rhs);
+        static bool decode(const Node &node, InterfaceConf &rhs);
+    };
 }
 
 #endif
