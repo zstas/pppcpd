@@ -1,4 +1,5 @@
-*.o
-obj/
-pppcpd
-.vscode
+**
+!src/
+!src/*
+!CMakeLists.txt
+!.gitignore
