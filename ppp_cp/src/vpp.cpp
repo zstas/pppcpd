@@ -305,3 +305,36 @@ bool VPPAPI::set_state( uint32_t ifi, bool admin_state ) {
 
     return true;
 }
+
+bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
+    auto vpp_ifs { get_ifaces() };
+    std::map<VPPInterface,InterfaceConf> conf;
+
+
+    for( auto const &iface: ifaces ) {
+        auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
+            if( iface.device == vpp_if.device ) {
+                return true;
+            }
+            return false;
+        };
+        auto if_it = std::find_if( vpp_ifs.begin(), vpp_ifs.end(), find_lambda );                    
+        if( if_it == vpp_ifs.end() ) {
+            logger->logError() << LOGS::VPP << "Cannot find interface with device: " << iface.device << std::endl;
+            continue;
+        }
+        auto const &vppif = *if_it;
+        // Actual configuration process
+        set_state( vppif.sw_if_index, iface.admin_state );
+        if( iface.mtu.has_value() ) {
+            // set_mtu
+        }
+        if( iface.address.has_value() ) {
+            set_ip( vppif.sw_if_index, iface.address.value() );
+        }
+        for( auto const &vlan: iface.vlans ) {
+            // create_subif
+        }
+    }
+    return true;
+}

@@ -41,6 +41,7 @@ public:
     std::vector<VPPInterface> get_ifaces();
     bool set_ip( uint32_t id, network_v4_t address );
     bool set_state( uint32_t ifi, bool admin_state );
+    bool setup_interfaces( const std::vector<InterfaceConf> &ifaces );
 private:
     void process_msgs( boost::system::error_code err );
     boost::asio::io_context &io;

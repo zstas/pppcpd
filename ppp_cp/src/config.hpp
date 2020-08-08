@@ -3,7 +3,8 @@
 
 struct InterfaceConf {
     std::string device;
-    uint16_t mtu;
+    bool admin_state { true };
+    std::optional<uint16_t> mtu;
     std::optional<network_v4_t> address;
     std::vector<uint16_t> vlans;
 };

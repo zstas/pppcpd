@@ -94,7 +94,10 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
 YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
     Node node;
     node[ "device" ] = rhs.device;
-    node[ "mtu" ] = rhs.mtu;
+    node[ "admin_state" ] = rhs.admin_state;
+    if( rhs.mtu.has_value() ) {
+        node[ "mtu" ] = rhs.mtu.value();
+    }
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
     }
@@ -104,7 +107,12 @@ YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
 
 bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf &rhs ) {
     rhs.device = node[ "device" ].as<std::string>();
-    rhs.mtu = node[ "mtu" ].as<uint16_t>();
+    if( node[ "admin_state" ].IsDefined() ) {
+        rhs.admin_state = node[ "admin_state" ].as<bool>();
+    }
+    if( node[ "mtu" ].IsDefined() ) {
+        rhs.mtu = node[ "mtu" ].as<uint16_t>();
+    }
     if( node[ "address" ].IsDefined() ) {
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
     }
