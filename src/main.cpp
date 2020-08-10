@@ -34,9 +34,24 @@ static void conf_init() {
         std::forward_as_tuple( "pppoe_pool2" ),
         std::forward_as_tuple( "100.66.0.10", "100.66.0.255" ) );
 
+    std::vector<InterfaceConf> ifaces;
+    InterfaceConf iconf;
+    iconf.device = "GigabitEthernet0/8/0";
+    iconf.mtu.emplace( 1500 );
+    iconf.vlans.emplace_back( 200 );
+    iconf.vlans.emplace_back( 201 );
+    iconf.vlans.emplace_back( 202 );
+    ifaces.push_back( std::move( iconf ) );
+
+    iconf.device = "GigabitEthernet0/9/0";
+    iconf.mtu.emplace( 1500 );
+    iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.1/24" ) );
+    ifaces.push_back( std::move( iconf ) );
+
     YAML::Node config;
     config[ "PPPOEPolicy" ] = pppoe_pol;
     config[ "AAAConf" ] = aaa_conf;
+    config[ "Interfaces" ] = ifaces;
 
     std::ofstream fout("config.yaml");
     fout << config << std::endl;
@@ -67,6 +82,7 @@ int main( int argc, char *argv[] ) {
 
     RadiusDict dict { files };
     runtime->aaa = std::make_shared<AAA>( config[ "AAAConf" ].as<AAAConf>() );
+    runtime->vpp->setup_interfaces( config[ "Interfaces" ].as<std::vector<InterfaceConf>>() );
 
     EVLoop loop( io );
     std::remove( "/var/run/pppcpd.sock" );

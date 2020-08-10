@@ -313,7 +313,8 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
 
     for( auto const &iface: ifaces ) {
         auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
-            if( iface.device == vpp_if.device ) {
+            // std::cout << iface.device << " and " << vpp_if.name << std::endl;
+            if( iface.device == vpp_if.name ) {
                 return true;
             }
             return false;

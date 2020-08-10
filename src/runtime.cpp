@@ -19,9 +19,6 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
         if( !vpp->set_state( ifi, true ) ) {
             logger->logError() << LOGS::VPP << "Cannot set state to interface: " << ifi << std::endl;
         }
-        if( !vpp->set_ip( ifi, boost::asio::ip::make_network_v4( "10.0.3.1/24" ) ) ) {
-            logger->logError() << LOGS::VPP << "Cannot set ip address to interface: " << ifi << std::endl;
-        }
     }
     auto temp = vpp->get_ifaces();
     for( auto const &el: temp ) {
