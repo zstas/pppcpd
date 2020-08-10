@@ -108,14 +108,14 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     return true;
 }
 
-bool VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan ) {
+std::tuple<bool,uint32_t> VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan ) {
     vapi::Create_subif subif{ con };
 
     auto &req = subif.get_request().get_payload();
     req.sw_if_index = iface;
     req.outer_vlan_id = outer_vlan;
     req.inner_vlan_id = inner_vlan;
-    req.sub_id = 0;
+    req.sub_id = outer_vlan;
     req.sub_if_flags = vapi_enum_sub_if_flags::SUB_IF_API_FLAG_EXACT_MATCH;
     if( inner_vlan != 0 ) {
         req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_TWO_TAGS );
@@ -134,11 +134,11 @@ bool VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan
 
     auto repl = subif.get_response().get_payload();
     logger->logDebug() << LOGS::VPP << "Added subif: " << repl.sw_if_index << std::endl;
-    if( static_cast<int>( repl.sw_if_index ) == -1 ) {
-        return false;
+    if( repl.retval == -1 ) {
+        return { false, 0 };
     }
 
-    return true;
+    return { true, uint32_t{ repl.sw_if_index } };
 }
 
 std::tuple<bool,uint32_t> VPPAPI::create_tap( const std::string &host_name ) {
@@ -328,14 +328,49 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
         // Actual configuration process
         set_state( vppif.sw_if_index, iface.admin_state );
         if( iface.mtu.has_value() ) {
-            // set_mtu
+            set_mtu( vppif.sw_if_index, iface.mtu.value() );
         }
         if( iface.address.has_value() ) {
             set_ip( vppif.sw_if_index, iface.address.value() );
         }
         for( auto const &vlan: iface.vlans ) {
             // create_subif
+            bool ret;
+            uint32_t ifi;
+            std::tie( ret, ifi ) = add_subif( vppif.sw_if_index, vlan, 0 );
+            if( !ret ) {
+                logger->logError() << LOGS::VPP << "Cannot create subinterface: " << iface.device << " vlan: " << vlan << std::endl;
+            }
+            set_state( ifi, true );
+            set_mtu( ifi, iface.mtu.value() );
         }
     }
+    return true;
+}
+
+bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
+    vapi::Sw_interface_set_mtu setmtu{ con };
+
+    auto &req = setmtu.get_request().get_payload();
+    req.sw_if_index = ifi;
+    req.mtu[ 0 ] = mtu;
+    req.mtu[ 1 ] = mtu;
+    req.mtu[ 2 ] = mtu;
+    req.mtu[ 3 ] = mtu;
+
+    auto ret = setmtu.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_set_mtu api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( setmtu );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = setmtu.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
     return true;
 }

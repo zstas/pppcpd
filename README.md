@@ -1,4 +1,4 @@
-### PPP Control Plane Daemon ###
+# PPP Control Plane Daemon #
 This is the control plane for PPPoE plugin for VPP.
 
 ## Features ##
