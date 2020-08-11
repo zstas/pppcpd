@@ -22,6 +22,10 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
     }
     auto temp = vpp->get_ifaces();
     for( auto const &el: temp ) {
+        if( el.type == IfaceType::SUBIF ) {
+            vpp->del_subif( el.sw_if_index );
+            continue;
+        }
         logger->logInfo() << LOGS::VPP << "Dumped interface: " << el << std::endl;
     }
 }

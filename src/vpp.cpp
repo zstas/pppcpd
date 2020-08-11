@@ -4,12 +4,14 @@ DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON
 DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
+DEFINE_VAPI_MSG_IDS_POLICER_API_JSON
 
 std::ostream& operator<<( std::ostream &stream, const IfaceType &iface ) {
     switch( iface ) {
     case IfaceType::HW_IFACE: stream << "HW_IFACE"; break;
     case IfaceType::LOOPBACK: stream << "LOOPBACK"; break;
     case IfaceType::TAP: stream << "TAP"; break;
+    case IfaceType::SUBIF: stream << "SUBIF"; break;
     default: stream << "UNKNOWN"; break;
     }
     return stream;
@@ -236,8 +238,19 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
         new_iface.sw_if_index = vip.sw_if_index;
         new_iface.device = std::string{ (char*)vip.interface_dev_type, strlen( (char*)vip.interface_dev_type ) };
         new_iface.name = std::string{ (char*)vip.interface_name, strlen( (char*)vip.interface_name ) };
+
         for( auto i = 0; i < 6; i++ ) {
             new_iface.mac[i] = vip.l2_address[i];
+        }
+
+        if( new_iface.device == "Loopback" ) {
+            new_iface.type = IfaceType::LOOPBACK;
+        } else if( new_iface.device == "dpdk" ) {
+            new_iface.type = IfaceType::HW_IFACE;
+        }
+
+        if( vip.type == vapi_enum_if_type::IF_API_TYPE_SUB ) {
+            new_iface.type = IfaceType::SUBIF;
         }
 
         logger->logDebug() << LOGS::VPP << "Dumped interface: " << new_iface << std::endl;
@@ -310,7 +323,6 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
     auto vpp_ifs { get_ifaces() };
     std::map<VPPInterface,InterfaceConf> conf;
 
-
     for( auto const &iface: ifaces ) {
         auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
             // std::cout << iface.device << " and " << vpp_if.name << std::endl;
@@ -334,7 +346,6 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
             set_ip( vppif.sw_if_index, iface.address.value() );
         }
         for( auto const &vlan: iface.vlans ) {
-            // create_subif
             bool ret;
             uint32_t ifi;
             std::tie( ret, ifi ) = add_subif( vppif.sw_if_index, vlan, 0 );
@@ -373,4 +384,63 @@ bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
     }
 
     return true;
+}
+
+bool VPPAPI::del_subif( uint32_t sw_if_index ) {
+    vapi::Delete_subif del_subif{ con };
+
+    auto &req = del_subif.get_request().get_payload();
+    req.sw_if_index = sw_if_index;
+    
+    auto ret = del_subif.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Delete_subif api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( del_subif );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = del_subif.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
+    return true;
+}
+
+std::vector<VPP_PPPOE_Session> VPPAPI::dump_pppoe_sessions() {
+    std::vector<VPP_PPPOE_Session> output;
+    vapi::Pppoe_session_dump dump{ con };
+
+    auto &req = dump.get_request().get_payload();
+    req.sw_if_index = ~0;
+    
+    auto ret = dump.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Delete_subif api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( dump );
+    } while( ret == VAPI_EAGAIN );
+
+    for( auto const &el: dump.get_result_set() ) {
+        auto &vppsess = el.get_payload();
+        VPP_PPPOE_Session sess;
+
+        sess.mac[0] = vppsess.client_mac[0]; sess.mac[1] = vppsess.client_mac[1];
+        sess.mac[2] = vppsess.client_mac[2]; sess.mac[3] = vppsess.client_mac[3];
+        sess.mac[4] = vppsess.client_mac[4]; sess.mac[5] = vppsess.client_mac[5];
+        if( vppsess.client_ip.af == vapi_enum_address_family::ADDRESS_IP4 ) {
+            std::array<unsigned char,4> buf { vppsess.client_ip.un.ip4[0], vppsess.client_ip.un.ip4[1], vppsess.client_ip.un.ip4[2], vppsess.client_ip.un.ip4[3] };
+            sess.address = address_v4_t{ buf };
+        }
+        sess.encap_if_index = vppsess.encap_if_index;
+        sess.session_id = vppsess.session_id;
+        sess.sw_if_index = vppsess.sw_if_index;
+        output.push_back( std::move( sess ) );
+    }
+
+    return output;
 }
