@@ -47,6 +47,7 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "ppp.hpp"
 #include "ppp_fsm.hpp"
 #include "ppp_auth.hpp"
+#include "ppp_chap.hpp"
 #include "session.hpp"
 #include "string_helpers.hpp"
 #include "packet.hpp"

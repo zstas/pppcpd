@@ -68,6 +68,13 @@ enum class PAP_CODE: uint8_t {
     AUTHENTICATE_NAK = 3
 };
 
+enum class CHAP_CODE: uint8_t {
+    CHALLENGE = 1,
+    RESPONSE = 2,
+    SUCCESS = 3,
+    FAILURE = 4
+};
+
 enum class LCP_OPTIONS: uint8_t {
     VEND_SPEC = 0,
     MRU = 1,
@@ -177,6 +184,17 @@ struct PPP_AUTH_HDR {
     PAP_CODE code;
     uint8_t identifier;
     uint16_t length;
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
+struct PPP_CHAP_HDR {
+    CHAP_CODE code;
+    uint8_t identifier;
+    uint16_t length;
+    uint8_t value_len;
 
     uint8_t* getPayload() {
         return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
