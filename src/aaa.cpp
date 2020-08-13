@@ -44,6 +44,25 @@ void AAA::startSession( const std::string &user, const std::string &pass, PPPOES
     }
 }
 
+void AAA::startSessionCHAP( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback ) {
+    for( auto const &m: conf.method ) {
+        switch( m ) {
+        case AAA_METHODS::NONE:
+            if( auto const &[ sid, err ] = startSessionNone( user, "CHAP" ); !err.empty() ) {
+                continue;
+            } else {
+                callback( sid, err );
+            }
+            break;
+        case AAA_METHODS::RADIUS:
+            // startSessionRadius( user, pass, sess, callback );
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void AAA::startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
     runtime->logger->logDebug() << LOGS::AAA << "RADIUS auth, starting session user: " << user << " password: " << pass;
 

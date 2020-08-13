@@ -10,6 +10,7 @@ PPPOESession::PPPOESession( io_service &i, const encapsulation_t &e, uint16_t si
     session_id( sid ),
     lcp( *this ),
     auth( *this ),
+    chap( *this ),
     ipcp( *this )
 {
     runtime->logger->logDebug() << LOGS::MAIN << "Session UP: " << sid;

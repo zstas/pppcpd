@@ -33,7 +33,11 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
             runtime->logger->logError() << "Error while processing LCP packet: " << err;
         } else {
             if( action == PPP_FSM_ACTION::LAYER_UP ) {
-                session.auth.open();
+                if( runtime->lcp_conf->authCHAP ) {
+                    session.chap.open();
+                } else {
+                    session.auth.open();
+                }
             } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
                 runtime->logger->logError() << "LCP goes down, terminate session...";
                 if( auto const &err = runtime->deallocateSession( session.session_id ); !err.empty() ) {
@@ -45,13 +49,11 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
     case PPP_PROTO::PAP:
         if( auto const& [ action, err ] = session.auth.receive( inPkt ); !err.empty() ) {
             runtime->logger->logDebug() << "Error while processing LCP packet: " << err;
-        } else {
-            if( action == PPP_FSM_ACTION::LAYER_UP ) {
-                // session.ipcp.open();
-                // session.ipcp.layer_up();
-            } else if( action == PPP_FSM_ACTION::LAYER_DOWN ) {
-                //session.ipcp.close();
-            }
+        }
+        break;
+    case PPP_PROTO::CHAP:
+        if( auto const& [ action, err ] = session.chap.receive( inPkt ); !err.empty() ) {
+            runtime->logger->logDebug() << "Error while processing LCP packet: " << err;
         }
         break;
     case PPP_PROTO::IPCP:

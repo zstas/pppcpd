@@ -23,6 +23,7 @@ struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     // PPP FSM for all the protocols we support
     struct LCP_FSM lcp;
     struct PPP_AUTH auth;
+    struct PPP_CHAP chap;
     struct IPCP_FSM ipcp;
 
     // LCP negotiated options

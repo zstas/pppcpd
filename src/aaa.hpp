@@ -100,6 +100,7 @@ public:
     std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict );
     std::tuple<AAA_Session*,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
+    void startSessionCHAP( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback );
     void stopSession( uint32_t sid );
 
 };

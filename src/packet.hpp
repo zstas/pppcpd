@@ -195,6 +195,7 @@ struct PPP_CHAP_HDR {
     uint8_t identifier;
     uint16_t length;
     uint8_t value_len;
+    std::array<uint8_t,16> value;
 
     uint8_t* getPayload() {
         return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );

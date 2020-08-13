@@ -26,12 +26,11 @@ void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
 
     uint8_t user_len = *( auth->getPayload() );
     std::string username { reinterpret_cast<char*>( auth->getPayload() + 1 ), reinterpret_cast<char*>( auth->getPayload() + 1 + user_len ) };
-    uint8_t pass_len = *( auth->getPayload() + user_len + 1 );
-    std::string password { reinterpret_cast<char*>( auth->getPayload() + 1 + user_len + 1 ), reinterpret_cast<char*>( auth->getPayload() + 1 + user_len + 1 + pass_len ) };
+    std::string response { auth->value.begin(), auth->value.end() };
 
     session.username = username;
 
-    runtime->aaa->startSession( username, password, session, std::bind( &PPP_CHAP::auth_callback, this, std::placeholders::_1, std::placeholders::_2 ) );
+    runtime->aaa->startSessionCHAP( username, challenge, response, session, std::bind( &PPP_CHAP::auth_callback, this, std::placeholders::_1, std::placeholders::_2 ) );
 }
 
 FSM_RET PPP_CHAP::auth_callback( uint32_t sid, const std::string &err ) {
@@ -112,11 +111,14 @@ FSM_RET PPP_CHAP::send_conf_req() {
     pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = CHAP_CODE::CHALLENGE;
+    challenge = md5( random_string( 32 ) );
+    challenge.resize( sizeof( auth->value ) );
+    std::copy( challenge.begin(), challenge.end(), auth->value.begin() );
+    auth->value_len = sizeof( auth->value );
+    inPkt.insert( inPkt.end(), runtime->pppoe_conf->ac_name.begin(), runtime->pppoe_conf->ac_name.end() );
 
-    // append empty tag with message
-    *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_CHAP_HDR) );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR) + 2 );
+    auth->length = bswap16( sizeof( PPP_CHAP_HDR ) + runtime->pppoe_conf->ac_name.size() );
+    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR) + runtime->pppoe_conf->ac_name.size() + 2 );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
@@ -127,5 +129,5 @@ FSM_RET PPP_CHAP::send_conf_req() {
 }
 
 void PPP_CHAP::open() {
-    
+    send_conf_req();
 }

@@ -7,6 +7,7 @@ struct PPP_CHAP {
 private:
     uint8_t pkt_id { 1U };
     bool started { false };
+    std::string challenge;
     PPPOESession &session;
 
 public:
