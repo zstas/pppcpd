@@ -32,23 +32,26 @@ FSM_RET LCP_FSM::send_conf_req() {
     mru->set( LCP_OPTIONS::MRU, runtime->lcp_conf->MRU );
     lcpOpts += mru->len;
 
-    auto auth = reinterpret_cast<LCP_OPT_2B*>( mru->getPayload() );
-    uint16_t auth_proto;
+    uint8_t *after_auth = nullptr;
     if( runtime->lcp_conf->authCHAP ) {
-        auth_proto = static_cast<uint16_t>( PPP_PROTO::CHAP );
+        auto auth = reinterpret_cast<LCP_OPT_3B*>( mru->getPayload() );
+        auth->set( LCP_OPTIONS::AUTH_PROTO, static_cast<uint16_t>( PPP_PROTO::CHAP ), 5 );
+        lcpOpts += auth->len;
+        after_auth = auth->getPayload();
     } else if( runtime->lcp_conf->authPAP ) {
-        auth_proto = static_cast<uint16_t>( PPP_PROTO::PAP );
+        auto auth = reinterpret_cast<LCP_OPT_2B*>( mru->getPayload() );
+        auth->set( LCP_OPTIONS::AUTH_PROTO, static_cast<uint16_t>( PPP_PROTO::PAP ) );
+        lcpOpts += auth->len;
+        after_auth = auth->getPayload();
     } else {
         return { PPP_FSM_ACTION::NONE, "No Auth proto is chosen!" };
     }
-    auth->set( LCP_OPTIONS::AUTH_PROTO, auth_proto );
-    lcpOpts += auth->len;
 
     if( session.our_magic_number == 0U ) {
         session.our_magic_number = random_uin32_t();
     }
 
-    auto mn = reinterpret_cast<LCP_OPT_4B*>( auth->getPayload() );
+    auto mn = reinterpret_cast<LCP_OPT_4B*>( after_auth );
     mn->set( LCP_OPTIONS::MAGIC_NUMBER, session.our_magic_number );
     lcpOpts += mn->len;
 

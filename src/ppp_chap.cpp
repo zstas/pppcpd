@@ -100,6 +100,7 @@ FSM_RET PPP_CHAP::send_auth_nak() {
 }
 
 FSM_RET PPP_CHAP::send_conf_req() {
+    runtime->logger->logInfo() << LOGS::PPP << "Sending CHAP conf-req" << std::endl;
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_CHAP_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
@@ -117,8 +118,11 @@ FSM_RET PPP_CHAP::send_conf_req() {
     auth->value_len = sizeof( auth->value );
     inPkt.insert( inPkt.end(), runtime->pppoe_conf->ac_name.begin(), runtime->pppoe_conf->ac_name.end() );
 
+    pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
+    auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+
     auth->length = bswap16( sizeof( PPP_CHAP_HDR ) + runtime->pppoe_conf->ac_name.size() );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR) + runtime->pppoe_conf->ac_name.size() + 2 );
+    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR ) + runtime->pppoe_conf->ac_name.size() + 2 );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
@@ -129,5 +133,6 @@ FSM_RET PPP_CHAP::send_conf_req() {
 }
 
 void PPP_CHAP::open() {
+    runtime->logger->logInfo() << LOGS::PPP << "CHAP opened" << std::endl;
     send_conf_req();
 }

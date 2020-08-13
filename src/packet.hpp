@@ -234,6 +234,24 @@ struct LCP_OPT_2B {
     }
 }__attribute__((__packed__));
 
+struct LCP_OPT_3B {
+    LCP_OPTIONS opt;
+    uint8_t len;
+    uint16_t val;
+    uint8_t val_additional;
+
+    void set( LCP_OPTIONS o, uint16_t v, uint8_t v2 ) {
+        opt = o;
+        val = bswap( v );
+        val_additional = v2;
+        len = 5;
+    }
+
+    uint8_t* getPayload() {
+        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
+    }
+}__attribute__((__packed__));
+
 struct LCP_OPT_4B {
     LCP_OPTIONS opt;
     uint8_t len;
