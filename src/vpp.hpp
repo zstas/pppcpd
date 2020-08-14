@@ -45,6 +45,7 @@ public:
     // Interface dump methods
     std::set<uint32_t> get_tap_interfaces();
     std::vector<VPPInterface> get_ifaces();
+    void get_stats( uint32_t sw_if_index );
 
     // Subif
     std::tuple<bool,uint32_t> add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan );

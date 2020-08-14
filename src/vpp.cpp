@@ -56,6 +56,12 @@ void VPPAPI::process_msgs( boost::system::error_code err ) {
         ret = con.wait_for_response( ping );
     } while( ret == VAPI_EAGAIN );
 
+    vapi::Event_registration<vapi::Want_interface_events_reply> event { con };
+    for( auto const &el: event.get_result_set() ) {
+        logger->logError() << LOGS::VPP << "Getting interface event" << std::endl; 
+        el.get_payload().retval;
+    }
+
     timer.expires_after( std::chrono::seconds( 10 ) );
     timer.async_wait( std::bind( &VPPAPI::process_msgs, this, std::placeholders::_1 ) );
 }
@@ -443,4 +449,28 @@ std::vector<VPP_PPPOE_Session> VPPAPI::dump_pppoe_sessions() {
     }
 
     return output;
+}
+
+void VPPAPI::get_stats( uint32_t sw_if_index ) {
+    vapi::Want_interface_events get_stats{ con };
+
+    auto &req = get_stats.get_request().get_payload();
+    req.enable_disable = 1;
+    req.pid = getpid();
+    
+    auto ret = get_stats.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Collect_detailed_interface_stats api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( get_stats );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = get_stats.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return ;
+    }
+
+    return ;
 }
