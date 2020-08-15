@@ -1,10 +1,12 @@
 #include "main.hpp"
 
-PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) : 
-    ifName( std::move( name ) ),
+PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) : 
+    conf( newconf ),
     io( i )
 {
     logger = std::make_unique<Logger>();
+    aaa = std::make_shared<AAA>( conf.aaa_conf );
+
     logger->setLevel( LOGL::INFO );
     logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
     vpp = std::make_shared<VPPAPI>( io, logger );
@@ -15,7 +17,7 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
             logger->logError() << LOGS::VPP << "Cannot delete tap interface with ifindex: " << tapid << std::endl;
         }
     }
-    if( auto const &[ ret, ifi ] = vpp->create_tap( ifName ); ret ) {
+    if( auto const &[ ret, ifi ] = vpp->create_tap( conf.tap_name ); ret ) {
         if( !vpp->set_state( ifi, true ) ) {
             logger->logError() << LOGS::VPP << "Cannot set state to interface: " << ifi << std::endl;
         }
@@ -28,6 +30,7 @@ PPPOERuntime::PPPOERuntime( std::string name, io_service &i ) :
         }
         logger->logInfo() << LOGS::VPP << "Dumped interface: " << el << std::endl;
     }
+    vpp->setup_interfaces( conf.interfaces );
 }
 
 bool operator<( const pppoe_key_t &l, const pppoe_key_t &r ) {

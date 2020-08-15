@@ -119,3 +119,22 @@ bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf
     rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
     return true;
 }
+
+YAML::Node YAML::convert<PPPOEGlobalConf>::encode( const PPPOEGlobalConf &rhs ) {
+    Node node;
+    node[ "tap_name" ] = rhs.tap_name;
+    node[ "interfaces" ] = rhs.interfaces;
+    node[ "default_pppoe_conf" ] = rhs.default_pppoe_conf;
+    node[ "pppoe_confs" ] = rhs.pppoe_confs;
+    node[ "aaa_conf" ] = rhs.aaa_conf;
+    return node;
+}
+
+bool YAML::convert<PPPOEGlobalConf>::decode( const YAML::Node &node, PPPOEGlobalConf &rhs ) {
+    rhs.tap_name = node[ "tap_name" ].as<std::string>();
+    rhs.interfaces = node[ "interfaces" ].as<std::vector<InterfaceConf>>();
+    rhs.default_pppoe_conf = node[ "default_pppoe_conf" ].as<PPPOEPolicy>();
+    rhs.pppoe_confs = node[ "pppoe_confs" ].as<std::map<uint16_t,PPPOEPolicy>>();
+    rhs.aaa_conf = node[ "aaa_conf" ].as<AAAConf>();
+    return true;
+}

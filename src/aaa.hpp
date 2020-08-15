@@ -79,7 +79,7 @@ struct AAAConf {
 };
 
 class AAA {
-    AAAConf conf;
+    AAAConf &conf;
     std::map<uint32_t,AAA_Session> sessions;
     std::map<uint8_t,AuthClient> auth;
     std::optional<RadiusDict> dict;
@@ -93,7 +93,7 @@ class AAA {
 
 public:
     AAA() = default;
-    AAA( AAAConf &&c ):
+    AAA( AAAConf &c ):
         conf( c )
     {}
 

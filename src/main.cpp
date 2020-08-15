@@ -14,11 +14,14 @@ PPPOEQ ppp_incoming;
 PPPOEQ ppp_outcoming;
 
 static void conf_init() {
-    PPPOEPolicy pppoe_pol;
-    pppoe_pol.ac_name = "vBNG AC PPPoE";
-    pppoe_pol.insert_cookie = true;
-    pppoe_pol.ignore_service_name = true;
-    pppoe_pol.service_name = { "inet", "pppoe" };
+    PPPOEGlobalConf global_conf;
+
+    global_conf.tap_name = "tap0";
+    
+    global_conf.default_pppoe_conf.ac_name = "vBNG AC PPPoE";
+    global_conf.default_pppoe_conf.insert_cookie = true;
+    global_conf.default_pppoe_conf.ignore_service_name = true;
+    global_conf.default_pppoe_conf.service_name = { "inet", "pppoe" };
 
     PPPOELocalTemplate pppoe_template;
     pppoe_template.framed_pool = "pppoe_pool1";
@@ -34,24 +37,21 @@ static void conf_init() {
         std::forward_as_tuple( "pppoe_pool2" ),
         std::forward_as_tuple( "100.66.0.10", "100.66.0.255" ) );
 
-    std::vector<InterfaceConf> ifaces;
     InterfaceConf iconf;
     iconf.device = "GigabitEthernet0/8/0";
     iconf.mtu.emplace( 1500 );
     iconf.vlans.emplace_back( 200 );
     iconf.vlans.emplace_back( 201 );
     iconf.vlans.emplace_back( 202 );
-    ifaces.push_back( std::move( iconf ) );
+    global_conf.interfaces.push_back( std::move( iconf ) );
 
     iconf.device = "GigabitEthernet0/9/0";
     iconf.mtu.emplace( 1500 );
     iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.1/24" ) );
-    ifaces.push_back( std::move( iconf ) );
+    global_conf.interfaces.push_back( std::move( iconf ) );
 
     YAML::Node config;
-    config[ "PPPOEPolicy" ] = pppoe_pol;
-    config[ "AAAConf" ] = aaa_conf;
-    config[ "Interfaces" ] = ifaces;
+    config = global_conf;
 
     std::ofstream fout("config.yaml");
     fout << config << std::endl;
@@ -62,13 +62,7 @@ int main( int argc, char *argv[] ) {
     YAML::Node config = YAML::LoadFile( "config.yaml" );
 
     io_service io;
-    runtime = std::make_shared<PPPOERuntime>( "pppoe-cp", io );
-
-    // At this point all the config lies here
-    runtime->pppoe_conf = std::make_shared<PPPOEPolicy>();
-    runtime->pppoe_conf->ac_name = "vBNG AC PPPoE";
-    runtime->pppoe_conf->insert_cookie = true;
-    runtime->pppoe_conf->ignore_service_name = true;
+    runtime = std::make_shared<PPPOERuntime>( config.as<PPPOEGlobalConf>(), io );
 
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
@@ -82,8 +76,6 @@ int main( int argc, char *argv[] ) {
     };
 
     RadiusDict dict { files };
-    runtime->aaa = std::make_shared<AAA>( config[ "AAAConf" ].as<AAAConf>() );
-    runtime->vpp->setup_interfaces( config[ "Interfaces" ].as<std::vector<InterfaceConf>>() );
 
     EVLoop loop( io );
     std::remove( "/var/run/pppcpd.sock" );

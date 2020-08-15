@@ -45,6 +45,13 @@ namespace YAML {
         static Node encode(const InterfaceConf &rhs);
         static bool decode(const Node &node, InterfaceConf &rhs);
     };
+
+    template <>
+    struct convert<PPPOEGlobalConf>
+    {
+        static Node encode(const PPPOEGlobalConf &rhs);
+        static bool decode(const Node &node, PPPOEGlobalConf &rhs);
+    };
 }
 
 #endif

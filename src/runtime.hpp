@@ -53,16 +53,15 @@ public:
     PPPOERuntime() = delete;
     PPPOERuntime( const PPPOERuntime& ) = delete;
     PPPOERuntime( PPPOERuntime&& ) = default;
-    PPPOERuntime( std::string name, io_service &i );
+    PPPOERuntime( PPPOEGlobalConf newconf, io_service &i );
 
     PPPOERuntime operator=( const PPPOERuntime& ) = delete;
     PPPOERuntime& operator=( PPPOERuntime&& ) = default;
 
-    std::string ifName;
+    PPPOEGlobalConf conf;
     mac_t hwaddr { 0, 0, 0, 0, 0, 0 };
     std::unique_ptr<Logger> logger;
     std::map<pppoe_key_t,PPPOESession> activeSessions;
-    std::shared_ptr<PPPOEPolicy> pppoe_conf;
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;

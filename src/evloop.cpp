@@ -14,7 +14,7 @@ EVLoop::EVLoop( io_service &i ):
     memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sll_family = PF_PACKET;
     sockaddr.sll_protocol = bswap16( ETH_P_ALL );
-    sockaddr.sll_ifindex = if_nametoindex( runtime->ifName.c_str() );
+    sockaddr.sll_ifindex = if_nametoindex( runtime->conf.tap_name.c_str() );
     sockaddr.sll_hatype = 1;
     int one = 1;
     raw_sock_pppoe.bind( boost::asio::generic::raw_protocol::endpoint( &sockaddr, sizeof( sockaddr ) ) );
@@ -22,7 +22,7 @@ EVLoop::EVLoop( io_service &i ):
         runtime->logger->logError() << LOGS::MAIN << "Cannot set option PACKET_AUXDATA" << std::endl;
     }
 
-    runtime->logger->logInfo() << LOGS::MAIN << "Listening on interface " << runtime->ifName << std::endl;
+    runtime->logger->logInfo() << LOGS::MAIN << "Listening on interface " << runtime->conf.tap_name << std::endl;
 
     signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
         interrupted = true;
