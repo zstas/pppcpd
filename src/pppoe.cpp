@@ -66,11 +66,14 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
         return "Cannot process PADI: " + err;
     }
 
+    auto const &pol_it = runtime->conf.pppoe_confs.find( encap.outer_vlan );
+    const PPPOEPolicy &pppoe_conf = ( pol_it == runtime->conf.pppoe_confs.end() ) ? runtime->conf.default_pppoe_conf : pol_it->second;
+
     // Inserting tags
     auto taglen = 0;
 
     // At first we need to insert AC NAME
-    taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_NAME, runtime->conf.default_pppoe_conf.ac_name );
+    taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_NAME, pppoe_conf.ac_name );
 
     // Check for HOST UNIQ
     if( auto const &tagIt = tags.find( PPPOE_TAG::HOST_UNIQ ); tagIt != tags.end() ) {
@@ -81,18 +84,18 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
     if( auto const &tagIt = tags.find( PPPOE_TAG::SERVICE_NAME ); tagIt != tags.end() ) {
         std::string selected_service;
 
-        for( auto const &service: runtime->conf.default_pppoe_conf.service_name ) {
+        for( auto const &service: pppoe_conf.service_name ) {
             if( service == tagIt->second ) {
                 selected_service = tagIt->second;
                 break;
             }
         }
 
-        if( selected_service.empty() && runtime->conf.default_pppoe_conf.ignore_service_name ) {
+        if( selected_service.empty() && pppoe_conf.ignore_service_name ) {
             selected_service = tagIt->second;
         }
 
-        if( selected_service.empty() && !runtime->conf.default_pppoe_conf.ignore_service_name ) {
+        if( selected_service.empty() && !pppoe_conf.ignore_service_name ) {
             return "Wrong service name";
         }
 
@@ -101,7 +104,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
 
     // Check our policy if we need to insert AC COOKIE
     std::string cookie;
-    if( runtime->conf.default_pppoe_conf.insert_cookie ) {
+    if( pppoe_conf.insert_cookie ) {
         cookie = random_string( 16 );
         taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_COOKIE, cookie );
     }

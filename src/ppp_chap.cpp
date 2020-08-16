@@ -106,6 +106,9 @@ FSM_RET PPP_CHAP::send_conf_req() {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
 
+    auto const &pol_it = runtime->conf.pppoe_confs.find( session.encap.outer_vlan );
+    const PPPOEPolicy &pppoe_conf = ( pol_it == runtime->conf.pppoe_confs.end() ) ? runtime->conf.default_pppoe_conf : pol_it->second;
+
     pppoe->type = 1;
     pppoe->version = 1;
     pppoe->session_id = bswap16( session.session_id );;
@@ -116,13 +119,13 @@ FSM_RET PPP_CHAP::send_conf_req() {
     challenge.resize( sizeof( auth->value ) );
     std::copy( challenge.begin(), challenge.end(), auth->value.begin() );
     auth->value_len = sizeof( auth->value );
-    inPkt.insert( inPkt.end(), runtime->conf.default_pppoe_conf.ac_name.begin(), runtime->conf.default_pppoe_conf.ac_name.end() );
+    inPkt.insert( inPkt.end(), pppoe_conf.ac_name.begin(), pppoe_conf.ac_name.end() );
 
     pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
 
-    auth->length = bswap16( sizeof( PPP_CHAP_HDR ) + runtime->conf.default_pppoe_conf.ac_name.size() );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR ) + runtime->conf.default_pppoe_conf.ac_name.size() + 2 );
+    auth->length = bswap16( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() );
+    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() + 2 );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
