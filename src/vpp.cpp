@@ -474,3 +474,27 @@ void VPPAPI::get_stats( uint32_t sw_if_index ) {
 
     return ;
 }
+
+bool VPPAPI::add_pppoe_cp( uint32_t sw_if_index, bool to_del ) {
+    vapi::Pppoe_add_del_cp set_cp_iface{ con };
+
+    auto &req = set_cp_iface.get_request().get_payload();
+    req.is_add = 1;
+    req.sw_if_index = sw_if_index;
+    
+    auto ret = set_cp_iface.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Pppoe_add_del_cp api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( set_cp_iface );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = set_cp_iface.get_response().get_payload();
+    if( repl.retval != 0 ) {
+        return false;
+    }
+
+    return true;
+}

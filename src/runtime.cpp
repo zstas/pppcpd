@@ -21,6 +21,9 @@ PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) :
         if( !vpp->set_state( ifi, true ) ) {
             logger->logError() << LOGS::VPP << "Cannot set state to interface: " << ifi << std::endl;
         }
+        if( !vpp->add_pppoe_cp( ifi ) ) {
+            logger->logError() << LOGS::VPP << "Cannot set pppoe cp interface: " << ifi << std::endl;
+        }
     }
     auto temp = vpp->get_ifaces();
     for( auto const &el: temp ) {

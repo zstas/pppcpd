@@ -63,6 +63,7 @@ public:
 
     // PPPoE methods
     bool add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );
+    bool add_pppoe_cp( uint32_t sw_if_index, bool to_del = false );
     std::vector<VPP_PPPOE_Session> dump_pppoe_sessions();
 private:
     void process_msgs( boost::system::error_code err );
