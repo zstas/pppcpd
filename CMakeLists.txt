@@ -61,6 +61,7 @@ target_link_libraries(pppcpd PUBLIC yaml-cpp)
 target_link_libraries(pppcpd PUBLIC pthread)
 target_link_libraries(pppcpd PUBLIC vapiclient)
 target_link_libraries(pppcpd PUBLIC vppcom)
+target_link_libraries(pppcpd PUBLIC vppapiclient)
 target_link_libraries(pppcpd PUBLIC radiuspp)
 
 target_link_libraries(pppctl PUBLIC pthread)

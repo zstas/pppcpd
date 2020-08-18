@@ -1,5 +1,9 @@
 #include "main.hpp"
 
+extern "C" {
+    #include "vpp-api/client/stat_client.h"
+}
+
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON
 DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
@@ -497,4 +501,46 @@ bool VPPAPI::add_pppoe_cp( uint32_t sw_if_index, bool to_del ) {
     }
 
     return true;
+}
+
+void VPPAPI::print_counters() {
+    logger->logInfo() << LOGS::VPP << "Trying to get stats" << std::endl;
+    auto client = stat_client_get();
+    stat_segment_connect_r( STAT_SEGMENT_SOCKET_FILE, client );
+    auto ls = stat_segment_ls_r( nullptr, client );
+    logger->logInfo() << LOGS::VPP << stat_segment_vec_len( ls ) << std::endl;
+    for( int i = 0; i < stat_segment_vec_len( ls ); i++ ) {
+        auto stat = stat_segment_dump_entry_r( ls[ i ], client );
+        logger->logInfo() << LOGS::VPP << stat->name << std::endl;
+        
+        switch( stat->type ) {
+        case stat_directory_type_t::STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+        {
+            auto vec_size = stat_segment_vec_len( stat->simple_counter_vec );
+            for( int j = 0; j < vec_size; j++ ) {
+                logger->logInfo() << LOGS::VPP << stat->simple_counter_vec[j] << std::endl;
+            }
+            break;
+        }
+        case stat_directory_type_t::STAT_DIR_TYPE_NAME_VECTOR:
+        {
+            auto vec_size = stat_segment_vec_len( stat->name_vector );
+            for( int j = 0; j < vec_size; j++ ) {
+                logger->logInfo() << LOGS::VPP << (char*)stat->name_vector[j] << std::endl;
+            }
+            break;
+        }
+        case stat_directory_type_t::STAT_DIR_TYPE_COUNTER_VECTOR_COMBINED:
+        {
+            auto vec_size = stat_segment_vec_len( stat->combined_counter_vec );
+            for( int j = 0; j < vec_size; j++ ) {
+                logger->logInfo() << LOGS::VPP << "bytes: " << stat->combined_counter_vec[j]->bytes << " pkts: " << stat->combined_counter_vec[j]->packets << std::endl;
+            }
+            break;
+        }
+        }
+        stat_segment_data_free( stat );
+    }
+    stat_segment_vec_free( ls );
+    stat_client_free( client );
 }
