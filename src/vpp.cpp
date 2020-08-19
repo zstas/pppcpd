@@ -32,6 +32,16 @@ std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface
     return stream;
 }
 
+std::ostream& operator<<( std::ostream &stream, const struct VPPIfaceCounters &ctr ) {
+    stream << std::dec;
+    stream << "Drops:  " << ctr.drops;
+    stream << " TxPkts: " << ctr.txPkts;
+    stream << " TxBytes: " << ctr.txBytes;
+    stream << " RxPkts: " << ctr.rxPkts;
+    stream << " RxBytes: " << ctr.rxBytes;
+    return stream;
+}
+
 VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
         io( i ),
         timer( io ),
@@ -60,10 +70,10 @@ void VPPAPI::process_msgs( boost::system::error_code err ) {
         ret = con.wait_for_response( ping );
     } while( ret == VAPI_EAGAIN );
 
-    vapi::Event_registration<vapi::Want_interface_events_reply> event { con };
-    for( auto const &el: event.get_result_set() ) {
-        logger->logError() << LOGS::VPP << "Getting interface event" << std::endl; 
-        el.get_payload().retval;
+    collect_counters();
+
+    for( auto const &[ ifi, ctrs ]: counters ) {
+        logger->logError() << LOGS::VPP << "Interface ifindex: " << ifi << " Counters: " << ctrs << std::endl;
     }
 
     timer.expires_after( std::chrono::seconds( 10 ) );
@@ -503,30 +513,44 @@ bool VPPAPI::add_pppoe_cp( uint32_t sw_if_index, bool to_del ) {
     return true;
 }
 
-void VPPAPI::print_counters() {
-    logger->logInfo() << LOGS::VPP << "Trying to get stats" << std::endl;
+void VPPAPI::collect_counters() {
+    logger->logDebug() << LOGS::VPP << "Trying to get stats" << std::endl;
     auto client = stat_client_get();
     stat_segment_connect_r( STAT_SEGMENT_SOCKET_FILE, client );
     auto ls = stat_segment_ls_r( nullptr, client );
-    logger->logInfo() << LOGS::VPP << stat_segment_vec_len( ls ) << std::endl;
     for( int i = 0; i < stat_segment_vec_len( ls ); i++ ) {
         auto stat = stat_segment_dump_entry_r( ls[ i ], client );
-        logger->logInfo() << LOGS::VPP << stat->name << std::endl;
+        if( ! ( strcmp( stat->name, "/if/drops" ) == 0 ||
+            strcmp( stat->name, "/if/tx" ) == 0 ||
+            strcmp( stat->name, "/if/rx" ) == 0 ) ) {
+            continue;
+        }
+        logger->logDebug() << LOGS::VPP << stat->name << std::endl;
         
         switch( stat->type ) {
-        case stat_directory_type_t::STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
-        {
-            auto vec_size = stat_segment_vec_len( stat->simple_counter_vec );
-            for( int j = 0; j < vec_size; j++ ) {
-                logger->logInfo() << LOGS::VPP << stat->simple_counter_vec[j] << std::endl;
-            }
-            break;
-        }
         case stat_directory_type_t::STAT_DIR_TYPE_NAME_VECTOR:
         {
             auto vec_size = stat_segment_vec_len( stat->name_vector );
             for( int j = 0; j < vec_size; j++ ) {
-                logger->logInfo() << LOGS::VPP << (char*)stat->name_vector[j] << std::endl;
+                // logger->logInfo() << LOGS::VPP << (char*)stat->name_vector[j] << std::endl;
+            }
+            break;
+        }
+        case stat_directory_type_t::STAT_DIR_TYPE_COUNTER_VECTOR_SIMPLE:
+        {
+            auto vec_size = stat_segment_vec_len( stat->simple_counter_vec );
+            for( int j = 0; j < vec_size; j++ ) {
+                for( int k = 0; k < stat_segment_vec_len( stat->simple_counter_vec[j] ); k++ ) {
+                    auto cIt = counters.find( k );
+                    if( cIt == counters.end() ) {
+                        counters.emplace( std::piecewise_construct, std::forward_as_tuple( k ), std::forward_as_tuple() );
+                        cIt = counters.find( k );
+                    }
+                    if( strcmp( stat->name, "/if/drops" ) == 0 ) {
+                        auto &counters = cIt->second;
+                        counters.drops = stat->simple_counter_vec[j][k];
+                    }
+                }
             }
             break;
         }
@@ -534,7 +558,21 @@ void VPPAPI::print_counters() {
         {
             auto vec_size = stat_segment_vec_len( stat->combined_counter_vec );
             for( int j = 0; j < vec_size; j++ ) {
-                logger->logInfo() << LOGS::VPP << "bytes: " << stat->combined_counter_vec[j]->bytes << " pkts: " << stat->combined_counter_vec[j]->packets << std::endl;
+                for( int k = 0; k < stat_segment_vec_len( stat->simple_counter_vec[j] ); k++ ) {
+                    auto cIt = counters.find( k );
+                    if( cIt == counters.end() ) {
+                        counters.emplace( std::piecewise_construct, std::forward_as_tuple( k ), std::forward_as_tuple() );
+                        cIt = counters.find( k );
+                    }
+                    auto &counters = cIt->second;
+                    if( strcmp( stat->name, "/if/tx" ) == 0 ) {
+                        counters.txBytes = stat->combined_counter_vec[j][k].bytes;
+                        counters.txPkts = stat->combined_counter_vec[j][k].packets;
+                    } else if( strcmp( stat->name, "/if/rx" ) == 0 ) {
+                        counters.rxBytes = stat->combined_counter_vec[j][k].bytes;
+                        counters.rxPkts = stat->combined_counter_vec[j][k].packets;
+                    }
+                }
             }
             break;
         }

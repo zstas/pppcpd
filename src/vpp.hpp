@@ -34,6 +34,14 @@ struct VPP_PPPOE_Session {
     uint32_t encap_if_index;
 };
 
+struct VPPIfaceCounters {
+    uint64_t rxPkts;
+    uint64_t rxBytes;
+    uint64_t txPkts;
+    uint64_t txBytes;
+    uint64_t drops;
+};
+
 std::ostream& operator<<( std::ostream &stream, const IfaceType &iface );
 std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface );
 
@@ -67,12 +75,13 @@ public:
     std::vector<VPP_PPPOE_Session> dump_pppoe_sessions();
 
     // Stats
-    void print_counters();
+    void collect_counters();
 private:
     void process_msgs( boost::system::error_code err );
     boost::asio::io_context &io;
     boost::asio::steady_timer timer;
     std::unique_ptr<Logger> &logger;
+    std::map<uint32_t,VPPIfaceCounters> counters;
     vapi::Connection con;
 };
 
