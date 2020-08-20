@@ -4,7 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
-    runtime->logger->logDebug() << "receive pkt in state: " << state;
+    runtime->logger->logDebug() << "receive pkt in state: " << state << std::endl;
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
@@ -47,13 +47,13 @@ FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
         //send CODEREJ
         break;
     }
-    runtime->logger->logDebug() << "FSM state: " << state;
+    runtime->logger->logDebug() << "FSM state: " << state << std::endl;
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
 FSM_RET PPP_FSM::recv_conf_req( std::vector<uint8_t> &inPkt ) {
-    runtime->logger->logDebug() << "recv_conf_req current state: " << state;
+    runtime->logger->logDebug() << "recv_conf_req current state: " << state << std::endl;
     switch( state ){
     case PPP_FSM_STATE::Closing:
     case PPP_FSM_STATE::Stopping:
@@ -87,7 +87,7 @@ void PPP_FSM::layer_up() {
 
     case PPP_FSM_STATE::Starting:
 	    if( auto const &[ action, err ] = send_conf_req(); !err.empty() ) {
-            runtime->logger->logError() << "Cannot set layer up: " << err;
+            runtime->logger->logError() << "Cannot set layer up: " << err << std::endl;
         } else {
 	        state = PPP_FSM_STATE::Req_Sent;
         }
@@ -110,7 +110,7 @@ void PPP_FSM::open() {
         break;
     case PPP_FSM_STATE::Closed:
         if( auto const &[ action, err ] = send_conf_req(); !err.empty() ) {
-            runtime->logger->logError() << "Cannot set layer up: " << err;
+            runtime->logger->logError() << "Cannot set layer up: " << err << std::endl;
         } else {
 	        state = PPP_FSM_STATE::Req_Sent;
         }
@@ -127,7 +127,7 @@ void PPP_FSM::open() {
 }
 
 FSM_RET PPP_FSM::recv_conf_ack( std::vector<uint8_t> &inPkt ) {
-    runtime->logger->logDebug() <<  "recv_conf_ack current state: " << state;
+    runtime->logger->logDebug() <<  "recv_conf_ack current state: " << state << std::endl;
 
     // Parse in case of moved data
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
@@ -148,7 +148,7 @@ FSM_RET PPP_FSM::recv_conf_ack( std::vector<uint8_t> &inPkt ) {
         state = PPP_FSM_STATE::Ack_Rcvd;
         break;
     case PPP_FSM_STATE::Ack_Rcvd:
-        runtime->logger->logDebug() <<  "extra ack, but not considering it is like a problem";
+        runtime->logger->logDebug() <<  "extra ack, but not considering it is like a problem" << std::endl;
         break;
     case PPP_FSM_STATE::Ack_Sent:
         state = PPP_FSM_STATE::Opened;
@@ -162,7 +162,7 @@ FSM_RET PPP_FSM::recv_conf_ack( std::vector<uint8_t> &inPkt ) {
         return { PPP_FSM_ACTION::LAYER_DOWN, "" };
         break;
     default:
-        runtime->logger->logError() <<  "Incorrect state?";
+        runtime->logger->logError() <<  "Incorrect state?" << std::endl;
         break;
     }
 

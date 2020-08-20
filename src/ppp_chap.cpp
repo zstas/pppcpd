@@ -4,6 +4,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_CHAP::receive( std::vector<uint8_t> &inPkt ) {
+    runtime->logger->logDebug() << LOGS::CHAP << "Receive chap packet" << std::endl;
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
     switch( auth->code ) {
@@ -17,6 +18,7 @@ FSM_RET PPP_CHAP::receive( std::vector<uint8_t> &inPkt ) {
 }
 
 void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
+    runtime->logger->logDebug() << LOGS::CHAP << "recv_auth_req" << std::endl;
     if( started ) {
         send_auth_ack();
         return;
@@ -34,6 +36,7 @@ void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
 }
 
 FSM_RET PPP_CHAP::auth_callback( uint32_t sid, const std::string &err ) {
+    runtime->logger->logDebug() << LOGS::CHAP << "Auth callback for user " << session.username << " session_id: " << sid << std::endl;
     if( err.empty() ) {
         session.aaa_session_id = sid;
         started = true;
@@ -100,7 +103,7 @@ FSM_RET PPP_CHAP::send_auth_nak() {
 }
 
 FSM_RET PPP_CHAP::send_conf_req() {
-    runtime->logger->logInfo() << LOGS::PPP << "Sending CHAP conf-req" << std::endl;
+    runtime->logger->logDebug() << LOGS::PPP << "Sending CHAP conf-req" << std::endl;
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_CHAP_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );

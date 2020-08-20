@@ -8,7 +8,7 @@ FRAMED_POOL::FRAMED_POOL( std::string sta, std::string sto ) {
 }
 
 uint32_t FRAMED_POOL::allocate_ip() {
-    runtime->logger->logDebug() << LOGS::AAA << "Allocation IP from Pool";
+    runtime->logger->logDebug() << LOGS::AAA << "Allocation IP from Pool" << std::endl;
     for( uint32_t i = start_ip.to_uint(); i <= stop_ip.to_uint(); i++ ) {
         if( const auto &iIt = ips.find( i ); iIt == ips.end() ) {
             ips.emplace( i );
@@ -19,7 +19,7 @@ uint32_t FRAMED_POOL::allocate_ip() {
 }
 
 void FRAMED_POOL::deallocate_ip( uint32_t i ) {
-    runtime->logger->logDebug() << LOGS::AAA << "Deallocating IP from Pool";
+    runtime->logger->logDebug() << LOGS::AAA << "Deallocating IP from Pool" << std::endl;
     if( const auto &iIt = ips.find( i ); iIt != ips.end() ) {
         ips.erase( iIt );
     }
@@ -30,6 +30,7 @@ void AAA::startSession( const std::string &user, const std::string &pass, PPPOES
         switch( m ) {
         case AAA_METHODS::NONE:
             if( auto const &[ sid, err ] = startSessionNone( user, pass ); !err.empty() ) {
+                runtime->logger->logError() << LOGS::AAA << "Error when starting new session: " << err << std::endl;
                 continue;
             } else {
                 callback( sid, err );
@@ -49,6 +50,7 @@ void AAA::startSessionCHAP( const std::string &user, const std::string &challeng
         switch( m ) {
         case AAA_METHODS::NONE:
             if( auto const &[ sid, err ] = startSessionNone( user, "CHAP" ); !err.empty() ) {
+                runtime->logger->logError() << LOGS::AAA << "Error when starting new session: " << err << std::endl;
                 continue;
             } else {
                 callback( sid, err );
@@ -64,7 +66,7 @@ void AAA::startSessionCHAP( const std::string &user, const std::string &challeng
 }
 
 void AAA::startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
-    runtime->logger->logDebug() << LOGS::AAA << "RADIUS auth, starting session user: " << user << " password: " << pass;
+    runtime->logger->logDebug() << LOGS::AAA << "RADIUS auth, starting session user: " << user << " password: " << pass << std::endl;
 
     RadiusRequest req;
     req.username = user;
@@ -119,7 +121,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
     }
 
     if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2, nullptr ); !ret ) {
-        runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user;
+        runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
         return;
     }
@@ -131,7 +133,7 @@ void AAA::processRadiusError( aaa_callback callback, const std::string &error ) 
 }
 
 std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user, const std::string &pass ) {
-    runtime->logger->logDebug() << LOGS::AAA << "NONE auth, starting session user: " << user << " password: " << pass;
+    runtime->logger->logDebug() << LOGS::AAA << "NONE auth, starting session user: " << user << " password: " << pass << std::endl;
     if( !conf.local_template.has_value() ) {
         return { SESSION_ERROR, "No template for non-radius pppoe user" };
     }
@@ -140,7 +142,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
         return { SESSION_ERROR, "Framed pool with name " + conf.local_template.value().framed_pool + " wasn't found" };
     }
     address_v4 address { fr_pool->second.allocate_ip() };
-    runtime->logger->logDebug() << LOGS::AAA << "Allocated ip " << address.to_string();
+    runtime->logger->logDebug() << LOGS::AAA << "Allocated ip " << address.to_string() << std::endl;
 
     // Creating new session
     uint32_t i;
@@ -156,7 +158,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     auto on_stop = std::bind( &FRAMED_POOL::deallocate_ip, &fr_pool->second, address.to_uint() );
 
     if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, conf.local_template.value().dns1, conf.local_template.value().dns2, on_stop ); !ret ) {
-        runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user;
+        runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };
     }
     return { i, "" };

@@ -46,7 +46,7 @@ std::tuple<std::map<PPPOE_TAG,std::string>,std::string> pppoe::parseTags( std::v
 }
 
 static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
-    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADI packet";
+    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADI packet" << std::endl;
 
     outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     PPPOEDISC_HDR *rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
@@ -122,7 +122,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
 }
 
 static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_t> &outPkt, const encapsulation_t &encap ) {
-    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADR packet";
+    runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADR packet" << std::endl;
         
     outPkt.resize( sizeof( PPPOEDISC_HDR ) );
     
@@ -184,7 +184,7 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
 
     PPPOEDISC_HDR *disc = reinterpret_cast<PPPOEDISC_HDR*>( inPkt.data() );
 
-    runtime->logger->logDebug() << LOGS::PPPOED << "Incoming PPPoE: " << disc;
+    runtime->logger->logDebug() << LOGS::PPPOED << "Incoming PPPoE: " << disc << std::endl;
     
     // Starting to prepare the answer
     switch( disc->code ) {
@@ -199,11 +199,11 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
         }
         break;
     case PPPOE_CODE::PADT:
-        runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADT packet";
+        runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADT packet" << std::endl;
         runtime->deallocateSession( bswap16( disc->session_id ) );
         return "Received PADT, send nothing";
     default:
-        runtime->logger->logDebug() << LOGS::PPPOED << "Incorrect code for packet";
+        runtime->logger->logDebug() << LOGS::PPPOED << "Incorrect code for packet" << std::endl;
         return "Incorrect code for packet";
     }
 

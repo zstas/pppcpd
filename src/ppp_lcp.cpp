@@ -9,7 +9,7 @@ LCP_FSM::LCP_FSM( PPPOESession &s ):
 {}
 
 FSM_RET LCP_FSM::send_conf_req() {
-    runtime->logger->logDebug() << LOGS::LCP << "send_conf_req current state: " << state;
+    runtime->logger->logDebug() << LOGS::LCP << "send_conf_req current state: " << state << std::endl;
     std::vector<uint8_t> pkt;
     pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + 256 );
 
@@ -70,7 +70,7 @@ FSM_RET LCP_FSM::send_conf_req() {
 }
 
 FSM_RET LCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
-    runtime->logger->logDebug() << LOGS::LCP << "send_conf_ack current state: " << state;
+    runtime->logger->logDebug() << LOGS::LCP << "send_conf_ack current state: " << state << std::endl;
 
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
@@ -91,7 +91,7 @@ FSM_RET LCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
 }
 
 FSM_RET LCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
-    runtime->logger->logDebug() << LOGS::LCP << "send_conf_nak current state: " << state;
+    runtime->logger->logDebug() << LOGS::LCP << "send_conf_nak current state: " << state << std::endl;
 
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
@@ -179,7 +179,7 @@ FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
-    runtime->logger->logDebug() << LOGS::LCP << "Sending LCP TERM ACK";
+    runtime->logger->logDebug() << LOGS::LCP << "Sending LCP TERM ACK" << std::endl;
     ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };

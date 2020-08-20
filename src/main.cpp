@@ -27,13 +27,13 @@ static void conf_init() {
     pppoe_template.framed_pool = "pppoe_pool1";
     pppoe_template.dns1 = address_v4_t::from_string( "8.8.8.8" );
     pppoe_template.dns2 = address_v4_t::from_string( "1.1.1.1" );
-    AAAConf aaa_conf;
-    aaa_conf.local_template.emplace( std::move( pppoe_template ) );
-    aaa_conf.method = { AAA_METHODS::NONE };
-    aaa_conf.pools.emplace( std::piecewise_construct,
+
+    global_conf.aaa_conf.local_template.emplace( std::move( pppoe_template ) );
+    global_conf.aaa_conf.method = { AAA_METHODS::NONE };
+    global_conf.aaa_conf.pools.emplace( std::piecewise_construct,
         std::forward_as_tuple( "pppoe_pool1" ),
         std::forward_as_tuple( "100.64.0.10", "100.64.255.255" ) );
-    aaa_conf.pools.emplace( std::piecewise_construct,
+    global_conf.aaa_conf.pools.emplace( std::piecewise_construct,
         std::forward_as_tuple( "pppoe_pool2" ),
         std::forward_as_tuple( "100.66.0.10", "100.66.0.255" ) );
 

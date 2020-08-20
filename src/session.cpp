@@ -13,7 +13,7 @@ PPPOESession::PPPOESession( io_service &i, const encapsulation_t &e, uint16_t si
     chap( *this ),
     ipcp( *this )
 {
-    runtime->logger->logDebug() << LOGS::MAIN << "Session UP: " << sid;
+    runtime->logger->logDebug() << LOGS::MAIN << "Session UP: " << sid << std::endl;
 }
 
 std::string PPPOESession::provision_dp() {

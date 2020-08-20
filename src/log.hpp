@@ -16,6 +16,7 @@ enum class LOGS: uint8_t {
     PPP,
     LCP,
     IPCP,
+    CHAP,
     PPP_AUTH,
     AAA,
     VPP

@@ -73,7 +73,7 @@ void VPPAPI::process_msgs( boost::system::error_code err ) {
     collect_counters();
 
     for( auto const &[ ifi, ctrs ]: counters ) {
-        logger->logError() << LOGS::VPP << "Interface ifindex: " << ifi << " Counters: " << ctrs << std::endl;
+        // logger->logError() << LOGS::VPP << "Interface ifindex: " << ifi << " Counters: " << ctrs << std::endl;
     }
 
     timer.expires_after( std::chrono::seconds( 10 ) );
