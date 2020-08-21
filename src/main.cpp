@@ -37,6 +37,20 @@ static void conf_init() {
         std::forward_as_tuple( "pppoe_pool2" ),
         std::forward_as_tuple( "100.66.0.10", "100.66.0.255" ) );
 
+    global_conf.aaa_conf.dictionaries = {
+        "/usr/share/freeradius/dictionary.rfc2865",
+        "/usr/share/freeradius/dictionary.rfc2869",
+        "/usr/share/freeradius/dictionary.ericsson.ab"
+    };
+
+    global_conf.aaa_conf.auth_servers.emplace( std::piecewise_construct,
+        std::forward_as_tuple( "main_auth_1" ),
+        std::forward_as_tuple( "127.0.0.1", 1812, "testing123" ) );
+    
+    global_conf.aaa_conf.acct_servers.emplace( std::piecewise_construct,
+        std::forward_as_tuple( "main_acct_1" ),
+        std::forward_as_tuple( "127.0.0.1", 1813, "testing123" ) );
+
     InterfaceConf iconf;
     iconf.device = "GigabitEthernet0/8/0";
     iconf.mtu.emplace( 1500 );
@@ -67,15 +81,6 @@ int main( int argc, char *argv[] ) {
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();
     runtime->lcp_conf->authCHAP = true;
-
-    //runtime->aaa = std::make_shared<AAA>( 0x6440000A, 0x644000FE, 0x08080808, 0x01010101 );
-    std::vector<std::string> files = {
-        "/usr/share/freeradius/dictionary.rfc2865",
-        "/usr/share/freeradius/dictionary.rfc2869",
-        "/usr/share/freeradius/dictionary.ericsson.ab"
-    };
-
-    RadiusDict dict { files };
 
     EVLoop loop( io );
     std::remove( "/var/run/pppcpd.sock" );

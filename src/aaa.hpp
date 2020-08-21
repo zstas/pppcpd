@@ -72,10 +72,27 @@ struct PPPOELocalTemplate {
     address_v4_t dns2;
 };
 
+struct AAARadConf {
+    address_v4_t address;
+    uint16_t port;
+    std::string secret;
+
+    AAARadConf() = default;
+
+    AAARadConf( const std::string &a, uint16_t p, std::string s ):
+        address( address_v4_t::from_string( a ) ),
+        port( p ),
+        secret( std::move( s ) )
+    {}
+};
+
 struct AAAConf {
     std::vector<AAA_METHODS> method;
     std::map<std::string,FRAMED_POOL> pools;
     std::optional<PPPOELocalTemplate> local_template;
+    std::vector<std::string> dictionaries;
+    std::map<std::string,AAARadConf> auth_servers;
+    std::map<std::string,AAARadConf> acct_servers;
 };
 
 class AAA {

@@ -79,6 +79,9 @@ YAML::Node YAML::convert<AAAConf>::encode( const AAAConf &rhs ) {
     if( rhs.local_template.has_value() ) {
         node[ "local_template" ] = rhs.local_template.value();
     }
+    node[ "dictionaries" ] = rhs.dictionaries;
+    node[ "auth_servers" ] = rhs.auth_servers;
+    node[ "acct_servers" ] = rhs.acct_servers;
     return node;
 }
 
@@ -88,6 +91,9 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
     if( node[ "local_template" ].IsDefined() ) {
         rhs.local_template = node[ "local_template" ].as<PPPOELocalTemplate>();
     }
+    rhs.dictionaries = node[ "dictionaries" ].as<std::vector<std::string>>();
+    rhs.auth_servers = node[ "auth_servers" ].as<std::map<std::string,AAARadConf>>();
+    rhs.acct_servers = node[ "acct_servers" ].as<std::map<std::string,AAARadConf>>();
     return true;
 }
 
@@ -136,5 +142,20 @@ bool YAML::convert<PPPOEGlobalConf>::decode( const YAML::Node &node, PPPOEGlobal
     rhs.default_pppoe_conf = node[ "default_pppoe_conf" ].as<PPPOEPolicy>();
     rhs.pppoe_confs = node[ "pppoe_confs" ].as<std::map<uint16_t,PPPOEPolicy>>();
     rhs.aaa_conf = node[ "aaa_conf" ].as<AAAConf>();
+    return true;
+}
+
+YAML::Node YAML::convert<AAARadConf>::encode( const AAARadConf &rhs ) {
+    Node node;
+    node[ "address" ] = rhs.address.to_string();
+    node[ "port" ] = rhs.port;
+    node[ "secret" ] = rhs.secret;
+    return node;
+}
+
+bool YAML::convert<AAARadConf>::decode( const YAML::Node &node, AAARadConf &rhs ) {
+    rhs.address = address_v4_t::from_string( node[ "address" ].as<std::string>() );
+    rhs.port = node[ "port" ].as<uint16_t>();
+    rhs.secret = node[ "secret" ].as<std::string>();
     return true;
 }

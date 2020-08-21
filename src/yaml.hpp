@@ -33,6 +33,13 @@ namespace YAML {
     };
 
     template <>
+    struct convert<AAARadConf>
+    {
+        static Node encode(const AAARadConf &rhs);
+        static bool decode(const Node &node, AAARadConf &rhs);
+    };
+
+    template <>
     struct convert<AAAConf>
     {
         static Node encode(const AAAConf &rhs);
