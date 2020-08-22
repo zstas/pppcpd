@@ -96,9 +96,11 @@ struct AAAConf {
 };
 
 class AAA {
+    io_service &io;
     AAAConf &conf;
     std::map<uint32_t,AAA_Session> sessions;
-    std::map<uint8_t,AuthClient> auth;
+    std::map<std::string,AuthClient> auth;
+    std::map<std::string,AuthClient> acct;
     std::optional<RadiusDict> dict;
 
     // radius methods
@@ -109,12 +111,8 @@ class AAA {
     std::tuple<uint32_t,std::string> startSessionNone( const std::string &user, const std::string &pass );
 
 public:
-    AAA() = default;
-    AAA( AAAConf &c ):
-        conf( c )
-    {}
+    AAA( io_service &i, AAAConf &c );
 
-    std::string addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict );
     std::tuple<AAA_Session*,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     void startSessionCHAP( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback );

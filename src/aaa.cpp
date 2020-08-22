@@ -25,6 +25,31 @@ void FRAMED_POOL::deallocate_ip( uint32_t i ) {
     }
 }
 
+AAA::AAA( io_service &i, AAAConf &c ):
+    io( i ),
+    conf( c )
+{
+    if( !conf.dictionaries.empty() ) {
+        dict.emplace( conf.dictionaries );
+    }
+
+    if( !dict.has_value() ) {
+        runtime->logger->logInfo() << LOGS::AAA << "No RADIUS dictionaries provided. RADIUS won't be working." << std::endl;
+    }
+
+    for( auto const &[ k, v ]: conf.auth_servers ) {
+        auth.emplace( std::piecewise_construct, 
+            std::forward_as_tuple( k ),
+            std::forward_as_tuple( io, v.address, v.port, v.secret, *dict ) );
+    }
+
+    for( auto const &[ k, v ]: conf.acct_servers ) {
+        acct.emplace( std::piecewise_construct, 
+            std::forward_as_tuple( k ),
+            std::forward_as_tuple( io, v.address, v.port, v.secret, *dict ) );
+    }
+}
+
 void AAA::startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback ) {
     for( auto const &m: conf.method ) {
         switch( m ) {
@@ -170,23 +195,6 @@ std::tuple<AAA_Session*,std::string> AAA::getSession( uint32_t sid ) {
     } else {
         return { &it->second, "" };
     }
-}
-
-std::string AAA::addRadiusAuth( io_service &io, std::string server_ip, uint16_t port, const std::string secret, const std::vector<std::string> paths_to_dict ) {
-    uint8_t id = 0;
-    for( auto const &[ k, v ]: auth ) {
-        id++;
-        if( id == k ) {
-            continue;
-        }
-        break;
-    }
-    RadiusDict dict { paths_to_dict };
-    auto ip = address_v4::from_string( server_ip );
-    if( id != UINT8_MAX ) {
-        auth.emplace( std::piecewise_construct, std::forward_as_tuple( id ), std::forward_as_tuple( io, ip, port, secret, dict ) );
-    }
-    return {};
 }
 
 void AAA::stopSession( uint32_t sid ) {

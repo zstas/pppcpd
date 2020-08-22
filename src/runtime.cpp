@@ -5,7 +5,7 @@ PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) :
     io( i )
 {
     logger = std::make_unique<Logger>();
-    aaa = std::make_shared<AAA>( conf.aaa_conf );
+    aaa = std::make_shared<AAA>( io, conf.aaa_conf );
 
     logger->setLevel( LOGL::INFO );
     logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
@@ -34,6 +34,12 @@ PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) :
         logger->logInfo() << LOGS::VPP << "Dumped interface: " << el << std::endl;
     }
     vpp->setup_interfaces( conf.interfaces );
+
+    std::ofstream dis_ipv6 { "/proc/sys/net/ipv6/conf/tap0/disable_ipv6" };
+    if( dis_ipv6.is_open() ) {
+        dis_ipv6 << "1";
+        dis_ipv6.close();
+    }
 }
 
 bool operator<( const pppoe_key_t &l, const pppoe_key_t &r ) {
