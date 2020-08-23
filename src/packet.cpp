@@ -1,8 +1,8 @@
-#include <iosfwd>
 #include <array>
 #include <vector>
 #include <set>
-#include <radiuspp.hpp>
+#include <iostream>
+#include "net_integer.hpp"
 #include "packet.hpp"
 
 extern std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &disc ); 

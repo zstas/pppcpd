@@ -29,23 +29,6 @@ endif()
 
 include_directories(BEFORE SYSTEM ${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR}/include)
 
-include(FetchContent)
-FetchContent_Declare(
-		radiuspp
-		GIT_REPOSITORY git@github.com:zstas/radiuspp.git
-		GIT_SHALLOW	ON
-	)
-FetchContent_GetProperties(radiuspp)
-if(NOT radiuspp_POPULATED)
-	message(STATUS "Populating radiuspp...")
-	FetchContent_Populate(radiuspp)
-
-	add_subdirectory(${radiuspp_SOURCE_DIR} ${radiuspp_BINARY_DIR})
-	message(STATUS "Done.")
-endif()
-
-include_directories(BEFORE SYSTEM ${radiuspp_SOURCE_DIR}/src)
-
 # set the project name
 project(pppcpd)
 
@@ -56,12 +39,10 @@ list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 add_executable(pppcpd ${SOURCES})
 add_executable(pppctl ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 
+target_link_libraries(pppctl PUBLIC pthread)
 target_link_libraries(pppcpd PUBLIC boost_system)
+target_link_libraries(pppcpd PUBLIC boost_random)
 target_link_libraries(pppcpd PUBLIC yaml-cpp)
 target_link_libraries(pppcpd PUBLIC pthread)
 target_link_libraries(pppcpd PUBLIC vapiclient)
-target_link_libraries(pppcpd PUBLIC vppcom)
 target_link_libraries(pppcpd PUBLIC vppapiclient)
-target_link_libraries(pppcpd PUBLIC radiuspp)
-
-target_link_libraries(pppctl PUBLIC pthread)

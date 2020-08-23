@@ -29,7 +29,7 @@ static void conf_init() {
     pppoe_template.dns2 = address_v4_t::from_string( "1.1.1.1" );
 
     global_conf.aaa_conf.local_template.emplace( std::move( pppoe_template ) );
-    global_conf.aaa_conf.method = { AAA_METHODS::NONE };
+    global_conf.aaa_conf.method = { AAA_METHODS::RADIUS, AAA_METHODS::NONE };
     global_conf.aaa_conf.pools.emplace( std::piecewise_construct,
         std::forward_as_tuple( "pppoe_pool1" ),
         std::forward_as_tuple( "100.64.0.10", "100.64.255.255" ) );

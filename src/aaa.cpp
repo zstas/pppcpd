@@ -123,6 +123,7 @@ void AAA::startSessionRadius( const std::string &user, const std::string &pass, 
             std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1, std::placeholders::_2 ),
             std::bind( &AAA::processRadiusError, this, callback, std::placeholders::_1 )
         );
+        break;
     }
 }
 
@@ -166,7 +167,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     if( fr_pool == conf.pools.end() ) {
         return { SESSION_ERROR, "Framed pool with name " + conf.local_template.value().framed_pool + " wasn't found" };
     }
-    address_v4 address { fr_pool->second.allocate_ip() };
+    address_v4_t address { fr_pool->second.allocate_ip() };
     runtime->logger->logDebug() << LOGS::AAA << "Allocated ip " << address.to_string() << std::endl;
 
     // Creating new session
