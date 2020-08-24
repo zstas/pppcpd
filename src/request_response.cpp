@@ -35,6 +35,41 @@ std::vector<uint8_t> serialize<RadiusRequest>( const RadiusDict &dict, const Rad
 }
 
 template<>
+std::vector<uint8_t> serialize<RadiusRequestChap>( const RadiusDict &dict, const RadiusRequestChap &req, const authenticator_t &a, const std::string &secret ) {
+    std::set<AVP> avp_set { 
+        AVP { dict, "User-Name", req.username },
+        AVP { dict, "CHAP-Password", req.chap_response },
+        AVP { dict, "CHAP-Challenge", req.chap_challenge },
+    };
+
+    if( !req.nas_id.empty() ) {
+        avp_set.emplace( dict, "NAS-Identifier", req.nas_id );
+    }
+
+    if( !req.framed_protocol.empty() ) {
+        if( uint32_t val = dict.getValueByName( "Framed-Protocol", req.framed_protocol ); val != 0 ) {
+            avp_set.emplace( dict, "Framed-Protocol", BE32{ val } );
+        }
+    }
+
+    if( !req.service_type.empty() ) {
+        if( uint32_t val = dict.getValueByName( "Service-Type", req.service_type ); val != 0 ) {
+            avp_set.emplace( dict, "Service-Type", BE32{ val } );
+        }
+    }
+
+    if( !req.calling_station_id.empty() ) {
+        avp_set.emplace( dict, "Calling-Station-Id", req.calling_station_id );
+    }
+
+    if( !req.nas_port_id.empty() ) {
+        avp_set.emplace( dict, "NAS-Port-Id", req.nas_port_id );
+    }
+
+    return serializeAVP( avp_set );
+}
+
+template<>
 RadiusResponse deserialize<RadiusResponse>( const RadiusDict &dict, std::vector<uint8_t> &v ) {
     RadiusResponse res;
 

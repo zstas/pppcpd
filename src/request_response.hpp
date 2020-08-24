@@ -11,6 +11,17 @@ struct RadiusRequest {
     std::string nas_port_id;
 };
 
+struct RadiusRequestChap {
+    std::string username;
+    std::string chap_challenge;
+    std::string chap_response;
+    std::string nas_id;
+    std::string service_type;
+    std::string framed_protocol;
+    std::string calling_station_id;
+    std::string nas_port_id;
+};
+
 struct RadiusResponse {
     address_v4_t framed_ip;
     address_v4_t dns1;

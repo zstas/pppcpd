@@ -105,6 +105,7 @@ class AAA {
 
     // radius methods
     void startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
+    void startSessionRadiusChap( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback );
     void processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_CODE code, std::vector<uint8_t> v );
     void processRadiusError( aaa_callback callback, const std::string &error );
     // local and none methods

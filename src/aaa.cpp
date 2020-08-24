@@ -62,7 +62,8 @@ void AAA::startSession( const std::string &user, const std::string &pass, PPPOES
             }
             break;
         case AAA_METHODS::RADIUS:
-            startSessionRadius( user, pass, sess, callback );
+            startSessionRadius( user, pass, sess, std::move( callback ) );
+            return;
             break;
         default:
             break;
@@ -82,7 +83,8 @@ void AAA::startSessionCHAP( const std::string &user, const std::string &challeng
             }
             break;
         case AAA_METHODS::RADIUS:
-            // startSessionRadius( user, pass, sess, callback );
+            startSessionRadiusChap( user, challenge, response, sess, std::move( callback ) );
+            return;
             break;
         default:
             break;
@@ -99,22 +101,50 @@ void AAA::startSessionRadius( const std::string &user, const std::string &pass, 
     req.framed_protocol = "PPP";
     req.nas_id = "vBNG";
     req.service_type = "Framed-User";
-    char buf[256];
-    snprintf( buf, sizeof( buf ), "%02x:%02x:%02x:%02x:%02x:%02x", 
-        sess.encap.destination_mac[ 0 ], 
-        sess.encap.destination_mac[ 1 ], 
-        sess.encap.destination_mac[ 2 ], 
-        sess.encap.destination_mac[ 3 ], 
-        sess.encap.destination_mac[ 4 ], 
-        sess.encap.destination_mac[ 5 ]
-    );
-    req.calling_station_id = buf;
+
+    std::ostringstream str;
+    str << sess.encap.destination_mac;
+    req.calling_station_id = str.str();
+    str.str( std::string() );
 
     if( sess.encap.outer_vlan == 0 ) {
         req.nas_port_id = "ethernet";
     } else {
-        snprintf( buf, sizeof( buf ), "vlan%d", sess.encap.outer_vlan );
-        req.nas_port_id = buf;
+        str << "vlan" << sess.encap.outer_vlan;
+        req.nas_port_id = str.str();
+    }
+
+    for( auto &[ id, serv ]: auth ) {
+        serv.request( 
+            req, 
+            std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1, std::placeholders::_2 ),
+            std::bind( &AAA::processRadiusError, this, callback, std::placeholders::_1 )
+        );
+        break;
+    }
+}
+
+void AAA::startSessionRadiusChap( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback ) {
+    runtime->logger->logDebug() << LOGS::AAA << "RADIUS CHAP auth, starting session user: " << user << std::endl;
+
+    RadiusRequestChap req;
+    req.username = user;
+    req.chap_challenge = challenge;
+    req.chap_response = response;
+    req.framed_protocol = "PPP";
+    req.nas_id = "vBNG";
+    req.service_type = "Framed-User";
+
+    std::ostringstream str;
+    str << sess.encap.destination_mac;
+    req.calling_station_id = str.str();
+    str.clear();
+
+    if( sess.encap.outer_vlan == 0 ) {
+        req.nas_port_id = "ethernet";
+    } else {
+        str << "vlan" << sess.encap.outer_vlan;
+        req.nas_port_id = str.str();
     }
 
     for( auto &[ id, serv ]: auth ) {
