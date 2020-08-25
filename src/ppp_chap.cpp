@@ -26,9 +26,10 @@ void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
 
-    uint8_t user_len = *( auth->getPayload() );
-    std::string username { reinterpret_cast<char*>( auth->getPayload() + 1 ), reinterpret_cast<char*>( auth->getPayload() + 1 + user_len ) };
+    uint8_t user_len = bswap16( auth->length ) - sizeof( *auth );
+    std::string username { reinterpret_cast<char*>( auth->getPayload() ), reinterpret_cast<char*>( auth->getPayload() + user_len ) };
     std::string response { auth->value.begin(), auth->value.end() };
+    response.insert( response.begin(), auth->identifier );
 
     session.username = username;
 

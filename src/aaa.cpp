@@ -138,7 +138,7 @@ void AAA::startSessionRadiusChap( const std::string &user, const std::string &ch
     std::ostringstream str;
     str << sess.encap.destination_mac;
     req.calling_station_id = str.str();
-    str.clear();
+    str.str( std::string() );
 
     if( sess.encap.outer_vlan == 0 ) {
         req.nas_port_id = "ethernet";
