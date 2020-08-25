@@ -1,6 +1,9 @@
 #ifndef ETHERNET_HPP_
 #define ETHERNET_HPP_
 
+#include <array>
+#include <iostream>
+
 using mac_t = std::array<uint8_t,6>;
 
 std::ostream& operator<<( std::ostream &stream, const mac_t &mac );

@@ -1,8 +1,3 @@
-#include <array>
-#include <vector>
-#include <set>
-#include <iostream>
-#include "net_integer.hpp"
 #include "packet.hpp"
 
 extern std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &disc ); 

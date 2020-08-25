@@ -1,4 +1,7 @@
 #include <iostream>
+#include <iomanip>
+#include <chrono>
+#include <ctime>
 
 enum class LOGL: uint8_t {
     TRACE,
@@ -48,12 +51,6 @@ public:
     void setLevel( const LOGL &level ) {
         minimum = level;
     }
-
-    // template<typename T>
-    // Logger& operator<<( endl_type endl ) {
-    //     noop = false;
-    //     return *this;
-    // }
 
     Logger& operator<<( std::ostream& (*fun)( std::ostream& ) ) {
         if( !noop ) {

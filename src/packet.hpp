@@ -1,6 +1,12 @@
 #ifndef PACKET_HPP_
 #define PACKET_HPP_
 
+#include <array>
+#include <vector>
+#include <set>
+#include <iostream>
+
+#include "net_integer.hpp"
 #include "ethernet.hpp"
 
 /* Ethernet frame types according to RFC 2516 */

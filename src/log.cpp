@@ -1,6 +1,4 @@
-#include "main.hpp"
-#include <chrono>
-#include <ctime>
+#include "log.hpp"
 
 std::ostream& operator<<( std::ostream &os, const LOGL &l ) {
     switch( l ) {
