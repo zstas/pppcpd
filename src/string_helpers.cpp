@@ -62,3 +62,23 @@ std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &eth ) {
 
     return stream;
 }
+
+std::ostream& operator<<( std::ostream &stream, const RADIUS_CODE &code ) {
+    switch( code ) {
+    case RADIUS_CODE::ACCESS_REQUEST: stream << "ACCESS_REQUEST"; break;
+    case RADIUS_CODE::ACCESS_ACCEPT: stream << "ACCESS_ACCEPT"; break;
+    case RADIUS_CODE::ACCESS_REJECT: stream << "ACCESS_REJECT"; break;
+    case RADIUS_CODE::ACCOUNTING_REQUEST: stream << "ACCOUNTING_REQUEST"; break;
+    case RADIUS_CODE::ACCOUNTING_RESPONSE: stream << "ACCOUNTING_RESPONSE"; break;
+    case RADIUS_CODE::ACCESS_CHALLENGE: stream << "ACCESS_CHALLENGE"; break;
+    case RADIUS_CODE::RESERVED: stream << "RESERVED"; break;
+    }
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const RadiusPacket *pkt ) {
+    stream << "Code: " << pkt->code;
+    stream << " Id: " << pkt->id;
+    stream << " Length: " << pkt->length.native();
+    return stream;
+}

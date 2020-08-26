@@ -1,6 +1,16 @@
 #ifndef RUNTIME_HPP
 #define RUNTIME_HPP
 
+#include <memory>
+
+#include "aaa.hpp"
+#include "ethernet.hpp"
+#include "encap.hpp"
+#include "config.hpp"
+#include "vpp.hpp"
+
+class AAA;
+
 class pppoe_conn_t {
     mac_t mac;
     uint16_t outer_vlan;

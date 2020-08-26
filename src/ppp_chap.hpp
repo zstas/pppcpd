@@ -1,6 +1,8 @@
 #ifndef PPP_CHAP_HPP_
 #define PPP_CHAP_HPP_
 
+#include "ppp_fsm.hpp"
+
 struct PPPOESession;
 
 struct PPP_CHAP {

@@ -5,6 +5,8 @@
 #include "ppp_ipcp.hpp"
 #include "ppp_lcp.hpp"
 #include "ppp_fsm.hpp"
+#include "ppp_chap.hpp"
+#include "encap.hpp"
 
 struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     // General Data

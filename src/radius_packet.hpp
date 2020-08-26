@@ -20,14 +20,6 @@ struct RadiusPacket {
     uint8_t id;
     BE16 length;
     authenticator_t authenticator;
-
-    std::string to_string() const {
-        std::string out;
-        out += "Code: " + std::to_string( code );
-        out += " Id: " + std::to_string( id );
-        out += " Length: " + std::to_string( length.native() );
-        return out;
-    }
 }__attribute__((__packed__));
 
 #endif

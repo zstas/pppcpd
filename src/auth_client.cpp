@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "auth_client.hpp"
 
 AuthClient::AuthClient( io_service& i, const address_v4_t& ip_address, uint16_t port, std::string s, RadiusDict d ): 
     io( i ), 
@@ -41,12 +41,12 @@ bool AuthClient::checkRadiusAnswer( const authenticator_t &req_auth, const authe
 
 void AuthClient::on_rcv( boost::system::error_code ec, size_t size ) {
     if( ec ) {
-        std::cerr << "Socket receive: " << ec.message() << std::endl;
+        runtime->logger->logError() << LOGS::RADIUS << "Socket error: " << ec.message() << std::endl;
         return;
     }
 
     auto pkt = reinterpret_cast<RadiusPacket*>( buf.data() );
-    std::cout << pkt->to_string() << std::endl;
+    runtime->logger->logInfo() << LOGS::RADIUS << pkt << std::endl;
 
     auto const &it = callbacks.find( pkt->id );
     if( it == callbacks.end() ) {
@@ -57,7 +57,7 @@ void AuthClient::on_rcv( boost::system::error_code ec, size_t size ) {
     std::vector<uint8_t> avp_buf { buf.begin() + sizeof( RadiusPacket ), buf.begin() + pkt->length.native() };
 
     if( !checkRadiusAnswer( it->second.auth, pkt->authenticator, avp_buf ) ) {
-        std::cerr << "Answer is not correct, check the RADIUS secret" << std::endl;
+        runtime->logger->logError() << LOGS::RADIUS << "Answer is not correct, check the RADIUS secret" << std::endl;
         return;
     }
 
@@ -69,7 +69,7 @@ void AuthClient::expire_check( boost::system::error_code ec, uint8_t id ) {
     auto const &it = callbacks.find( id );
     if( ec ) {
         if( ec != boost::system::errc::operation_canceled ) {
-            std::cerr << "Error on expiring timer: " << ec.message() << std::endl;
+            runtime->logger->logError() << LOGS::RADIUS << "Error on expiring timer: " << ec.message() << std::endl;
         }
     } else {
         if( it != callbacks.end() ) {

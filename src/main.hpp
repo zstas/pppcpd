@@ -44,7 +44,6 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "radius_dict.hpp"
 #include "radius_packet.hpp"
 #include "request_response.hpp"
-#include "auth_client.hpp"
 #include "encap.hpp"
 #include "pppoe.hpp"
 #include "ethernet.hpp"

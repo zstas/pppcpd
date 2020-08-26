@@ -9,6 +9,11 @@
 #include "vapi/pppoe.api.vapi.hpp"
 #include "vapi/policer.api.vapi.hpp"
 
+#include "config.hpp"
+#include "log.hpp"
+
+struct InterfaceConf;
+
 enum class IfaceType: uint8_t {
     LOOPBACK,
     HW_IFACE,

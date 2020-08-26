@@ -1,6 +1,27 @@
 #ifndef AUTH_CLIENT_HPP
 #define AUTH_CLIENT_HPP
 
+#include <set>
+
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/ip/address.hpp>
+#include <boost/asio/ip/network_v4.hpp>
+#include <boost/asio/ip/udp.hpp>
+
+using io_service = boost::asio::io_service;
+using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
+
+#include "utils.hpp"
+#include "net_integer.hpp"
+#include "radius_packet.hpp"
+#include "radius_dict.hpp"
+#include "aaa.hpp"
+#include "runtime.hpp"
+
+extern std::shared_ptr<PPPOERuntime> runtime;
+
 using ResponseHandler = std::function<void( RADIUS_CODE, std::vector<uint8_t> )>;
 using ErrorHandler = std::function<void( std::string )>;
 

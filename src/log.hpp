@@ -1,3 +1,6 @@
+#ifndef LOG_HPP
+#define LOG_HPP
+
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -22,6 +25,7 @@ enum class LOGS: uint8_t {
     CHAP,
     PPP_AUTH,
     AAA,
+    RADIUS,
     VPP
 };
 
@@ -98,3 +102,5 @@ public:
 };
 
 void log( const std::string &msg );
+
+#endif

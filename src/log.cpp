@@ -14,14 +14,16 @@ std::ostream& operator<<( std::ostream &os, const LOGL &l ) {
 
 std::ostream& operator<<( std::ostream &os, const LOGS &l ) {
     switch( l ) {
-    case LOGS::AAA: return os << "[AAA] ";
+    case LOGS::MAIN: return os << "[MAIN] ";
     case LOGS::PACKET: return os << "[PACKET] ";
     case LOGS::PPPOED: return os << "[PPPOED] ";
     case LOGS::PPP: return os << "[PPP] ";
     case LOGS::LCP: return os << "[LCP] ";
     case LOGS::IPCP: return os << "[IPCP] ";
+    case LOGS::CHAP: return os << "[CHAP] ";
     case LOGS::PPP_AUTH: return os << "[PPP_AUTH] ";
-    case LOGS::MAIN: return os << "[MAIN] ";
+    case LOGS::AAA: return os << "[AAA] ";
+    case LOGS::RADIUS: return os << "[RADIUS] ";
     case LOGS::VPP: return os << "[VPP] ";
     }
     return os;
