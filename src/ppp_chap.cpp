@@ -26,7 +26,7 @@ void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
 
-    uint8_t user_len = bswap16( auth->length ) - sizeof( *auth );
+    uint8_t user_len = bswap( auth->length ) - sizeof( *auth );
     std::string username { reinterpret_cast<char*>( auth->getPayload() ), reinterpret_cast<char*>( auth->getPayload() + user_len ) };
     std::string response { auth->value.begin(), auth->value.end() };
     response.insert( response.begin(), auth->identifier );
@@ -55,15 +55,15 @@ FSM_RET PPP_CHAP::send_auth_ack() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = bswap16( session.session_id );
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
+    pppoe->session_id = bswap( session.session_id );
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = CHAP_CODE::SUCCESS;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_CHAP_HDR) );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR) + 2 );
+    auth->length = bswap( (uint16_t)sizeof( PPP_CHAP_HDR) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR) + 2 ) );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
@@ -85,15 +85,15 @@ FSM_RET PPP_CHAP::send_auth_nak() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = bswap16( session.session_id );;
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
+    pppoe->session_id = bswap( session.session_id );;
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = CHAP_CODE::FAILURE;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_CHAP_HDR) );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR) + 2 );
+    auth->length = bswap( (uint16_t)sizeof( PPP_CHAP_HDR) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR) + 2 ) );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
@@ -115,8 +115,8 @@ FSM_RET PPP_CHAP::send_conf_req() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = bswap16( session.session_id );;
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
+    pppoe->session_id = bswap( session.session_id );;
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::CHAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = CHAP_CODE::CHALLENGE;
     challenge = md5( random_string( 32 ) );
@@ -128,8 +128,8 @@ FSM_RET PPP_CHAP::send_conf_req() {
     pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
 
-    auth->length = bswap16( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() );
-    pppoe->length = bswap16( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() + 2 );
+    auth->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() ) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() + 2 ) );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );

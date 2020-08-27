@@ -1,10 +1,10 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include "ppp_fsm.hpp"
 #include "ppp_auth.hpp"
 #include "ppp_ipcp.hpp"
 #include "ppp_lcp.hpp"
-#include "ppp_fsm.hpp"
 #include "ppp_chap.hpp"
 #include "encap.hpp"
 

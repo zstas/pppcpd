@@ -7,7 +7,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Determine this session
-    uint16_t sessionId = bswap16( pppoe->session_id );
+    uint16_t sessionId = bswap( pppoe->session_id );
     pppoe_key_t key{ encap.source_mac, sessionId, encap.outer_vlan, encap.inner_vlan };
     runtime->logger->logDebug() << LOGS::PPP << "Looking up for session: " << key << std::endl;
 
@@ -25,9 +25,9 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
 
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
-    runtime->logger->logDebug() << LOGS::PPP << "proto " << static_cast<PPP_PROTO>( bswap16( pppoe->ppp_protocol ) ) << " for session " << session.session_id << std::endl;
+    runtime->logger->logDebug() << LOGS::PPP << "proto " << static_cast<PPP_PROTO>( bswap( pppoe->ppp_protocol ) ) << " for session " << session.session_id << std::endl;
 
-    switch( static_cast<PPP_PROTO>( bswap16( pppoe->ppp_protocol ) ) ) {
+    switch( static_cast<PPP_PROTO>( bswap( pppoe->ppp_protocol ) ) ) {
     case PPP_PROTO::LCP:
         if( auto const& [ action, err ] = session.lcp.receive( inPkt ); !err.empty() ) {
             runtime->logger->logError() << LOGS::PPP << "Error while processing LCP packet: " << err << std::endl;

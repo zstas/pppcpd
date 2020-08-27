@@ -7,8 +7,8 @@ uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::s
     std::vector<uint8_t> tagvec;
     tagvec.resize( 4 );
     auto tlv = reinterpret_cast<PPPOEDISC_TLV*>( tagvec.data() );
-    tlv->type = bswap16( static_cast<uint16_t>( tag ) );
-    tlv->length = bswap16( val.size() );
+    tlv->type = bswap( static_cast<uint16_t>( tag ) );
+    tlv->length = bswap( (uint16_t)val.size() );
     tagvec.insert( tagvec.end(), val.begin(), val.end() );
     pkt.insert( pkt.end(), tagvec.begin(), tagvec.end() );     
 
@@ -70,7 +70,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
     const PPPOEPolicy &pppoe_conf = ( pol_it == runtime->conf.pppoe_confs.end() ) ? runtime->conf.default_pppoe_conf : pol_it->second;
 
     // Inserting tags
-    auto taglen = 0;
+    uint16_t taglen { 0 };
 
     // At first we need to insert AC NAME
     taglen += pppoe::insertTag( outPkt, PPPOE_TAG::AC_NAME, pppoe_conf.ac_name );
@@ -114,7 +114,7 @@ static std::string process_padi( std::vector<uint8_t> &inPkt, std::vector<uint8_
     }
 
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
-    rep_pppoe->length = bswap16( taglen );
+    rep_pppoe->length = bswap( taglen );
 
     outPkt.resize( sizeof( PPPOEDISC_HDR ) + taglen );
 
@@ -155,10 +155,10 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
     if( auto const &[ sid, err ] = runtime->allocateSession( encap ); !err.empty() ) {
         return "Cannot process PADR: " + err;
     } else {
-        rep_pppoe->session_id = bswap16( sid );
+        rep_pppoe->session_id = bswap( sid );
     }
 
-    uint8_t taglen = 0;
+    uint16_t taglen { 0 };
 
     // Check for SERVICE NAME
     if( auto const &tagIt = tags.find( PPPOE_TAG::SERVICE_NAME ); tagIt != tags.end() ) {
@@ -171,7 +171,7 @@ static std::string process_padr( std::vector<uint8_t> &inPkt, std::vector<uint8_
     }
 
     rep_pppoe = reinterpret_cast<PPPOEDISC_HDR*>( outPkt.data() );
-    rep_pppoe->length = bswap16( taglen );
+    rep_pppoe->length = bswap( taglen );
 
     outPkt.resize( sizeof( PPPOEDISC_HDR ) + taglen );
     
@@ -200,7 +200,7 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
         break;
     case PPPOE_CODE::PADT:
         runtime->logger->logDebug() << LOGS::PPPOED << "Processing PADT packet" << std::endl;
-        runtime->deallocateSession( bswap16( disc->session_id ) );
+        runtime->deallocateSession( bswap( disc->session_id ) );
         return "Received PADT, send nothing";
     default:
         runtime->logger->logDebug() << LOGS::PPPOED << "Incorrect code for packet" << std::endl;

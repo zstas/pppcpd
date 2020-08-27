@@ -1,6 +1,15 @@
 #ifndef EVLOOP_HPP
 #define EVLOOP_HPP
 
+#include <queue>
+#include <atomic>
+
+#include <boost/asio.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/basic_raw_socket.hpp>
+
+using io_service = boost::asio::io_service;
+
 extern std::atomic_bool interrupted;
 
 struct PPPOEQ {

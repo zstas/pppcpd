@@ -49,7 +49,7 @@ std::ostream& operator<<( std::ostream &stream, const PPPOEDISC_HDR &disc ) {
     stream << "Version = " << disc.version << " ";
     stream << "Code = " << disc.code;
     stream << "Session id = " << disc.session_id << " ";
-    stream << "length = " << bswap16( disc.length );
+    stream << "length = " << bswap( disc.length );
 
     return stream;
 }
@@ -57,7 +57,7 @@ std::ostream& operator<<( std::ostream &stream, const PPPOEDISC_HDR &disc ) {
 std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &eth ) {
     auto flags = stream.flags();
     stream << eth.src_mac << " -> " << eth.dst_mac;
-    stream << " ethertype: " << std::hex << std::showbase <<std::setw(2) << bswap16( eth.ethertype );
+    stream << " ethertype: " << std::hex << std::showbase <<std::setw(2) << bswap( eth.ethertype );
     stream.flags( flags );
 
     return stream;

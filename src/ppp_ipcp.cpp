@@ -17,9 +17,9 @@ FSM_RET IPCP_FSM::send_conf_req() {
     PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
     pppoe->version = 1;
     pppoe->type = 1;
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::IPCP ) );
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::IPCP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
-    pppoe->session_id = bswap16( session_id );
+    pppoe->session_id = bswap( session_id );
 
     // Fill IPCP part; here we just can use lcp header
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
@@ -118,7 +118,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
-    uint32_t len = bswap16( lcp->length ) - sizeof( PPP_LCP );
+    uint32_t len = bswap( lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
         return { PPP_FSM_ACTION::NONE, "There is no options" };
     }

@@ -17,9 +17,9 @@ FSM_RET LCP_FSM::send_conf_req() {
     PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
     pppoe->version = 1;
     pppoe->type = 1;
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::LCP ) );
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::LCP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
-    pppoe->session_id = bswap16( session_id );
+    pppoe->session_id = bswap( session_id );
 
     // Fill LCP part
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
@@ -56,8 +56,8 @@ FSM_RET LCP_FSM::send_conf_req() {
     lcpOpts += mn->len;
 
     // After all fix lenght in headers
-    lcp->length = bswap16( sizeof( PPP_LCP ) + lcpOpts );
-    pppoe->length = bswap16( sizeof( PPP_LCP ) + lcpOpts + 2 ); // plus 2 bytes of ppp proto
+    lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + lcpOpts ) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + lcpOpts + 2 ) ); // plus 2 bytes of ppp proto
     pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + lcpOpts  );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
@@ -112,7 +112,7 @@ FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
 
-    uint32_t len = bswap16( lcp->length ) - sizeof( PPP_LCP );
+    uint32_t len = bswap( lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
         return { PPP_FSM_ACTION::NONE, "There is no options" };
     }
@@ -171,10 +171,10 @@ FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
     PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->getPayload() );
 
     lcp_echo->code = LCP_CODE::TERM_ACK;
-    if( lcp_echo->magic_number != bswap32( session.peer_magic_number ) ) {
+    if( lcp_echo->magic_number != bswap( session.peer_magic_number ) ) {
         return { PPP_FSM_ACTION::NONE, "Magic number is wrong!" };
     }
-    lcp_echo->magic_number = bswap32( session.our_magic_number );
+    lcp_echo->magic_number = bswap( session.our_magic_number );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );

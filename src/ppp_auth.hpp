@@ -1,8 +1,6 @@
 #ifndef PPP_AUTH_HPP_
 #define PPP_AUTH_HPP_
 
-#include "ppp_fsm.hpp"
-
 struct PPPOESession;
 
 struct PPP_AUTH {

@@ -13,7 +13,7 @@ EVLoop::EVLoop( io_service &i ):
     sockaddr_ll sockaddr;
     memset(&sockaddr, 0, sizeof(sockaddr));
     sockaddr.sll_family = PF_PACKET;
-    sockaddr.sll_protocol = bswap16( ETH_P_ALL );
+    sockaddr.sll_protocol = bswap( (uint16_t)ETH_P_ALL );
     sockaddr.sll_ifindex = if_nametoindex( runtime->conf.tap_name.c_str() );
     sockaddr.sll_hatype = 1;
     int one = 1;

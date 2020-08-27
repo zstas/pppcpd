@@ -1,4 +1,11 @@
-#include "main.hpp"
+#include <tuple>
+#include <memory>
+#include <vector>
+
+#include "ppp_fsm.hpp"
+#include "evloop.hpp"
+#include "ppp_auth.hpp"
+#include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;
@@ -52,15 +59,15 @@ FSM_RET PPP_AUTH::send_auth_ack() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = bswap16( session.session_id );
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
+    pppoe->session_id = bswap( session.session_id );
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::PAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_ACK;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_AUTH_HDR) );
-    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 2 );
+    auth->length = bswap( (uint16_t)sizeof( PPP_AUTH_HDR) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_AUTH_HDR) + 2 ) );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
@@ -82,15 +89,15 @@ FSM_RET PPP_AUTH::send_auth_nak() {
 
     pppoe->type = 1;
     pppoe->version = 1;
-    pppoe->session_id = bswap16( session.session_id );;
-    pppoe->ppp_protocol = bswap16( static_cast<uint16_t>( PPP_PROTO::PAP ) );
+    pppoe->session_id = bswap( session.session_id );;
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::PAP ) );
     pppoe->code = PPPOE_CODE::SESSION_DATA;
     auth->code = PAP_CODE::AUTHENTICATE_NAK;
 
     // append empty tag with message
     *auth->getPayload() = 0;
-    auth->length = bswap16( sizeof( PPP_AUTH_HDR) );
-    pppoe->length = bswap16( sizeof( PPP_AUTH_HDR) + 2 );
+    auth->length = bswap( (uint16_t)sizeof( PPP_AUTH_HDR) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_AUTH_HDR) + 2 ) );
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
