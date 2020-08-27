@@ -8,6 +8,7 @@
 #include "encap.hpp"
 #include "config.hpp"
 #include "vpp.hpp"
+#include "session.hpp"
 
 class AAA;
 

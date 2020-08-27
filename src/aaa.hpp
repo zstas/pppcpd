@@ -3,7 +3,8 @@
 
 #include "auth_client.hpp"
 #include "session.hpp"
-#include "vpp.hpp"
+
+struct AAAConf;
 
 #define SESSION_ERROR UINT32_MAX
 

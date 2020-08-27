@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "cli.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

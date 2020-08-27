@@ -2,6 +2,7 @@
 #define ENCAP_HPP
 
 #include "packet.hpp"
+#include "net_integer.hpp"
 
 class encapsulation_t {
 public:

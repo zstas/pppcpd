@@ -1,4 +1,15 @@
+#include <set>
+#include <iostream>
+
 #include "auth_client.hpp"
+#include "utils.hpp"
+#include "net_integer.hpp"
+#include "radius_dict.hpp"
+#include "request_response.hpp"
+#include "aaa.hpp"
+#include "runtime.hpp"
+
+extern std::shared_ptr<PPPOERuntime> runtime;
 
 AuthClient::AuthClient( io_service& i, const address_v4_t& ip_address, uint16_t port, std::string s, RadiusDict d ): 
     io( i ), 

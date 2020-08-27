@@ -1,6 +1,9 @@
 #ifndef PACKET_HPP
 #define PACKET_HPP
 
+#include "net_integer.hpp"
+#include "utils.hpp"
+
 enum class RADIUS_CODE : uint8_t {
     ACCESS_REQUEST = 1,
     ACCESS_ACCEPT = 2,

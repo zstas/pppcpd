@@ -1,8 +1,7 @@
 #ifndef AUTH_CLIENT_HPP
 #define AUTH_CLIENT_HPP
 
-#include <set>
-
+#include <map>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -13,14 +12,11 @@ using io_service = boost::asio::io_service;
 using address_v4_t = boost::asio::ip::address_v4;
 using network_v4_t = boost::asio::ip::network_v4;
 
-#include "utils.hpp"
-#include "net_integer.hpp"
+#include "log.hpp"
 #include "radius_packet.hpp"
 #include "radius_dict.hpp"
-#include "aaa.hpp"
-#include "runtime.hpp"
 
-extern std::shared_ptr<PPPOERuntime> runtime;
+class RadiusDict;
 
 using ResponseHandler = std::function<void( RADIUS_CODE, std::vector<uint8_t> )>;
 using ErrorHandler = std::function<void( std::string )>;
@@ -75,7 +71,7 @@ public:
             it->second.timer.expires_from_now( std::chrono::seconds( 5 ) );
             it->second.timer.async_wait( std::bind( &AuthClient::expire_check, this, std::placeholders::_1, last_id ) );
         } else {
-            std::cerr << "Error on emplacing new callback" << std::endl;
+            // todo: err handling
             return;
         }
         send( pkt );
@@ -107,7 +103,7 @@ public:
             it->second.timer.expires_from_now( std::chrono::seconds( 5 ) );
             it->second.timer.async_wait( std::bind( &AuthClient::expire_check, this, std::placeholders::_1, last_id ) );
         } else {
-            std::cerr << "Error on emplacing new callback" << std::endl;
+            // todo: err handling
             return;
         }
         send( pkt );

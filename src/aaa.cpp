@@ -1,4 +1,12 @@
-#include "main.hpp"
+#include <iostream>
+#include <memory>
+#include <functional>
+
+#include "aaa.hpp"
+#include "radius_dict.hpp"
+#include "request_response.hpp"
+#include "vpp.hpp"
+#include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

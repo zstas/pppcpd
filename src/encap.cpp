@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "encap.hpp"
 
 encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt, uint16_t o, uint16_t i ):
     outer_vlan( o ),
@@ -14,17 +14,17 @@ encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt, uint16_t o, uint16_
     std::copy( h->src_mac.begin(), h->src_mac.end(), source_mac.begin() );
     std::copy( h->dst_mac.begin(), h->dst_mac.end(), destination_mac.begin() );
 
-    type = bswap16( h->ethertype );
+    type = bswap( h->ethertype );
 
     if( type == ETH_VLAN ) {
         VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
-        outer_vlan = 0x0FFF & bswap16( v->vlan_id );
-        type = bswap16( v->ethertype );
+        outer_vlan = 0x0FFF & bswap( v->vlan_id );
+        type = bswap( v->ethertype );
         len += sizeof( VLAN_HDR );
         if( type == ETH_VLAN ) {
             v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
-            inner_vlan = 0x0FFF & bswap16( v->vlan_id );
-            type = bswap16( v->ethertype );
+            inner_vlan = 0x0FFF & bswap( v->vlan_id );
+            type = bswap( v->ethertype );
             len += sizeof( VLAN_HDR );
         }
     }
@@ -51,23 +51,23 @@ std::vector<uint8_t> encapsulation_t::generate_header( mac_t mac, uint16_t ether
     std::copy( source_mac.begin(), source_mac.end(), h->dst_mac.begin() );
         
     if( outer_vlan == 0 ) {
-        h->ethertype = bswap16( ethertype );
+        h->ethertype = bswap( ethertype );
         return pkt;
     }
 
-    h->ethertype = bswap16( ETH_VLAN );
+    h->ethertype = bswap( (uint16_t)ETH_VLAN );
 
     VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
-    v->vlan_id = bswap16( outer_vlan );
+    v->vlan_id = bswap( outer_vlan );
     if( inner_vlan == 0 ) {
-        v->ethertype = bswap16( ethertype );
+        v->ethertype = bswap( ethertype );
         return pkt;
     }
 
-    v->ethertype = bswap16( ETH_VLAN );
+    v->ethertype = bswap( (uint16_t)ETH_VLAN );
     v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
-    v->vlan_id = bswap16( inner_vlan );
-    v->ethertype = bswap16( ethertype );
+    v->vlan_id = bswap( inner_vlan );
+    v->ethertype = bswap( ethertype );
 
     return pkt;
 }

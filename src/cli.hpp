@@ -1,7 +1,11 @@
 #ifndef CLI_HPP
 #define CLI_HPP
 
+#include <iostream>
+#include <iomanip>
 #include <boost/asio.hpp>
+
+#include "runtime.hpp"
 
 using stream_protocol = boost::asio::local::stream_protocol;
 
