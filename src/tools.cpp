@@ -1,4 +1,8 @@
-#include "main.hpp"
+#include <string>
+#include <algorithm>
+#include <random>
+
+#include "tools.hpp"
 
 std::string random_string( size_t length )
 {

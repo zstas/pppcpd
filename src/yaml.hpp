@@ -2,6 +2,9 @@
 #define YAML_HPP
 
 #include <yaml-cpp/yaml.h>
+#include "policy.hpp"
+#include "config.hpp"
+#include "aaa.hpp"
 
 namespace YAML {
     template <>

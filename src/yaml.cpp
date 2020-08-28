@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "yaml.hpp"
 
 YAML::Node YAML::convert<PPPOEPolicy>::encode( const PPPOEPolicy &rhs ) {
     Node node;

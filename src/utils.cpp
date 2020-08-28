@@ -1,7 +1,8 @@
-#include "main.hpp"
 #include <boost/random/random_device.hpp>
 #include <boost/uuid/detail/md5.hpp>
 #include <boost/algorithm/hex.hpp>
+
+#include "main.hpp"
 
 using md5_t = boost::uuids::detail::md5;
 

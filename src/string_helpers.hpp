@@ -2,6 +2,11 @@
 #define STRING_HELPERS_HPP_
 
 #include <string>
+#include <iosfwd>
+#include "radius_packet.hpp"
+#include "ethernet.hpp"
+#include "packet.hpp"
+#include "ppp_fsm.hpp"
 
 namespace std {
     std::string to_string( PPP_FSM_STATE state );

@@ -1,5 +1,5 @@
-#include "main.hpp"
 #include "session.hpp"
+#include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

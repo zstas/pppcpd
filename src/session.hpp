@@ -1,6 +1,9 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include <memory>
+
+#include "evloop.hpp"
 #include "ppp_fsm.hpp"
 #include "ppp_auth.hpp"
 #include "ppp_ipcp.hpp"
