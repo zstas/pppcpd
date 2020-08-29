@@ -1,4 +1,15 @@
-#include "main.hpp"
+#include <tuple>
+#include <map>
+#include <string>
+#include <vector>
+#include <fstream>
+
+#include <boost/algorithm/string.hpp>
+
+#include "radius_dict.hpp"
+#include "runtime.hpp"
+
+extern std::shared_ptr<PPPOERuntime> runtime;
 
 RadiusDict::RadiusDict( const std::vector<std::string> &files ) {
     for( auto const &f: files ) {
@@ -63,7 +74,7 @@ std::ifstream file { path };
             }
             uint32_t vend_id = std::stoi( out[ 2 ] );
             if( auto const &[ it, ret ] = vendors.emplace( out[ 1 ], vend_id ); !ret ) {
-                std::cerr << "Cannot emplace vendor " << out[ 1 ] << " with id " << out[ 2 ] << std::endl;
+                runtime->logger->logError() << LOGS::RADIUS << "Cannot emplace vendor " << out[ 1 ] << " with id " << out[ 2 ] << std::endl;
             }
         } else if( out[ 0 ].find( "BEGIN-VENDOR" ) == 0 ) {
             if( out.size() < 2 ) {

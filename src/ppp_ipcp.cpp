@@ -1,4 +1,13 @@
-#include "main.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
+
+#include "ppp_ipcp.hpp"
+#include "packet.hpp"
+#include "runtime.hpp"
+#include "string_helpers.hpp"
+
+using namespace std::string_literals;
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;

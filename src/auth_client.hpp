@@ -21,12 +21,6 @@ class RadiusDict;
 using ResponseHandler = std::function<void( RADIUS_CODE, std::vector<uint8_t> )>;
 using ErrorHandler = std::function<void( std::string )>;
 
-template<typename T>
-std::vector<uint8_t> serialize( const RadiusDict &dict, const T &v, const authenticator_t &a, const std::string &secret );
-
-template<typename T>
-T deserialize( const RadiusDict &dict, std::vector<uint8_t> &v );
-
 struct response_t {
     ResponseHandler response;
     ErrorHandler error;

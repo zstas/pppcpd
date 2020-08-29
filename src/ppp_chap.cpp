@@ -1,4 +1,12 @@
-#include "main.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
+
+#include "ppp_chap.hpp"
+#include "packet.hpp"
+#include "runtime.hpp"
+#include "string_helpers.hpp"
+#include "tools.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;

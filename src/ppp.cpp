@@ -1,4 +1,11 @@
-#include "main.hpp"
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "ppp.hpp"
+#include "encap.hpp"
+#include "net_integer.hpp"
+#include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;

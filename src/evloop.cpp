@@ -1,4 +1,16 @@
-#include "main.hpp"
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/ip.h>
+#include <linux/if_packet.h>
+#include <net/if.h>
+#include <linux/if.h>
+#include <linux/if_ether.h>
+#include <poll.h>
+
+#include "evloop.hpp"
+#include "runtime.hpp"
+#include "ppp.hpp"
+#include "pppoe.hpp"
 
 extern std::atomic_bool interrupted;
 extern PPPOEQ pppoe_incoming;

@@ -1,4 +1,9 @@
-#include "main.hpp"
+#include <string>
+#include <memory>
+#include <fstream>
+
+#include "runtime.hpp"
+#include "log.hpp"
 
 PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) : 
     conf( newconf ),

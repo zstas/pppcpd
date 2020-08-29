@@ -1,7 +1,14 @@
-#include "main.hpp"
+#include <memory>
+#include <string>
+#include <fstream>
 
 #include <yaml-cpp/yaml.h>
 #include "yaml.hpp"
+
+#include "main.hpp"
+#include "runtime.hpp"
+#include "evloop.hpp"
+#include "cli.hpp"
 
 // Some global vars
 std::shared_ptr<PPPOERuntime> runtime;

@@ -1,6 +1,16 @@
 #ifndef REQUEST_RESPONSE_HPP
 #define REQUEST_RESPONSE_HPP
 
+#include "utils.hpp"
+
+class RadiusDict;
+
+template<typename T>
+std::vector<uint8_t> serialize( const RadiusDict &dict, const T &v, const authenticator_t &a, const std::string &secret );
+
+template<typename T>
+T deserialize( const RadiusDict &dict, std::vector<uint8_t> &v );
+
 struct RadiusRequest {
     std::string username;
     std::string password;

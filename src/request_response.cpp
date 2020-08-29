@@ -1,4 +1,18 @@
-#include "main.hpp"
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/network_v4.hpp>
+
+using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
+
+#include "request_response.hpp"
+#include "net_integer.hpp"
+#include "radius_dict.hpp"
+#include "radius_avp.hpp"
 
 template<>
 std::vector<uint8_t> serialize<RadiusRequest>( const RadiusDict &dict, const RadiusRequest &req, const authenticator_t &a, const std::string &secret ) {

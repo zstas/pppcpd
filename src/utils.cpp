@@ -2,7 +2,8 @@
 #include <boost/uuid/detail/md5.hpp>
 #include <boost/algorithm/hex.hpp>
 
-#include "main.hpp"
+#include "utils.hpp"
+#include "radius_packet.hpp"
 
 using md5_t = boost::uuids::detail::md5;
 

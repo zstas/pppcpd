@@ -1,4 +1,92 @@
-#include "main.hpp"
+#include <tuple>
+#include <vector>
+#include <set>
+#include <map>
+
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/network_v4.hpp>
+
+using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
+
+#include "radius_avp.hpp"
+#include "radius_dict.hpp"
+#include "net_integer.hpp"
+
+AVP::AVP( const RadiusDict &dict, const std::string &attr, BE32 v ) {
+    auto [ id, vendorid ] = dict.getIdByName( attr );
+    type = id;
+    vendor = vendorid;
+    value.resize( sizeof( BE32 ) );
+    *reinterpret_cast<uint32_t*>( value.data() ) = v.raw();
+    length = sizeof( type ) + sizeof( length ) + value.size();
+}
+
+AVP::AVP( const RadiusDict &dict, const std::string &attr, BE16 v ) {
+    auto [ id, vendorid ] = dict.getIdByName( attr );
+    type = id;
+    vendor = vendorid;
+    value.resize( sizeof( BE16 ) );
+    *reinterpret_cast<uint16_t*>( value.data() ) = v.raw();
+    length = sizeof( type) + sizeof( length ) + value.size();
+}
+
+AVP::AVP( const RadiusDict &dict, const std::string &attr, const std::string &s ) {
+    auto [ id, vendorid ] = dict.getIdByName( attr );
+    type = id;
+    vendor = vendorid;
+    if( uint32_t i = dict.getValueByName( attr, s ); i != 0 ) {
+        value.resize( sizeof( BE32 ) );
+        *reinterpret_cast<uint32_t*>( value.data() ) = BE32( i ).raw();    
+    } else {
+        value = { s.begin(), s.end() };
+    }
+    length = sizeof( type) + sizeof( length ) + value.size();
+}
+
+AVP::AVP( const std::vector<uint8_t> &v, std::vector<uint8_t>::iterator it ) {
+    if( ( v.end() - it ) < 2 ) {
+        return;
+    }
+
+    type = *it;
+    it++;
+    if( type == RADIUS_VSA ) {
+        it++; //pass the length
+        vendor = bswap( *( reinterpret_cast<uint32_t*>( &( *it ) ) ) );
+        it += 4;
+        type = *it;
+        it++;
+    }
+    length = *it;
+    it++;
+    value = { it, it + length - 2 };
+}
+
+size_t AVP::getSize() const {
+    return sizeof( type ) + sizeof( length ) + value.size();
+}
+
+bool AVP::operator<( const AVP &r ) const {
+    return type < r.type;
+}
+
+std::vector<uint8_t> AVP::serialize() const {
+    std::vector<uint8_t> ret;
+    ret.reserve( sizeof( type ) + sizeof( length ) + length + 10 );
+    if( vendor == 0 ) {
+        ret.push_back( type );
+    } else {
+        ret.push_back( sizeof( type) + sizeof( length ) + sizeof( vendor ) + sizeof( type ) + sizeof( length ) + value.size() );
+        std::array<uint8_t,4> vend_buf;
+        *reinterpret_cast<uint32_t*>( &vend_buf ) = vendor;
+        ret.insert( ret.end(), vend_buf.begin(), vend_buf.end() );
+        ret.push_back( type );
+    }
+    ret.push_back( length );
+    ret.insert( ret.end(), value.begin(), value.end() );
+    return ret;
+}
 
 template<>
 std::tuple<std::string, bool> AVP::getVal<std::string>() const {

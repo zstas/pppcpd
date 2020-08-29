@@ -1,4 +1,11 @@
-#include "main.hpp"
+#include <string>
+#include <vector>
+#include <map>
+
+#include "pppoe.hpp"
+#include "encap.hpp"
+#include "tools.hpp"
+#include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ pppoe_outcoming;
