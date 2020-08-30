@@ -25,6 +25,7 @@ std::ostream& operator<<( std::ostream &os, const LOGS &l ) {
     case LOGS::AAA: return os << "[AAA] ";
     case LOGS::RADIUS: return os << "[RADIUS] ";
     case LOGS::VPP: return os << "[VPP] ";
+    case LOGS::SESSION: return os << "[SESSION] ";
     }
     return os;
 }

@@ -10,6 +10,27 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
+AAA_Session::AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, std::function<void()> s ):
+    username( u ),
+    address( a ),
+    dns1( d1 ),
+    on_stop( s )
+{}
+
+AAA_Session::AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, address_v4_t d2, std::function<void()> s ):
+    username( u ),
+    address( a ),
+    dns1( d1 ),
+    dns2( d2 ),
+    on_stop( s )
+{}
+
+AAA_Session::~AAA_Session() {
+    if( on_stop != nullptr ) {
+        on_stop();
+    }
+}
+
 FRAMED_POOL::FRAMED_POOL( std::string sta, std::string sto ) {
     start_ip = address_v4_t::from_string( sta );
     stop_ip = address_v4_t::from_string( sto );

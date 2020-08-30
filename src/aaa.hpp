@@ -27,26 +27,9 @@ struct AAA_Session {
     AAA_Session& operator=( const AAA_Session& ) = delete;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, std::function<void()> s ):
-        username( u ),
-        address( a ),
-        dns1( d1 ),
-        on_stop( s )
-    {}
-
-    AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, address_v4_t d2, std::function<void()> s ):
-        username( u ),
-        address( a ),
-        dns1( d1 ),
-        dns2( d2 ),
-        on_stop( s )
-    {}
-
-    ~AAA_Session() {
-        if( on_stop != nullptr ) {
-            on_stop();
-        }
-    }
+    AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, std::function<void()> s );
+    AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, address_v4_t d2, std::function<void()> s );
+    ~AAA_Session();
 };
 
 class AAA {

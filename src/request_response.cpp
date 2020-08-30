@@ -14,6 +14,36 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "radius_dict.hpp"
 #include "radius_avp.hpp"
 
+static std::string password_pap_process( const authenticator_t &auth, const std::string secret, std::string pass ) {
+    std::string result;
+
+    auto nlen = pass.length();
+    if( nlen % 16 != 0 ) {
+        nlen += 16 - pass.length() % 16;
+    }
+
+    while( pass.size() != nlen ) {
+        pass.push_back( '\0' );
+    }
+
+    auto b1 = secret;
+    b1.insert( b1.end(), auth.begin(), auth.end() );
+    b1 = md5( b1 );
+
+    for( int i = 0; i < nlen / 16; i++ ) {
+        std::array<uint8_t,16> c1;
+        for( int j = 0; j < 16; j++ ) {
+            c1[ j ] = b1[ j ] ^ pass[ 16*i + j ];
+        }    
+        result.insert( result.end(), c1.begin(), c1.end() );
+        b1 = secret;
+        b1.insert( b1.end(), c1.begin(), c1.end() );
+        b1 = md5( b1 );
+    }
+
+    return result;
+}
+
 template<>
 std::vector<uint8_t> serialize<RadiusRequest>( const RadiusDict &dict, const RadiusRequest &req, const authenticator_t &a, const std::string &secret ) {
     std::set<AVP> avp_set { 

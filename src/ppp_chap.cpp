@@ -6,7 +6,7 @@
 #include "packet.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
-#include "tools.hpp"
+#include "utils.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 extern PPPOEQ ppp_outcoming;

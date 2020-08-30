@@ -26,7 +26,8 @@ enum class LOGS: uint8_t {
     PPP_AUTH,
     AAA,
     RADIUS,
-    VPP
+    VPP,
+    SESSION
 };
 
 std::ostream& operator<<( std::ostream &os, const LOGL &l );

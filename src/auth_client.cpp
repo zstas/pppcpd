@@ -11,6 +11,15 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
+static std::string acct_auth_process( const std::vector<uint8_t> &pkt, const std::vector<uint8_t> req_attrs, const std::string &secret ) {
+    std::string check { pkt.begin(), pkt.begin() + 4 };
+    check.reserve( 128 );
+    check.insert( check.end(), 16, 0 );
+    check.insert( check.end(), req_attrs.begin(), req_attrs.end() );
+    check.insert( check.end(), secret.begin(), secret.end() );
+    return md5( check );
+}
+
 AuthClient::AuthClient( io_service& i, const address_v4_t& ip_address, uint16_t port, std::string s, RadiusDict d ): 
     io( i ), 
     socket( i, boost::asio::ip::udp::endpoint( boost::asio::ip::udp::v4(), 0 ) ),
