@@ -12,15 +12,8 @@ using aaa_callback = std::function<void(uint32_t,std::string)>;
 
 class AuthClient;
 
-struct AAA_Session {
-    std::string username;
-    address_v4_t address;
-
-    address_v4_t dns1;
-    address_v4_t dns2;
-
-    std::function<void(void)> on_stop;
-
+class AAA_Session : public std::enable_shared_from_this<AAA_Session> {
+public:
     AAA_Session() = default;
     AAA_Session( const AAA_Session & ) = delete;
     AAA_Session( AAA_Session && ) = default;
@@ -30,12 +23,20 @@ struct AAA_Session {
     AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, std::function<void()> s );
     AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, address_v4_t d2, std::function<void()> s );
     ~AAA_Session();
+
+    std::string username;
+    address_v4_t address;
+
+    address_v4_t dns1;
+    address_v4_t dns2;
+
+    std::function<void(void)> on_stop;
 };
 
 class AAA {
     io_service &io;
     AAAConf &conf;
-    std::map<uint32_t,AAA_Session> sessions;
+    std::map<uint32_t,std::shared_ptr<AAA_Session>> sessions;
     std::map<std::string,AuthClient> auth;
     std::map<std::string,AuthClient> acct;
     std::optional<RadiusDict> dict;
@@ -51,7 +52,7 @@ class AAA {
 public:
     AAA( io_service &i, AAAConf &c );
 
-    std::tuple<AAA_Session*,std::string> getSession( uint32_t sid );
+    std::tuple<std::shared_ptr<AAA_Session>,std::string> getSession( uint32_t sid );
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     void startSessionCHAP( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback );
     void stopSession( uint32_t sid );

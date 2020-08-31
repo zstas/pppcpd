@@ -205,7 +205,11 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
         return;
     }
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, res.framed_ip, res.dns1, res.dns2, nullptr ); !ret ) {
+    if( auto const &[ it, ret ] = sessions.emplace( 
+        std::piecewise_construct, 
+        std::forward_as_tuple( i ), 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( user, res.framed_ip, res.dns1, res.dns2, nullptr ) )
+    ); !ret ) {
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
         return;
@@ -242,18 +246,22 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
 
     auto on_stop = std::bind( &FRAMED_POOL::deallocate_ip, &fr_pool->second, address.to_uint() );
 
-    if( auto const &[ it, ret ] = sessions.try_emplace( i, user, address, conf.local_template.value().dns1, conf.local_template.value().dns2, on_stop ); !ret ) {
+    if( auto const &[ it, ret ] = sessions.emplace( 
+        std::piecewise_construct,
+        std::forward_as_tuple( i ), 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( user, address, conf.local_template.value().dns1, conf.local_template.value().dns2, on_stop ) ) 
+    ); !ret ) {
         runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };
     }
     return { i, "" };
 }
 
-std::tuple<AAA_Session*,std::string> AAA::getSession( uint32_t sid ) {
+std::tuple<std::shared_ptr<AAA_Session>,std::string> AAA::getSession( uint32_t sid ) {
     if( auto const &it = sessions.find( sid); it == sessions.end() ) {
         return { nullptr, "Cannot find session id " + std::to_string( sid ) };
     } else {
-        return { &it->second, "" };
+        return { it->second, "" };
     }
 }
 
