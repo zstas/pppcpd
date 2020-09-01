@@ -10,25 +10,61 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-AAA_Session::AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, std::function<void()> s ):
+AAA_Session::AAA_Session( const std::string &u, PPPOELocalTemplate &t ):
     username( u ),
-    address( a ),
-    dns1( d1 ),
-    on_stop( s )
-{}
+    templ( t ),
+    dns1( t.dns1 ),
+    dns2( t.dns2 )
+{
+    auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
+    if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+    }
+    address = address_v4_t{ fr_pool->second.allocate_ip() };
+    runtime->logger->logDebug() << LOGS::AAA << "Allocated IP: " << address.to_string() << std::endl;
+    free_ip = true;
+}
 
-AAA_Session::AAA_Session( const std::string &u, address_v4_t a, address_v4_t d1, address_v4_t d2, std::function<void()> s ):
+AAA_Session::AAA_Session( const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
     username( u ),
-    address( a ),
-    dns1( d1 ),
-    dns2( d2 ),
-    on_stop( s )
+    templ( t ),
+    dns1( resp.dns1 ),
+    dns2( resp.dns2 ),
+    address( resp.framed_ip ),
+    acct( s )
 {}
 
 AAA_Session::~AAA_Session() {
-    if( on_stop != nullptr ) {
-        on_stop();
+    if( free_ip ) {
+        auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
+        if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+        }
+        fr_pool->second.deallocate_ip( address.to_uint() );
     }
+    // TODO: acct stop
+}
+
+void AAA_Session::start() {
+    AcctRequest req;
+    req.acct_status_type = "Start";
+    req.nas_id = "vBNG";
+    req.username = username;
+    req.in_pkts = 0;
+    req.out_pkts = 0;
+
+    acct->acct_request( req, 
+        std::bind( &AAA_Session::on_started, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
+        std::bind( &AAA_Session::on_failed, shared_from_this(), std::placeholders::_1 )
+    );
+}
+
+void AAA_Session::on_started( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
+    runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session started" << std::endl;
+    auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
+}
+
+void AAA_Session::on_failed( std::string err ) {
+    runtime->logger->logError() << LOGS::SESSION << "Failed to send accouting request" << std::endl;
+    // TODO: err handling
 }
 
 FRAMED_POOL::FRAMED_POOL( std::string sta, std::string sto ) {
@@ -69,13 +105,15 @@ AAA::AAA( io_service &i, AAAConf &c ):
     for( auto const &[ k, v ]: conf.auth_servers ) {
         auth.emplace( std::piecewise_construct, 
             std::forward_as_tuple( k ),
-            std::forward_as_tuple( io, v.address, v.port, v.secret, *dict ) );
+            std::forward_as_tuple( std::make_shared<AuthClient>( io, v.address, v.port, v.secret, *dict ) ) 
+        );
     }
 
     for( auto const &[ k, v ]: conf.acct_servers ) {
         acct.emplace( std::piecewise_construct, 
             std::forward_as_tuple( k ),
-            std::forward_as_tuple( io, v.address, v.port, v.secret, *dict ) );
+            std::forward_as_tuple( std::make_shared<AuthClient>( io, v.address, v.port, v.secret, *dict ) ) 
+        );
     }
 }
 
@@ -144,7 +182,7 @@ void AAA::startSessionRadius( const std::string &user, const std::string &pass, 
     }
 
     for( auto &[ id, serv ]: auth ) {
-        serv.request( 
+        serv->request( 
             req, 
             std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1, std::placeholders::_2 ),
             std::bind( &AAA::processRadiusError, this, callback, std::placeholders::_1 )
@@ -177,7 +215,7 @@ void AAA::startSessionRadiusChap( const std::string &user, const std::string &ch
     }
 
     for( auto &[ id, serv ]: auth ) {
-        serv.request( 
+        serv->request( 
             req, 
             std::bind( &AAA::processRadiusAnswer, this, callback, user, std::placeholders::_1, std::placeholders::_2 ),
             std::bind( &AAA::processRadiusError, this, callback, std::placeholders::_1 )
@@ -208,7 +246,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct, 
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( user, res.framed_ip, res.dns1, res.dns2, nullptr ) )
+        std::forward_as_tuple( std::make_shared<AAA_Session>( user, *conf.local_template, res, acct.begin()->second ) )
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
@@ -226,13 +264,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     if( !conf.local_template.has_value() ) {
         return { SESSION_ERROR, "No template for non-radius pppoe user" };
     }
-    auto const &fr_pool = conf.pools.find( conf.local_template.value().framed_pool );
-    if( fr_pool == conf.pools.end() ) {
-        return { SESSION_ERROR, "Framed pool with name " + conf.local_template.value().framed_pool + " wasn't found" };
-    }
-    address_v4_t address { fr_pool->second.allocate_ip() };
-    runtime->logger->logDebug() << LOGS::AAA << "Allocated ip " << address.to_string() << std::endl;
-
+    
     // Creating new session
     uint32_t i;
     for( i = 0; i < UINT32_MAX; i++ ) {
@@ -244,12 +276,10 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
         return { SESSION_ERROR, "No space for new sessions" };
     }
 
-    auto on_stop = std::bind( &FRAMED_POOL::deallocate_ip, &fr_pool->second, address.to_uint() );
-
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct,
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( user, address, conf.local_template.value().dns1, conf.local_template.value().dns2, on_stop ) ) 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( user, *conf.local_template ) ) 
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };

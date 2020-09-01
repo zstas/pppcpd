@@ -11,7 +11,7 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-static std::string acct_auth_process( const std::vector<uint8_t> &pkt, const std::vector<uint8_t> req_attrs, const std::string &secret ) {
+std::string acct_auth_process( const std::vector<uint8_t> &pkt, const std::vector<uint8_t> req_attrs, const std::string &secret ) {
     std::string check { pkt.begin(), pkt.begin() + 4 };
     check.reserve( 128 );
     check.insert( check.end(), 16, 0 );

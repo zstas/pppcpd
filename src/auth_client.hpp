@@ -35,6 +35,8 @@ struct response_t {
     {}
 };
 
+std::string acct_auth_process( const std::vector<uint8_t> &pkt, const std::vector<uint8_t> req_attrs, const std::string &secret );
+
 class AuthClient
 {
 public:
