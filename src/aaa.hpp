@@ -35,8 +35,9 @@ public:
     std::shared_ptr<AuthClient> acct { nullptr };
     PPPOELocalTemplate &templ;
     bool free_ip { false };
+    bool to_stop_acct{ false };
 
-    void start();
+    void start( uint32_t sid );
     void on_started( RADIUS_CODE code, std::vector<uint8_t> pkt );
     void on_failed( std::string err );
 };

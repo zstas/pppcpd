@@ -139,10 +139,13 @@ RadiusResponse deserialize<RadiusResponse>( const RadiusDict &dict, std::vector<
 
 template<>
 std::vector<uint8_t> serialize<AcctRequest>( const RadiusDict &dict, const AcctRequest &req, const authenticator_t &a, const std::string &secret ) {
-    std::set<AVP> avp_set { 
+    std::set<AVP> avp_set {
+        AVP { dict, "Acct-Session-Id", req.session_id },
         AVP { dict, "User-Name", req.username },
         AVP { dict, "Acct-Input-Packets", BE32( req.in_pkts ) },
-        AVP { dict, "Acct-Output-Packets", BE32( req.out_pkts ) }
+        AVP { dict, "Acct-Output-Packets", BE32( req.out_pkts ) },
+        AVP { dict, "Acct-Input-Octets", BE32( req.in_bytes ) },
+        AVP { dict, "Acct-Output-Octets", BE32( req.out_bytes ) }
     };
 
     if( !req.acct_status_type.empty() ) {

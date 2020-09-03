@@ -39,6 +39,7 @@ struct RadiusResponse {
 };
 
 struct AcctRequest {
+    std::string session_id;
     std::string username;
     std::string nas_id;
     std::string nas_port_id;
@@ -46,6 +47,8 @@ struct AcctRequest {
     std::string calling_station_id;
     uint32_t in_pkts;
     uint32_t out_pkts;
+    uint32_t in_bytes;
+    uint32_t out_bytes;
 };
 
 struct AcctResponse {

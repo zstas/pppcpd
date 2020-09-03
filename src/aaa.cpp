@@ -40,16 +40,21 @@ AAA_Session::~AAA_Session() {
         }
         fr_pool->second.deallocate_ip( address.to_uint() );
     }
-    // TODO: acct stop
+    if( to_stop_acct ) {
+        // todo: acct stop
+    }
 }
 
-void AAA_Session::start() {
+void AAA_Session::start( uint32_t sid ) {
     AcctRequest req;
+    req.session_id = "session_" + std::to_string( sid );
     req.acct_status_type = "Start";
     req.nas_id = "vBNG";
     req.username = username;
     req.in_pkts = 0;
     req.out_pkts = 0;
+    req.in_bytes = 0;
+    req.out_bytes = 0;
 
     acct->acct_request( req, 
         std::bind( &AAA_Session::on_started, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
@@ -60,6 +65,7 @@ void AAA_Session::start() {
 void AAA_Session::on_started( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
     runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session started" << std::endl;
     auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
+    to_stop_acct = true;
 }
 
 void AAA_Session::on_failed( std::string err ) {
@@ -251,6 +257,8 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
         return;
+    } else {
+        it->second->start( i );
     }
     callback( i, "" );
 }
