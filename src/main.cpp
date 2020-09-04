@@ -46,6 +46,7 @@ static void conf_init() {
 
     global_conf.aaa_conf.dictionaries = {
         "/usr/share/freeradius/dictionary.rfc2865",
+        "/usr/share/freeradius/dictionary.rfc2866",
         "/usr/share/freeradius/dictionary.rfc2869",
         "/usr/share/freeradius/dictionary.ericsson.ab"
     };
