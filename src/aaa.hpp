@@ -22,10 +22,12 @@ public:
     AAA_Session& operator=( const AAA_Session& ) = delete;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( const std::string &u, PPPOELocalTemplate &t );
-    AAA_Session( const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
+    AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t );
+    AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
     ~AAA_Session();
 
+    uint32_t session_id;
+    uint32_t ifindex;
     std::string username;
     address_v4_t address;
 
@@ -37,8 +39,10 @@ public:
     bool free_ip { false };
     bool to_stop_acct{ false };
 
-    void start( uint32_t sid );
+    void start();
+    void stop();
     void on_started( RADIUS_CODE code, std::vector<uint8_t> pkt );
+    void on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt );
     void on_failed( std::string err );
 };
 
@@ -48,6 +52,7 @@ class AAA {
     std::map<uint32_t,std::shared_ptr<AAA_Session>> sessions;
     std::map<std::string,std::shared_ptr<AuthClient>> auth;
     std::map<std::string,std::shared_ptr<AuthClient>> acct;
+
 
     // radius methods
     void startSessionRadius( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
@@ -64,6 +69,7 @@ public:
     void startSession( const std::string &user, const std::string &pass, PPPOESession &sess, aaa_callback callback );
     void startSessionCHAP( const std::string &user, const std::string &challenge, const std::string &response, PPPOESession &sess, aaa_callback callback );
     void stopSession( uint32_t sid );
+    void mapIfaceToSession( uint32_t session_id, uint32_t ifindex );
 
     std::optional<RadiusDict> dict;
 };

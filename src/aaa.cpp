@@ -10,7 +10,8 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-AAA_Session::AAA_Session( const std::string &u, PPPOELocalTemplate &t ):
+AAA_Session::AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t ):
+    session_id( sid ),
     username( u ),
     templ( t ),
     dns1( t.dns1 ),
@@ -24,7 +25,8 @@ AAA_Session::AAA_Session( const std::string &u, PPPOELocalTemplate &t ):
     free_ip = true;
 }
 
-AAA_Session::AAA_Session( const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
+AAA_Session::AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
+    session_id( sid ),
     username( u ),
     templ( t ),
     dns1( resp.dns1 ),
@@ -45,9 +47,9 @@ AAA_Session::~AAA_Session() {
     }
 }
 
-void AAA_Session::start( uint32_t sid ) {
+void AAA_Session::start() {
     AcctRequest req;
-    req.session_id = "session_" + std::to_string( sid );
+    req.session_id = "session_" + std::to_string( session_id );
     req.acct_status_type = "Start";
     req.nas_id = "vBNG";
     req.username = username;
@@ -62,10 +64,40 @@ void AAA_Session::start( uint32_t sid ) {
     );
 }
 
+void AAA_Session::stop() {
+    auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex ); // TODO: map to real ifindex
+    AcctRequest req;
+    req.session_id = "session_" + std::to_string( session_id );
+    req.acct_status_type = "Stop§";
+    req.nas_id = "vBNG";
+    req.username = username;
+    if( !ret ) {
+        req.in_pkts = 0;
+        req.out_pkts = 0;
+        req.in_bytes = 0;
+        req.out_bytes = 0;
+    } else {
+        req.in_pkts = counters.rxPkts;
+        req.out_pkts = counters.txPkts;
+        req.in_bytes = counters.rxBytes;
+        req.out_bytes = counters.txBytes;
+    }
+
+    acct->acct_request( req, 
+        std::bind( &AAA_Session::on_stopped, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
+        std::bind( &AAA_Session::on_failed, shared_from_this(), std::placeholders::_1 )
+    );
+}
+
 void AAA_Session::on_started( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
     runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session started" << std::endl;
     auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
     to_stop_acct = true;
+}
+
+void AAA_Session::on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
+    runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session stopped" << std::endl;
+    auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
 }
 
 void AAA_Session::on_failed( std::string err ) {
@@ -252,13 +284,13 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct, 
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( user, *conf.local_template, res, acct.begin()->second ) )
+        std::forward_as_tuple( std::make_shared<AAA_Session>( i, user, *conf.local_template, res, acct.begin()->second ) )
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
         return;
     } else {
-        it->second->start( i );
+        it->second->start();
     }
     callback( i, "" );
 }
@@ -287,7 +319,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct,
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( user, *conf.local_template ) ) 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( i, user, *conf.local_template ) ) 
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };
@@ -306,5 +338,11 @@ std::tuple<std::shared_ptr<AAA_Session>,std::string> AAA::getSession( uint32_t s
 void AAA::stopSession( uint32_t sid ) {
     if( auto const &it = sessions.find( sid ); it != sessions.end() ) {
         sessions.erase( it );
+    }
+}
+
+void AAA::mapIfaceToSession( uint32_t session_id, uint32_t ifindex ) {
+    if( auto const &it = sessions.find( session_id ); it != sessions.end() ) {
+        it->second->ifindex = ifindex;
     }
 }

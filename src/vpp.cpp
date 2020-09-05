@@ -91,7 +91,7 @@ VPPAPI::~VPPAPI() {
     }
 }
 
-bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add ) {
+std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add ) {
     vapi::Pppoe_add_del_session pppoe( con );
 
     auto &req = pppoe.get_request().get_payload();
@@ -126,10 +126,10 @@ bool VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::a
     auto repl = pppoe.get_response().get_payload();
     logger->logDebug() << LOGS::VPP << "Added pppoe session: " << repl.sw_if_index << std::endl;
     if( static_cast<int>( repl.sw_if_index ) == -1 ) {
-        return false;
+        return { false, 0 };
     }
 
-    return true;
+    return { true, { repl.sw_if_index } };
 }
 
 std::tuple<bool,uint32_t> VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan ) {
@@ -582,4 +582,12 @@ void VPPAPI::collect_counters() {
     }
     stat_segment_vec_free( ls );
     stat_client_free( client );
+}
+
+std::tuple<bool,VPPIfaceCounters> VPPAPI::get_counters_by_index( uint32_t ifindex ) {
+    auto it = counters.find( ifindex );
+    if( it == counters.end() ) {
+        return { false, {} };
+    }
+    return { true, it->second };
 }

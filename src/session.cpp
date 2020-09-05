@@ -8,6 +8,7 @@ PPPOESession::PPPOESession( io_service &i, const encapsulation_t &e, uint16_t si
     timer( io ),
     encap( e ),
     session_id( sid ),
+    ifindex( UINT32_MAX ),
     lcp( *this ),
     auth( *this ),
     chap( *this ),
@@ -17,15 +18,17 @@ PPPOESession::PPPOESession( io_service &i, const encapsulation_t &e, uint16_t si
 }
 
 std::string PPPOESession::provision_dp() {
-    if( !runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac ) ) {
+    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac ); !ret ) {
         return "Cannot add new session to vpp ";
+    } else {
+        ifindex = ifi;
     }
-    return "";
+    return {};
 }
 
 std::string PPPOESession::deprovision_dp() {
-    if( !runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, false ) ) {
+    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, false ); !ret ) {
         return "Cannot delete session from vpp ";
     }
-    return "";
+    return {};
 }
