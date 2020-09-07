@@ -10,7 +10,9 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-AAA_Session::AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t ):
+AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t ):
+    io( i ),
+    timer( io ),
     session_id( sid ),
     username( u ),
     templ( t ),
@@ -25,7 +27,9 @@ AAA_Session::AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate
     free_ip = true;
 }
 
-AAA_Session::AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
+AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
+    io( i ),
+    timer( io ),
     session_id( sid ),
     username( u ),
     templ( t ),
@@ -284,7 +288,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct, 
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( i, user, *conf.local_template, res, acct.begin()->second ) )
+        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, *conf.local_template, res, acct.begin()->second ) )
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
@@ -319,7 +323,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct,
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( i, user, *conf.local_template ) ) 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, *conf.local_template ) ) 
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };

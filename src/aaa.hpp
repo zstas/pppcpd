@@ -22,10 +22,12 @@ public:
     AAA_Session& operator=( const AAA_Session& ) = delete;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t );
-    AAA_Session( uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
+    AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t );
+    AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
     ~AAA_Session();
 
+    io_service &io;
+    boost::asio::steady_timer timer;
     uint32_t session_id;
     uint32_t ifindex;
     std::string username;
