@@ -44,8 +44,10 @@ public:
     void start();
     void stop();
     void on_started( RADIUS_CODE code, std::vector<uint8_t> pkt );
+    void on_interim_answer( RADIUS_CODE code, std::vector<uint8_t> pkt );
     void on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt );
     void on_failed( std::string err );
+    void on_interim( const boost::system::error_code& error );
 };
 
 class AAA {

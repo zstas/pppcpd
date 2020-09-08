@@ -69,10 +69,10 @@ void AAA_Session::start() {
 }
 
 void AAA_Session::stop() {
-    auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex ); // TODO: map to real ifindex
+    auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex );
     AcctRequest req;
     req.session_id = "session_" + std::to_string( session_id );
-    req.acct_status_type = "Stop§";
+    req.acct_status_type = "Stop";
     req.nas_id = "vBNG";
     req.username = username;
     if( !ret ) {
@@ -97,6 +97,45 @@ void AAA_Session::on_started( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
     runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session started" << std::endl;
     auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
     to_stop_acct = true;
+    timer.expires_from_now( std::chrono::seconds( 30 ) );
+    timer.async_wait( std::bind( &AAA_Session::on_interim, shared_from_this(), std::placeholders::_1 ) );
+}
+
+void AAA_Session::on_interim_answer( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
+    runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting update sent" << std::endl;
+    auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
+    timer.expires_from_now( std::chrono::seconds( 30 ) );
+    timer.async_wait( std::bind( &AAA_Session::on_interim, shared_from_this(), std::placeholders::_1 ) );
+}
+
+void AAA_Session::on_interim( const boost::system::error_code& ec ) {
+    if( ec ) {
+        runtime->logger->logError() << "Error on interim timer for AAA session: " << ec.message() << std::endl;
+        return;
+    }
+
+    auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex );
+    AcctRequest req;
+    req.session_id = "session_" + std::to_string( session_id );
+    req.acct_status_type = "Update";
+    req.nas_id = "vBNG";
+    req.username = username;
+    if( !ret ) {
+        req.in_pkts = 0;
+        req.out_pkts = 0;
+        req.in_bytes = 0;
+        req.out_bytes = 0;
+    } else {
+        req.in_pkts = counters.rxPkts;
+        req.out_pkts = counters.txPkts;
+        req.in_bytes = counters.rxBytes;
+        req.out_bytes = counters.txBytes;
+    }
+
+    acct->acct_request( req, 
+        std::bind( &AAA_Session::on_stopped, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
+        std::bind( &AAA_Session::on_failed, shared_from_this(), std::placeholders::_1 )
+    );
 }
 
 void AAA_Session::on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
