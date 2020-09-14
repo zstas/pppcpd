@@ -46,9 +46,6 @@ AAA_Session::~AAA_Session() {
         }
         fr_pool->second.deallocate_ip( address.to_uint() );
     }
-    if( to_stop_acct ) {
-        // todo: acct stop
-    }
 }
 
 void AAA_Session::start() {
@@ -380,6 +377,7 @@ std::tuple<std::shared_ptr<AAA_Session>,std::string> AAA::getSession( uint32_t s
 
 void AAA::stopSession( uint32_t sid ) {
     if( auto const &it = sessions.find( sid ); it != sessions.end() ) {
+        it->second->stop();
         sessions.erase( it );
     }
 }
