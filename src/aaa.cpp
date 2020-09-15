@@ -114,7 +114,7 @@ void AAA_Session::on_interim( const boost::system::error_code& ec ) {
     auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex );
     AcctRequest req;
     req.session_id = "session_" + std::to_string( session_id );
-    req.acct_status_type = "Interim-Update";
+    req.acct_status_type = "Alive";
     req.nas_id = "vBNG";
     req.username = username;
     if( !ret ) {
@@ -130,7 +130,7 @@ void AAA_Session::on_interim( const boost::system::error_code& ec ) {
     }
 
     acct->acct_request( req, 
-        std::bind( &AAA_Session::on_stopped, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
+        std::bind( &AAA_Session::on_interim_answer, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
         std::bind( &AAA_Session::on_failed, shared_from_this(), std::placeholders::_1 )
     );
 }
