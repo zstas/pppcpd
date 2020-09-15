@@ -114,7 +114,7 @@ void AAA_Session::on_interim( const boost::system::error_code& ec ) {
     auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex );
     AcctRequest req;
     req.session_id = "session_" + std::to_string( session_id );
-    req.acct_status_type = "Update";
+    req.acct_status_type = "Interim-Update";
     req.nas_id = "vBNG";
     req.username = username;
     if( !ret ) {
