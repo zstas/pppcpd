@@ -19,6 +19,7 @@ struct LCP_FSM: public PPP_FSM {
 	FSM_RET send_term_req() override;
 	FSM_RET send_term_ack( std::vector<uint8_t> &inPkt ) override;
 	FSM_RET send_echo_rep( std::vector<uint8_t> &inPkt );
+	FSM_RET send_echo_req();
 };
 
 #endif

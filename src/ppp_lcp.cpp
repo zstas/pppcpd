@@ -210,3 +210,40 @@ FSM_RET LCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
+
+FSM_RET LCP_FSM::send_echo_req() {
+    std::vector<uint8_t> pkt;
+    pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + 256 );
+
+    // Fill pppoe part
+    PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
+    pppoe->version = 1;
+    pppoe->type = 1;
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::LCP ) );
+    pppoe->code = PPPOE_CODE::SESSION_DATA;
+    pppoe->session_id = bswap( session_id );
+
+    // Fill LCP part
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp->code = LCP_CODE::ECHO_REQ;
+    lcp->identifier = pkt_id;
+
+    // Fill LCP options
+    auto lcpOpts = 0;
+    auto mn = reinterpret_cast<LCP_OPT_4B*>( lcp->getPayload() );
+    mn->set( LCP_OPTIONS::MAGIC_NUMBER, session.our_magic_number );
+    lcpOpts += mn->len;
+
+    // After all fix lenght in headers
+    lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + lcpOpts ) );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + lcpOpts + 2 ) ); // plus 2 bytes of ppp proto
+    pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + lcpOpts  );
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    pkt.insert( pkt.begin(), header.begin(), header.end() );
+
+    // Send this ECHO REQ
+    ppp_outcoming.push( pkt );
+
+    return { PPP_FSM_ACTION::NONE, "" };
+}

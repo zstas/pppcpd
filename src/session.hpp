@@ -43,14 +43,12 @@ struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     boost::asio::steady_timer timer;
 
     PPPOESession( io_service &i, const encapsulation_t &e, uint16_t sid );
-
-    ~PPPOESession() {
-        deprovision_dp();
-    }
+    ~PPPOESession();
 
     std::string provision_dp();
     std::string deprovision_dp();
-    bool sendEchoReq( const boost::system::error_code& error );
+    void startEcho();
+    void sendEchoReq( const boost::system::error_code &ec );
 };
 
 #endif

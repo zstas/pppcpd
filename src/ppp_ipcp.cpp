@@ -6,6 +6,7 @@
 #include "packet.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
+#include "aaa_session.hpp"
 
 using namespace std::string_literals;
 
