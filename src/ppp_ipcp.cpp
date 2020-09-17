@@ -212,3 +212,7 @@ FSM_RET IPCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
 FSM_RET IPCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
+
+FSM_RET IPCP_FSM::recv_echo_rep( std::vector<uint8_t> &inPkt ) {
+    return { PPP_FSM_ACTION::NONE, "" };
+}

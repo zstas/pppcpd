@@ -52,6 +52,8 @@ FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
         break;
     case LCP_CODE::ECHO_REQ:
         return send_echo_rep( inPkt );
+    case LCP_CODE::ECHO_REPLY:
+        return recv_echo_rep( inPkt );
     default:
         //send CODEREJ
         break;

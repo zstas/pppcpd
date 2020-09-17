@@ -60,6 +60,7 @@ public:
 	virtual FSM_RET send_term_req() = 0;
 	virtual FSM_RET send_term_ack( std::vector<uint8_t> &inPkt ) = 0;
     virtual FSM_RET send_echo_rep( std::vector<uint8_t> &inPkt ) = 0;
+    virtual FSM_RET recv_echo_rep( std::vector<uint8_t> &inPkt ) = 0;
 };
 
 #endif

@@ -21,10 +21,7 @@ public:
     AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
     ~AAA_Session();
 
-    io_service &io;
-    boost::asio::steady_timer timer;
     uint32_t session_id;
-    uint32_t ifindex;
     std::string username;
     address_v4_t address;
 
@@ -43,6 +40,12 @@ public:
     void on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt );
     void on_failed( std::string err );
     void on_interim( const boost::system::error_code& error );
+    void map_iface( uint32_t ifi );
+
+private:
+    uint32_t ifindex;
+    io_service &io;
+    boost::asio::steady_timer timer;
 };
 
 #endif

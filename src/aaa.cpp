@@ -250,6 +250,6 @@ void AAA::stopSession( uint32_t sid ) {
 
 void AAA::mapIfaceToSession( uint32_t session_id, uint32_t ifindex ) {
     if( auto const &it = sessions.find( session_id ); it != sessions.end() ) {
-        it->second->ifindex = ifindex;
+        it->second->map_iface( ifindex );
     }
 }

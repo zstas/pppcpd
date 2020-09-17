@@ -144,3 +144,8 @@ void AAA_Session::on_failed( std::string err ) {
     runtime->logger->logError() << LOGS::SESSION << "Failed to send accouting request" << std::endl;
     // TODO: err handling
 }
+
+void AAA_Session::map_iface( uint32_t ifi ) {
+    runtime->logger->logInfo() << LOGS::SESSION << "Mapping session to VPP interface with ifindex: " << ifi << std::endl;
+    ifindex = ifi;
+}

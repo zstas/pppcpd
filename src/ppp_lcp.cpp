@@ -242,8 +242,17 @@ FSM_RET LCP_FSM::send_echo_req() {
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     pkt.insert( pkt.begin(), header.begin(), header.end() );
 
+    echo_counter++;
+    if( echo_counter > 4 ) {
+        return { PPP_FSM_ACTION::LAYER_DOWN, "We didn't receive at least 3 echo replies" };
+    }
     // Send this ECHO REQ
     ppp_outcoming.push( pkt );
 
+    return { PPP_FSM_ACTION::NONE, "" };
+}
+
+FSM_RET LCP_FSM::recv_echo_rep( std::vector<uint8_t> &inPkt ) {
+    echo_counter = 0;
     return { PPP_FSM_ACTION::NONE, "" };
 }
