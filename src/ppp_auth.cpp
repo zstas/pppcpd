@@ -8,7 +8,6 @@
 #include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_AUTH::receive( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
@@ -73,7 +72,7 @@ FSM_RET PPP_AUTH::send_auth_ack() {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
 
     session.ipcp.open();
     session.ipcp.layer_up();
@@ -103,7 +102,7 @@ FSM_RET PPP_AUTH::send_auth_nak() {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
     return { PPP_FSM_ACTION::NONE, "" };
 }
 

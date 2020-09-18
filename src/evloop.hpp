@@ -13,31 +13,19 @@ using io_service = boost::asio::io_service;
 extern std::atomic_bool interrupted;
 
 struct PPPOEQ {
-    // std::mutex mutex;
-    // std::condition_variable cond;
     std::queue<std::vector<uint8_t>> queue;
 
     void push( std::vector<uint8_t> pkt ) {
-        // std::lock_guard lg( mutex );
         queue.push( std::move( pkt ) );
-        // cond.notify_one();
     }
 
     std::vector<uint8_t> pop() {
-        // std::lock_guard lg( mutex );
-        // while( queue.empty() ) {
-        //     cond.wait_for( lg, std::chrono::seconds( 1 ) );
-        //     if( interrupted ) {
-        //         exit( 0 );
-        //     }
-        // }
         auto ret = queue.front();
         queue.pop();
         return ret;
     }
 
     bool empty() {
-        // std::lock_guard lg( mutex );
         return queue.empty();
     }
 };

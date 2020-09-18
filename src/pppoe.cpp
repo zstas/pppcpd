@@ -8,7 +8,6 @@
 #include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ pppoe_outcoming;
 
 uint8_t pppoe::insertTag( std::vector<uint8_t> &pkt, PPPOE_TAG tag, const std::string &val ) {
     std::vector<uint8_t> tagvec;
@@ -219,7 +218,7 @@ std::string pppoe::processPPPOE( std::vector<uint8_t> &inPkt, const encapsulatio
     auto header = encap.generate_header( runtime->hwaddr, ETH_PPPOE_DISCOVERY );
     outPkt.insert( outPkt.begin(), header.begin(), header.end() );
 
-    pppoe_outcoming.push( std::move( outPkt ) );
+    runtime->pppoe_outcoming.push( std::move( outPkt ) );
 
     return {};
 }

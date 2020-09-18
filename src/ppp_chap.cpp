@@ -9,7 +9,6 @@
 #include "utils.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_CHAP::receive( std::vector<uint8_t> &inPkt ) {
     runtime->logger->logDebug() << LOGS::CHAP << "Receive chap packet" << std::endl;
@@ -77,7 +76,7 @@ FSM_RET PPP_CHAP::send_auth_ack() {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
 
     session.ipcp.open();
     session.ipcp.layer_up();
@@ -107,7 +106,7 @@ FSM_RET PPP_CHAP::send_auth_nak() {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
@@ -143,7 +142,7 @@ FSM_RET PPP_CHAP::send_conf_req() {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this packet
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
     return { PPP_FSM_ACTION::NONE, "" };
 }
 

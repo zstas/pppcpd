@@ -14,12 +14,6 @@
 std::shared_ptr<PPPOERuntime> runtime;
 std::atomic_bool interrupted { false };
 
-// Queues for packets
-PPPOEQ pppoe_incoming;
-PPPOEQ pppoe_outcoming;
-PPPOEQ ppp_incoming;
-PPPOEQ ppp_outcoming;
-
 static void conf_init() {
     PPPOEGlobalConf global_conf;
 

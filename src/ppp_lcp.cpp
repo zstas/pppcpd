@@ -9,7 +9,6 @@
 #include "utils.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ ppp_outcoming;
 
 LCP_FSM::LCP_FSM( PPPOESession &s ):
 	session( s ),
@@ -72,7 +71,7 @@ FSM_RET LCP_FSM::send_conf_req() {
     pkt.insert( pkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( pkt );
+    runtime->ppp_outcoming.push( pkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
@@ -90,7 +89,7 @@ FSM_RET LCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
     if( state == PPP_FSM_STATE::Opened ) {
         return { PPP_FSM_ACTION::LAYER_UP, "" };
     }
@@ -111,7 +110,7 @@ FSM_RET LCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
@@ -188,7 +187,7 @@ FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     runtime->logger->logDebug() << LOGS::LCP << "Sending LCP TERM ACK" << std::endl;
-    ppp_outcoming.push( inPkt );
+    runtime->ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
@@ -206,7 +205,7 @@ FSM_RET LCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
-    ppp_outcoming.push( inPkt );
+    runtime->ppp_outcoming.push( inPkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
@@ -247,7 +246,7 @@ FSM_RET LCP_FSM::send_echo_req() {
         return { PPP_FSM_ACTION::LAYER_DOWN, "We didn't receive at least 3 echo replies" };
     }
     // Send this ECHO REQ
-    ppp_outcoming.push( pkt );
+    runtime->ppp_outcoming.push( pkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }

@@ -11,7 +11,6 @@
 using namespace std::string_literals;
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ ppp_outcoming;
 
 IPCP_FSM::IPCP_FSM( PPPOESession &s ):
 	session( s ),
@@ -50,7 +49,7 @@ FSM_RET IPCP_FSM::send_conf_req() {
     pkt.insert( pkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( pkt );
+    runtime->ppp_outcoming.push( pkt );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
@@ -69,7 +68,7 @@ FSM_RET IPCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
 
     if( state == PPP_FSM_STATE::Opened ) {
         return { PPP_FSM_ACTION::LAYER_UP, "" };
@@ -119,7 +118,7 @@ FSM_RET IPCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
     inPkt.insert( inPkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REQ
-    ppp_outcoming.push( std::move( inPkt ) );
+    runtime->ppp_outcoming.push( std::move( inPkt ) );
 
     return { PPP_FSM_ACTION::NONE, "" };
 }

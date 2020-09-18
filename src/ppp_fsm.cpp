@@ -10,7 +10,6 @@
 using namespace std::string_literals;
 
 extern std::shared_ptr<PPPOERuntime> runtime;
-extern PPPOEQ ppp_outcoming;
 
 FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
     runtime->logger->logDebug() << "receive pkt in state: " << state << std::endl;

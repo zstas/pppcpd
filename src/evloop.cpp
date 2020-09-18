@@ -13,10 +13,6 @@
 #include "pppoe.hpp"
 
 extern std::atomic_bool interrupted;
-extern PPPOEQ pppoe_incoming;
-extern PPPOEQ pppoe_outcoming;
-extern PPPOEQ ppp_incoming;
-extern PPPOEQ ppp_outcoming;
 extern std::shared_ptr<PPPOERuntime> runtime;
 
 EVLoop::EVLoop( io_service &i ):
@@ -153,8 +149,8 @@ void EVLoop::periodic( boost::system::error_code ec ) {
         io.stop();
     }
     // Sending pppoe discovery packets
-    while( !pppoe_outcoming.empty() ) {
-        auto reply = pppoe_outcoming.pop();
+    while( !runtime->pppoe_outcoming.empty() ) {
+        auto reply = runtime->pppoe_outcoming.pop();
         PacketPrint pkt { reply };
         runtime->logger->logInfo() << LOGS::PACKET << pkt << std::endl;
         // ETHERNET_HDR *rep_eth = reinterpret_cast<ETHERNET_HDR*>( reply.data() );
@@ -162,8 +158,8 @@ void EVLoop::periodic( boost::system::error_code ec ) {
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );
     }
     // Sending pppoe session control packets
-    while( !ppp_outcoming.empty() ) {
-        auto reply = ppp_outcoming.pop();
+    while( !runtime->ppp_outcoming.empty() ) {
+        auto reply = runtime->ppp_outcoming.pop();
         PacketPrint pkt { reply };
         runtime->logger->logInfo() << LOGS::PACKET << pkt << std::endl;
         raw_sock_pppoe.send( boost::asio::buffer( reply ) );

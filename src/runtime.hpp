@@ -76,6 +76,10 @@ public:
     std::shared_ptr<LCPPolicy> lcp_conf;
     std::shared_ptr<AAA> aaa;
     std::shared_ptr<VPPAPI> vpp;
+    PPPOEQ pppoe_incoming;
+    PPPOEQ pppoe_outcoming;
+    PPPOEQ ppp_incoming;
+    PPPOEQ ppp_outcoming;
 
     void clearPendingSession( std::shared_ptr<boost::asio::steady_timer> timer, pppoe_conn_t key );
     std::string pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie );

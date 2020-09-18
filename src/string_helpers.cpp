@@ -81,7 +81,7 @@ std::ostream& operator<<( std::ostream &stream, const RADIUS_CODE &code ) {
 
 std::ostream& operator<<( std::ostream &stream, const RadiusPacket *pkt ) {
     stream << "Code: " << pkt->code;
-    stream << " Id: " << pkt->id;
+    stream << " Id: " << static_cast<int>( pkt->id );
     stream << " Length: " << pkt->length.native();
     return stream;
 }
