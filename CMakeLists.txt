@@ -41,6 +41,7 @@ add_executable(pppctl ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 
 target_link_libraries(pppctl PUBLIC pthread)
 target_link_libraries(pppcpd PUBLIC boost_system)
+target_link_libraries(pppcpd PUBLIC boost_program_options)
 target_link_libraries(pppcpd PUBLIC boost_random)
 target_link_libraries(pppcpd PUBLIC yaml-cpp)
 target_link_libraries(pppcpd PUBLIC pthread)

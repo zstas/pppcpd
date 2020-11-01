@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <fstream>
+#include <boost/program_options.hpp>
 
 #include <yaml-cpp/yaml.h>
 #include "yaml.hpp"
@@ -74,8 +75,34 @@ static void conf_init() {
 }
 
 int main( int argc, char *argv[] ) {
-    conf_init();
-    YAML::Node config = YAML::LoadFile( "config.yaml" );
+    bool generate_conf { false };
+    std::string path_config { "config.yaml" };
+
+    boost::program_options::options_description desc {
+        "PPPoE control plane daemon.\n"
+        "This daemon works with VPP PPPoE Plugin to process PPPoE connections. All configuration is available through config file. You can generate sample configuration to see all the parameters.\n"
+        "\n"
+        "Arguments"
+    };
+    desc.add_options()
+    ( "path,p", boost::program_options::value( &path_config), "Path to config: default is \"config.yaml\"" )
+    ( "genconf,g", boost::program_options::value( &generate_conf ), "Generate a sample configuration" )
+    ( "help,h", "Print this message" )
+    ;
+
+    boost::program_options::variables_map vm;
+    boost::program_options::store( boost::program_options::parse_command_line( argc, argv, desc ), vm );
+
+    if( vm.count( "help" ) ) {  
+        std::cout << desc << "\n";
+        return 0;
+    }
+
+    if( generate_conf ) {
+        conf_init();
+    }
+
+    YAML::Node config = YAML::LoadFile( path_config );
 
     io_service io;
     runtime = std::make_shared<PPPOERuntime>( config.as<PPPOEGlobalConf>(), io );
