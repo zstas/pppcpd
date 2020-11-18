@@ -64,7 +64,9 @@ static void conf_init() {
 
     iconf.device = "GigabitEthernet0/9/0";
     iconf.mtu.emplace( 1500 );
-    iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.1/24" ) );
+    iconf.conf_as_subif.emplace( 150 );
+    iconf.gateway.emplace( boost::asio::ip::make_address_v4( "10.0.0.1" ) );
+    iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
     global_conf.interfaces.push_back( std::move( iconf ) );
 
     YAML::Node config;
@@ -75,7 +77,6 @@ static void conf_init() {
 }
 
 int main( int argc, char *argv[] ) {
-    bool generate_conf { false };
     std::string path_config { "config.yaml" };
 
     boost::program_options::options_description desc {
@@ -86,7 +87,7 @@ int main( int argc, char *argv[] ) {
     };
     desc.add_options()
     ( "path,p", boost::program_options::value( &path_config), "Path to config: default is \"config.yaml\"" )
-    ( "genconf,g", boost::program_options::value( &generate_conf ), "Generate a sample configuration" )
+    ( "genconf,g", "Generate a sample configuration" )
     ( "help,h", "Print this message" )
     ;
 
@@ -98,8 +99,9 @@ int main( int argc, char *argv[] ) {
         return 0;
     }
 
-    if( generate_conf ) {
+    if( vm.count( "genconf" ) ) {
         conf_init();
+        return 0;
     }
 
     YAML::Node config = YAML::LoadFile( path_config );

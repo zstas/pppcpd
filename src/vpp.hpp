@@ -8,6 +8,7 @@
 #include "vapi/tapv2.api.vapi.hpp"
 #include "vapi/pppoe.api.vapi.hpp"
 #include "vapi/policer.api.vapi.hpp"
+#include "vapi/ip.api.vapi.hpp"
 
 #include "config.hpp"
 #include "log.hpp"
@@ -73,6 +74,7 @@ public:
     bool set_ip( uint32_t id, network_v4_t address );
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
+    bool set_gateway( address_v4_t gw );
 
     // PPPoE methods
     std::tuple<bool,uint32_t> add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );

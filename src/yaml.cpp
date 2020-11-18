@@ -104,8 +104,14 @@ YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
     if( rhs.mtu.has_value() ) {
         node[ "mtu" ] = rhs.mtu.value();
     }
+    if( rhs.conf_as_subif.has_value() ) {
+        node[ "conf_as_subif" ] = rhs.conf_as_subif.value();
+    }
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
+    }
+    if( rhs.gateway.has_value() ) {
+        node[ "gateway" ] = rhs.gateway.value().to_string();
     }
     node[ "vlans" ] = rhs.vlans;
     return node;
@@ -119,8 +125,14 @@ bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf
     if( node[ "mtu" ].IsDefined() ) {
         rhs.mtu = node[ "mtu" ].as<uint16_t>();
     }
+    if( node[ "conf_as_subif" ].IsDefined() ) {
+        rhs.conf_as_subif = node[ "conf_as_subif" ].as<uint16_t>();
+    }
     if( node[ "address" ].IsDefined() ) {
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
+    }
+    if( node[ "gateway" ].IsDefined() ) {
+        rhs.gateway = boost::asio::ip::make_address_v4( node[ "gateway" ].as<std::string>() );
     }
     rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
     return true;

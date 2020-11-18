@@ -61,7 +61,9 @@ struct InterfaceConf {
     std::string device;
     bool admin_state { true };
     std::optional<uint16_t> mtu;
+    std::optional<uint16_t> conf_as_subif;
     std::optional<network_v4_t> address;
+    std::optional<address_v4_t> gateway;
     std::vector<uint16_t> vlans;
 };
 

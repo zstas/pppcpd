@@ -11,6 +11,7 @@ DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON
 DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 DEFINE_VAPI_MSG_IDS_POLICER_API_JSON
+DEFINE_VAPI_MSG_IDS_IP_API_JSON
 
 std::ostream& operator<<( std::ostream &stream, const IfaceType &iface ) {
     switch( iface ) {
@@ -363,8 +364,23 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
         if( iface.mtu.has_value() ) {
             set_mtu( vppif.sw_if_index, iface.mtu.value() );
         }
-        if( iface.address.has_value() ) {
-            set_ip( vppif.sw_if_index, iface.address.value() );
+        auto conf_ifi = vppif.sw_if_index;
+        if( iface.conf_as_subif ) {
+            bool ret;
+            uint32_t ifi;
+            std::tie( ret, ifi ) = add_subif( vppif.sw_if_index, *iface.conf_as_subif, 0 );
+            if( !ret ) {
+                logger->logError() << LOGS::VPP << "Cannot create subinterface: " << iface.device << " vlan: " << *iface.conf_as_subif << std::endl;
+            }
+            set_state( ifi, true );
+            set_mtu( ifi, iface.mtu.value() );
+            conf_ifi = ifi;
+        }
+        if( iface.address ) {
+            set_ip( conf_ifi, iface.address.value() );
+        }
+        if( iface.gateway ) {
+            set_gateway( *iface.gateway );
         }
         for( auto const &vlan: iface.vlans ) {
             bool ret;
@@ -400,6 +416,39 @@ bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
     } while( ret == VAPI_EAGAIN );
 
     auto repl = setmtu.get_response().get_payload();
+    if( repl.retval < 0 ) {
+        return false;
+    }
+
+    return true;
+}
+
+bool VPPAPI::set_gateway( address_v4_t gw ) {
+    vapi::Ip_route_add_del addroute{ con, 0 };
+
+    auto &req = addroute.get_request().get_payload();
+    req.is_add = 1;
+    req.route.prefix.len = 0;
+    req.route.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
+    for( auto &b: req.route.prefix.address.un.ip4 ) {
+        b = 0;
+    }
+    auto nhop = gw.to_bytes();
+    req.route.paths->nh.address.ip4[ 0 ] = nhop[ 3 ];
+    req.route.paths->nh.address.ip4[ 1 ] = nhop[ 2 ];
+    req.route.paths->nh.address.ip4[ 2 ] = nhop[ 1 ];
+    req.route.paths->nh.address.ip4[ 3 ] = nhop[ 0 ];
+
+    auto ret = addroute.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_set_mtu api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( addroute );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = addroute.get_response().get_payload();
     if( repl.retval < 0 ) {
         return false;
     }
