@@ -380,7 +380,7 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
             set_ip( conf_ifi, iface.address.value() );
         }
         if( iface.gateway ) {
-            set_gateway( *iface.gateway );
+            set_gateway( boost::asio::ip::make_network_v4( "0.0.0.0/0" ), *iface.gateway );
         }
         for( auto const &vlan: iface.vlans ) {
             bool ret;
@@ -423,37 +423,36 @@ bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
     return true;
 }
 
-bool VPPAPI::set_gateway( address_v4_t gw ) {
-    vapi::Ip_route_add_del addroute{ con, 0 };
+std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix, const address_v4_t &nexthop ) {
+    vapi::Ip_route_add_del route { con, 0 };
 
-    auto &req = addroute.get_request().get_payload();
+    auto &req = route.get_request().get_payload();
     req.is_add = 1;
-    req.route.prefix.len = 0;
+    req.is_multipath = 0;
     req.route.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
-    for( auto &b: req.route.prefix.address.un.ip4 ) {
-        b = 0;
-    }
-    auto nhop = gw.to_bytes();
-    req.route.paths->nh.address.ip4[ 0 ] = nhop[ 3 ];
-    req.route.paths->nh.address.ip4[ 1 ] = nhop[ 2 ];
-    req.route.paths->nh.address.ip4[ 2 ] = nhop[ 1 ];
-    req.route.paths->nh.address.ip4[ 3 ] = nhop[ 0 ];
-
-    auto ret = addroute.execute();
+    *reinterpret_cast<uint32_t*>( req.route.prefix.address.un.ip4 ) = bswap( prefix.address().to_uint() );
+    req.route.prefix.len = prefix.prefix_length();
+    req.route.table_id = 0;
+    req.route.n_paths = 1;
+    *reinterpret_cast<uint32_t*>( req.route.paths[0].nh.address.ip4 ) = bswap( nexthop.to_uint() );
+    
+    auto ret = route.execute();
     if( ret != VAPI_OK ) {
-        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_set_mtu api method" << std::endl;
+        log( "error!" );
+        return { -1, "Cannot execute Ip_route_add_del method" };
     }
 
     do {
-        ret = con.wait_for_response( addroute );
+        ret = con.wait_for_response( route );
     } while( ret == VAPI_EAGAIN );
 
-    auto repl = addroute.get_response().get_payload();
-    if( repl.retval < 0 ) {
-        return false;
+    auto &repl = route.get_response().get_payload();
+    if( repl.retval != 0 ) {
+        return { -1, "Error on adding route to vpp" };
     }
 
-    return true;
+    auto rid = repl.stats_index;
+    return { rid, "" };
 }
 
 bool VPPAPI::del_subif( uint32_t sw_if_index ) {
