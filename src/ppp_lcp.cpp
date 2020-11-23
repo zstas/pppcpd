@@ -162,15 +162,17 @@ FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
         if( code == LCP_CODE::CONF_NAK )
             return send_conf_nak( inPkt );
         if( code == LCP_CODE::CONF_REJ )
-            return send_conf_rej( inPkt );
+            return send_conf_rej( rejected_options );
     }
+
+    return { PPP_FSM_ACTION::NONE, "" };
 }
 
 FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options ) {
     runtime->logger->logDebug() << LOGS::LCP << "send_conf_rej current state: " << state << std::endl;
 
-   std::vector<uint8_t> pkt;
-    pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + 256 );
+    std::vector<uint8_t> pkt;
+    pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) );
 
     // Fill pppoe part
     PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
@@ -184,17 +186,18 @@ FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options ) {
     PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
     lcp->code = LCP_CODE::CONF_REJ;
     lcp->identifier = pkt_id;
-
-    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
-    pkt.insert( pkt.begin(), header.begin(), header.end() );
+    lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() ) );
 
     // Insert rejected options
     pkt.insert( pkt.end(), rejected_options.begin(), rejected_options.end() );
 
     // After all fix lenght in headers
-    lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() ) );
+    pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
+    lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() + 2 ) ); // plus 2 bytes of ppp proto
-    pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) + rejected_options.size()  );
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    pkt.insert( pkt.begin(), header.begin(), header.end() );
 
     // Send this CONF REJ
     runtime->ppp_outcoming.push( std::move( pkt ) );

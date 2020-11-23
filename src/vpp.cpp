@@ -61,7 +61,7 @@ VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
 }
 
 void VPPAPI::process_msgs( boost::system::error_code err ) {
-    logger->logError() << LOGS::VPP << "Periodic timer to ping VPP API" << std::endl;
+    logger->logDebug() << LOGS::VPP << "Periodic timer to ping VPP API" << std::endl;
     vapi::Control_ping ping { con };
 
     auto ret = ping.execute(); 
