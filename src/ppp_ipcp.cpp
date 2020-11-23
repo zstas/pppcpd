@@ -192,7 +192,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     }
 }
 
-FSM_RET IPCP_FSM::send_conf_rej() {
+FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &inPkt ) {
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
