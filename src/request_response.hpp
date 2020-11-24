@@ -36,6 +36,7 @@ struct RadiusResponse {
     address_v4_t framed_ip;
     address_v4_t dns1;
     address_v4_t dns2;
+    std::string framed_pool;
 };
 
 struct AcctRequest {

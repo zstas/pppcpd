@@ -37,12 +37,23 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPP
     dns2( resp.dns2 ),
     address( resp.framed_ip ),
     acct( s )
-{}
+{
+    if( address.to_uint() == 0 ) {
+        if( !resp.framed_pool.empty() ) {
+            auto const &fr_pool = runtime->conf.aaa_conf.pools.find( resp.framed_pool );
+            if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+                address = address_v4_t{ fr_pool->second.allocate_ip() };
+            }
+        }
+    }
+}
 
 AAA_Session::~AAA_Session() {
     if( free_ip ) {
         auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
         if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+            runtime->logger->logDebug() << LOGS::AAA << "Can't deallocate IP: " << address.to_string() << ", can't find the pool" << std::endl;
+            return;
         }
         fr_pool->second.deallocate_ip( address.to_uint() );
     }

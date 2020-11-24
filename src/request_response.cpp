@@ -132,6 +132,8 @@ RadiusResponse deserialize<RadiusResponse>( const RadiusDict &dict, std::vector<
             if( auto const &[ ip, success ] = avp.getVal<BE32>(); success ) {
                 res.dns2 = address_v4_t{ ip.native() };
             } 
+        } else if( attr.first == "Framed-Pool" ) {
+            res.framed_pool = { avp.value.begin(), avp.value.end() };
         }
     }
     return res;
