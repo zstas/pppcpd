@@ -154,7 +154,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     }
 
     if( !rejected_options.empty() ) {
-        return send_conf_rej( rejected_options );
+        return send_conf_rej( rejected_options, lcp->identifier );
     }
 
     for( auto &opt: opts ) {
@@ -206,7 +206,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     }
 }
 
-FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options ) {
+FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t pkt_id ) {
     runtime->logger->logDebug() << LOGS::LCP << "send_conf_rej current state: " << state << std::endl;
 
     std::vector<uint8_t> pkt;

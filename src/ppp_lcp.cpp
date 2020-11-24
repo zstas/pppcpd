@@ -162,13 +162,13 @@ FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
         if( code == LCP_CODE::CONF_NAK )
             return send_conf_nak( inPkt );
         if( code == LCP_CODE::CONF_REJ )
-            return send_conf_rej( rejected_options );
+            return send_conf_rej( rejected_options, lcp->identifier );
     }
 
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
-FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options ) {
+FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t pkt_id ) {
     runtime->logger->logDebug() << LOGS::LCP << "send_conf_rej current state: " << state << std::endl;
 
     std::vector<uint8_t> pkt;

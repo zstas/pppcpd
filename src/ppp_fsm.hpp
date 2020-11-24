@@ -55,7 +55,7 @@ public:
 	virtual FSM_RET send_conf_ack( std::vector<uint8_t> &inPkt ) = 0;
 	virtual FSM_RET send_conf_nak( std::vector<uint8_t> &inPkt ) = 0;
     virtual FSM_RET check_conf( std::vector<uint8_t> &inPkt ) = 0;
-	virtual FSM_RET send_conf_rej( std::vector<uint8_t> &inPkt ) = 0;
+	virtual FSM_RET send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t pkt_id ) = 0;
 	virtual FSM_RET send_code_rej() = 0;
 	virtual FSM_RET send_term_req() = 0;
 	virtual FSM_RET send_term_ack( std::vector<uint8_t> &inPkt ) = 0;
