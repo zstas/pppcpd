@@ -41,7 +41,7 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPP
     if( address.to_uint() == 0 ) {
         if( !resp.framed_pool.empty() ) {
             auto const &fr_pool = runtime->conf.aaa_conf.pools.find( resp.framed_pool );
-            if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+            if( fr_pool != runtime->conf.aaa_conf.pools.end() ) {
                 address = address_v4_t{ fr_pool->second.allocate_ip() };
             }
         }
