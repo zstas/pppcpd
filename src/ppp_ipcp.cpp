@@ -143,6 +143,20 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
 
     // Check options
     auto opts = lcp->parseIPCPOptions();
+    std::vector<uint8_t> rejected_options;
+    for( auto const &opt: opts ) {
+        if( opt->opt == IPCP_OPTIONS::IP_ADDRESS ||
+            opt->opt == IPCP_OPTIONS::PRIMARY_DNS ||
+            opt->opt == IPCP_OPTIONS::SECONDARY_DNS ) {
+            continue;
+        }
+        rejected_options.insert( rejected_options.end(), (uint8_t*)opt, (uint8_t*)opt + opt->len );
+    }
+
+    if( !rejected_options.empty() ) {
+        return send_conf_rej( rejected_options );
+    }
+
     for( auto &opt: opts ) {
         switch( opt->opt ) {
         case IPCP_OPTIONS::IP_ADDRESS: {
@@ -192,7 +206,40 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     }
 }
 
-FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &inPkt ) {
+FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options ) {
+    runtime->logger->logDebug() << LOGS::LCP << "send_conf_rej current state: " << state << std::endl;
+
+    std::vector<uint8_t> pkt;
+    pkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_LCP ) );
+
+    // Fill pppoe part
+    PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
+    pppoe->version = 1;
+    pppoe->type = 1;
+    pppoe->ppp_protocol = bswap( static_cast<uint16_t>( PPP_PROTO::IPCP ) );
+    pppoe->code = PPPOE_CODE::SESSION_DATA;
+    pppoe->session_id = bswap( session_id );
+
+    // Fill LCP part
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp->code = LCP_CODE::CONF_REJ;
+    lcp->identifier = pkt_id;
+    lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() ) );
+
+    // Insert rejected options
+    pkt.insert( pkt.end(), rejected_options.begin(), rejected_options.end() );
+
+    // After all fix lenght in headers
+    pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
+    lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() + 2 ) ); // plus 2 bytes of ppp proto
+
+    auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
+    pkt.insert( pkt.begin(), header.begin(), header.end() );
+
+    // Send this CONF REJ
+    runtime->ppp_outcoming.push( std::move( pkt ) );
+
     return { PPP_FSM_ACTION::NONE, "" };
 }
 
