@@ -572,7 +572,8 @@ void VPPAPI::collect_counters() {
         if( ! ( strcmp( stat->name, "/if/drops" ) == 0 ||
             strcmp( stat->name, "/if/tx" ) == 0 ||
             strcmp( stat->name, "/if/rx" ) == 0 ) ) {
-            continue;
+                stat_segment_data_free( stat );
+                continue;
         }
         logger->logDebug() << LOGS::VPP << stat->name << std::endl;
         
