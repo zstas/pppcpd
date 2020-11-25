@@ -342,9 +342,23 @@ bool VPPAPI::set_state( uint32_t ifi, bool admin_state ) {
     return true;
 }
 
-bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
+bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
     auto vpp_ifs { get_ifaces() };
-    std::map<VPPInterface,InterfaceConf> conf;
+    // std::map<VPPInterface,InterfaceConf> conf;
+    uint32_t wan_sw_ifindex = { 0 };
+
+    // process wan in first place
+    {
+        InterfaceConf wan_iface;
+        for( auto it = ifaces.begin(); it != ifaces.end(); it++ ) {
+            if( it->is_wan ) {
+                wan_iface = *it;
+                ifaces.erase( it );
+                break;
+            }
+        }
+        ifaces.insert( ifaces.begin(), wan_iface );
+    }
 
     for( auto const &iface: ifaces ) {
         auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
@@ -382,6 +396,9 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
         if( iface.gateway ) {
             set_gateway( boost::asio::ip::make_network_v4( "0.0.0.0/0" ), *iface.gateway );
         }
+        if( iface.is_wan ) {
+            wan_sw_ifindex = conf_ifi;
+        }
         for( auto const &vlan: iface.vlans ) {
             bool ret;
             uint32_t ifi;
@@ -391,6 +408,9 @@ bool VPPAPI::setup_interfaces( const std::vector<InterfaceConf> &ifaces ) {
             }
             set_state( ifi, true );
             set_mtu( ifi, iface.mtu.value() );
+            if( iface.unnumbered_on_wan ) {
+                set_unnumbered( ifi, wan_sw_ifindex );
+            }
         }
     }
     return true;
@@ -423,6 +443,32 @@ bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
     return true;
 }
 
+bool VPPAPI::set_unnumbered( uint32_t unnumbered, uint32_t iface ) {
+    vapi::Sw_interface_set_unnumbered unn { con };
+
+    auto &req = unn.get_request().get_payload();
+    req.is_add = 1;
+    req.sw_if_index = iface;
+    req.unnumbered_sw_if_index = unnumbered;
+
+    auto ret = unn.execute();
+    if( ret != VAPI_OK ) {
+        return false;
+    }
+
+    do {
+        ret = con.wait_for_response( unn );
+    } while( ret == VAPI_EAGAIN );
+
+    auto &repl = unn.get_response().get_payload();
+    if( repl.retval != 0 ) {
+        return false;
+    }
+
+    return {};
+}
+
+
 std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix, const address_v4_t &nexthop ) {
     vapi::Ip_route_add_del route { con, 0 };
 
@@ -435,6 +481,7 @@ std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix
     req.route.table_id = 0;
     req.route.n_paths = 1;
     *reinterpret_cast<uint32_t*>( req.route.paths[0].nh.address.ip4 ) = bswap( nexthop.to_uint() );
+    req.route.paths[0].sw_if_index = ~0;
     
     auto ret = route.execute();
     if( ret != VAPI_OK ) {

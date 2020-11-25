@@ -65,6 +65,8 @@ struct InterfaceConf {
     std::optional<network_v4_t> address;
     std::optional<address_v4_t> gateway;
     std::vector<uint16_t> vlans;
+    bool is_wan{ false };
+    bool unnumbered_on_wan{ false };
 };
 
 struct PPPOEGlobalConf {

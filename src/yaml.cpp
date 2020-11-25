@@ -101,6 +101,8 @@ YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
     Node node;
     node[ "device" ] = rhs.device;
     node[ "admin_state" ] = rhs.admin_state;
+    node[ "is_wan" ] = rhs.is_wan;
+    node[ "unnumbered_on_wan" ] = rhs.unnumbered_on_wan;
     if( rhs.mtu.has_value() ) {
         node[ "mtu" ] = rhs.mtu.value();
     }
@@ -135,6 +137,12 @@ bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf
         rhs.gateway = boost::asio::ip::make_address_v4( node[ "gateway" ].as<std::string>() );
     }
     rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
+    if( node[ "is_wan" ].IsDefined() ) {
+        rhs.is_wan = node[ "is_wan" ].as<bool>();
+    }
+    if( node[ "unnumbered_on_wan" ].IsDefined() ) {
+        rhs.unnumbered_on_wan = node[ "unnumbered_on_wan" ].as<bool>();
+    }
     return true;
 }
 

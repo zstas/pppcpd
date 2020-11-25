@@ -70,11 +70,12 @@ public:
     bool delete_tap( uint32_t id );
 
     // Interface configuration
-    bool setup_interfaces( const std::vector<InterfaceConf> &ifaces );
+    bool setup_interfaces( std::vector<InterfaceConf> ifaces );
     bool set_ip( uint32_t id, network_v4_t address );
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
     std::tuple<uint32_t,std::string> set_gateway( const network_v4_t &prefix, const address_v4_t &nexthop );
+    bool set_unnumbered( uint32_t unnumbered, uint32_t iface );
 
     // PPPoE methods
     std::tuple<bool,uint32_t> add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );

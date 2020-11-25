@@ -54,20 +54,27 @@ static void conf_init() {
         std::forward_as_tuple( "main_acct_1" ),
         std::forward_as_tuple( "127.0.0.1", 1813, "testing123" ) );
 
-    InterfaceConf iconf;
-    iconf.device = "GigabitEthernet0/8/0";
-    iconf.mtu.emplace( 1500 );
-    iconf.vlans.emplace_back( 200 );
-    iconf.vlans.emplace_back( 201 );
-    iconf.vlans.emplace_back( 202 );
-    global_conf.interfaces.push_back( std::move( iconf ) );
+    {
+        InterfaceConf iconf;
+        iconf.device = "GigabitEthernet0/8/0";
+        iconf.mtu.emplace( 1500 );
+        iconf.vlans.emplace_back( 200 );
+        iconf.vlans.emplace_back( 201 );
+        iconf.vlans.emplace_back( 202 );
+        iconf.unnumbered_on_wan = true;
+        global_conf.interfaces.push_back( std::move( iconf ) );
+    }
 
-    iconf.device = "GigabitEthernet0/9/0";
-    iconf.mtu.emplace( 1500 );
-    iconf.conf_as_subif.emplace( 150 );
-    iconf.gateway.emplace( boost::asio::ip::make_address_v4( "10.0.0.1" ) );
-    iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
-    global_conf.interfaces.push_back( std::move( iconf ) );
+    {
+        InterfaceConf iconf;
+        iconf.device = "GigabitEthernet0/9/0";
+        iconf.mtu.emplace( 1500 );
+        iconf.conf_as_subif.emplace( 150 );
+        iconf.gateway.emplace( boost::asio::ip::make_address_v4( "10.0.0.1" ) );
+        iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
+        iconf.is_wan = true;
+        global_conf.interfaces.push_back( std::move( iconf ) );
+    }
 
     YAML::Node config;
     config = global_conf;
