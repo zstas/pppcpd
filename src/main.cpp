@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 #include <fstream>
+#include <boost/asio/signal_set.hpp>
 #include <boost/program_options.hpp>
 
 #include <yaml-cpp/yaml.h>
@@ -111,10 +112,8 @@ int main( int argc, char *argv[] ) {
         return 0;
     }
 
-    YAML::Node config = YAML::LoadFile( path_config );
-
     io_service io;
-    runtime = std::make_shared<PPPOERuntime>( config.as<PPPOEGlobalConf>(), io );
+    runtime = std::make_shared<PPPOERuntime>( path_config, io );
 
     // LCP options
     runtime->lcp_conf = std::make_shared<LCPPolicy>();

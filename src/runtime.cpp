@@ -1,14 +1,18 @@
-#include <string>
 #include <memory>
+#include <string>
 #include <fstream>
+#include <yaml-cpp/yaml.h>
 
 #include "runtime.hpp"
 #include "log.hpp"
+#include "string_helpers.hpp"
+#include "yaml.hpp"
 
-PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) : 
-    conf( newconf ),
+PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) : 
+    conf_path( cp ),
     io( i )
 {
+    reloadConfig();
     logger = std::make_unique<Logger>();
     aaa = std::make_shared<AAA>( io, conf.aaa_conf );
 
@@ -47,50 +51,21 @@ PPPOERuntime::PPPOERuntime( PPPOEGlobalConf newconf, io_service &i ) :
     }
 }
 
+void PPPOERuntime::reloadConfig() {
+    try {
+        YAML::Node config = YAML::LoadFile( conf_path );
+        conf = config.as<PPPOEGlobalConf>();
+    } catch( std::exception &e ) {
+        logger->logError() << LOGS::MAIN << "Error on reloading config: " << e.what() << std::endl;
+    }
+}
+
 bool operator<( const pppoe_key_t &l, const pppoe_key_t &r ) {
     return std::tie( l.session_id, l.outer_vlan, l.inner_vlan, l.mac ) < std::tie( r.session_id, r.outer_vlan, r.inner_vlan, r.mac );
 }
 
 bool operator<( const pppoe_conn_t &l, const pppoe_conn_t &r ) {
     return std::tie( l.cookie, l.outer_vlan, l.inner_vlan, l.mac ) < std::tie( r.cookie, r.outer_vlan, r.inner_vlan, r.mac );
-}
-
-std::ostream& operator<<( std::ostream &stream, const pppoe_key_t &key ) {
-    stream << "PPPoE Key: mac: " << key.mac << " session id: " << key.session_id << " outer vlan: " << key.outer_vlan << " inner vlan: " << key.inner_vlan;
-    return stream;
-}
-
-std::ostream& operator<<( std::ostream &stream, const pppoe_conn_t &conn ) {
-    stream << "PPPoE Connection: mac: " << conn.mac << " cookie: " << conn.cookie << " outer vlan: " << conn.outer_vlan << " inner vlan: " << conn.inner_vlan;
-    return stream;
-}
-
-std::string pppoe_conn_t::to_string() const {
-    std::ostringstream out;
-
-    out << "MAC: ";
-    for( auto const &el: mac ) {
-        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
-    }
-    out << " outer_vlan: " << outer_vlan;
-    out << " inner_vlan: " << inner_vlan;
-    out << " cookie: " << cookie;
-
-    return out.str();
-}
-
-std::string pppoe_key_t::to_string() const {
-    std::ostringstream out;
-
-    out << "MAC: ";
-    for( auto const &el: mac ) {
-        out << std::hex << std::setw( 2 ) << std::setfill('0') << (int)el << ":";
-    }
-    out << " session_id: " << session_id;
-    out << " outer_vlan: " << outer_vlan;
-    out << " inner_vlan: " << inner_vlan;
-
-    return out.str();
 }
 
 std::string PPPOERuntime::pendeSession( mac_t mac, uint16_t outer_vlan, uint16_t inner_vlan, const std::string &cookie ) {
@@ -127,7 +102,7 @@ std::tuple<uint16_t,std::string> PPPOERuntime::allocateSession( const encapsulat
             ); !ret ) {
                 return { 0, "Cannot allocate session: cannot emplace new PPPOESession" };
             } else {
-                logger->logDebug() << LOGS::MAIN << "Allocated PPPOE Session: " << it->first.to_string();
+                logger->logDebug() << LOGS::MAIN << "Allocated PPPOE Session: " << it->first << std::endl;
             }
             return { i, "" };
         }
@@ -144,7 +119,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
     for( auto const &[ k, v ]: activeSessions ) {
         if( v.session_id == *it ) {
             aaa->stopSession( v.aaa_session_id );
-            logger->logDebug() << LOGS::MAIN << "Dellocated PPPOE Session: " << k.to_string();
+            logger->logDebug() << LOGS::MAIN << "Dellocated PPPOE Session: " << k << std::endl;
             activeSessions.erase( k );
             break;
         }
@@ -156,7 +131,7 @@ std::string PPPOERuntime::deallocateSession( uint16_t sid ) {
 
 void PPPOERuntime::clearPendingSession( std::shared_ptr<boost::asio::steady_timer> timer, pppoe_conn_t key ) {
     if( auto const &it = pendingSession.find( key ); it != pendingSession.end() ) {
-        logger->logDebug() << LOGS::MAIN << "Deleting pending session due timeout: " << key.to_string();
+        logger->logDebug() << LOGS::MAIN << "Deleting pending session due timeout: " << key << std::endl;
         pendingSession.erase( it );
     }
 }

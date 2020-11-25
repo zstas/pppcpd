@@ -16,7 +16,13 @@ extern std::atomic_bool interrupted;
 extern std::shared_ptr<PPPOERuntime> runtime;
 
 EVLoop::EVLoop( io_service &i ):
-    io( i )
+    io( i ),
+    signals( i, SIGTERM, SIGINT, SIGHUP ),
+    pppoed( PF_PACKET, SOCK_RAW ),
+    pppoes( PF_PACKET, SOCK_RAW ),
+    raw_sock_pppoe( i, pppoed ),
+    raw_sock_ppp( i, pppoes ),
+    periodic_callback( i )
 {
     sockaddr_ll sockaddr;
     memset(&sockaddr, 0, sizeof(sockaddr));
@@ -32,15 +38,26 @@ EVLoop::EVLoop( io_service &i ):
 
     runtime->logger->logInfo() << LOGS::MAIN << "Listening on interface " << runtime->conf.tap_name << std::endl;
 
-    signals.async_wait( [ &, this ]( boost::system::error_code, int signal ) {
-        interrupted = true;
-        runtime->logger->logInfo() << "Got signal to interrupt, exiting" << std::endl;
-        io.stop();
-    });
+    signals.async_wait( std::bind( &EVLoop::on_signal, this, std::placeholders::_1, std::placeholders::_2 ) );
 
     raw_sock_pppoe.async_wait( boost::asio::socket_base::wait_type::wait_read, std::bind( &EVLoop::receive_pppoe, this, std::placeholders::_1 ) );
     periodic_callback.expires_from_now( boost::asio::chrono::milliseconds( 20 ) );
     periodic_callback.async_wait( std::bind( &EVLoop::periodic, this, std::placeholders::_1 ) );
+}
+
+void EVLoop::on_signal( const boost::system::error_code &ec, int signal ) {
+    switch( signal ) {
+    case SIGTERM:
+    case SIGINT:
+        interrupted = true;
+        runtime->logger->logInfo() << LOGS::MAIN << "Got signal to exit" << std::endl;
+        io.stop();
+        break;
+    case SIGHUP:
+        runtime->logger->logInfo() << LOGS::MAIN << "Got signal to reload config" << std::endl;
+        runtime->reloadConfig();
+    }
+    signals.async_wait( std::bind( &EVLoop::on_signal, this, std::placeholders::_1, std::placeholders::_2 ) );
 }
 
 void EVLoop::generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan ) {

@@ -31,22 +31,23 @@ struct PPPOEQ {
 };
 
 class EVLoop {
-private:
-    io_service &io;
-    boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
-    std::array<uint8_t,1500> pktbuf;
-
-    boost::asio::generic::raw_protocol pppoed { PF_PACKET, SOCK_RAW };
-    boost::asio::generic::raw_protocol pppoes { PF_PACKET, SOCK_RAW };
-    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe { io, pppoed };
-    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp { io, pppoes };
-    boost::asio::steady_timer periodic_callback{ io };
 public:
     EVLoop( io_service &i );
     void generic_receive( boost::system::error_code ec, std::size_t len, uint16_t outer_vlan, uint16_t inner_vlan );
     void receive_pppoe( boost::system::error_code ec );
     void receive_ppp( boost::system::error_code ec );
     void periodic( boost::system::error_code ec );
+    void on_signal( const boost::system::error_code &ec, int signal );
+
+private:
+    io_service &io;
+    boost::asio::signal_set signals;
+    std::array<uint8_t,1500> pktbuf;
+    boost::asio::generic::raw_protocol pppoed;
+    boost::asio::generic::raw_protocol pppoes;
+    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_pppoe;
+    boost::asio::basic_raw_socket<boost::asio::generic::raw_protocol> raw_sock_ppp;
+    boost::asio::steady_timer periodic_callback;
 };
 
 #endif

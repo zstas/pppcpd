@@ -5,6 +5,7 @@
 
 #include "ppp_fsm.hpp"
 #include "runtime.hpp"
+#include "log.hpp"
 #include "string_helpers.hpp"
 
 using namespace std::string_literals;
@@ -22,7 +23,9 @@ FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
 
     if( state == PPP_FSM_STATE::Initial || 
         state == PPP_FSM_STATE::Starting ) {
-            return { PPP_FSM_ACTION::NONE, "Received packet in invalid state: "s + std::to_string( state ) };
+            std::stringstream ss;
+            ss << "Received packet in invalid state: " << state;
+            return { PPP_FSM_ACTION::NONE, ss.str() };
     }
     
     switch( lcp->code ) {
