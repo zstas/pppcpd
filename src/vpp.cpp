@@ -92,7 +92,7 @@ VPPAPI::~VPPAPI() {
     }
 }
 
-std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add ) {
+std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, const std::string &vrf, bool is_add ) {
     vapi::Pppoe_add_del_session pppoe( con );
 
     auto &req = pppoe.get_request().get_payload();
@@ -107,7 +107,15 @@ std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16
     req.client_mac[0] = mac[0]; req.client_mac[1] = mac[1]; req.client_mac[2] = mac[2]; 
     req.client_mac[3] = mac[3]; req.client_mac[4] = mac[4]; req.client_mac[5] = mac[5]; 
 
-    req.decap_vrf_id = 0;
+    if( vrf.empty() ) {
+        req.decap_vrf_id = 0;
+    } else {
+        if( auto vrfIt = vrfs.find( vrf ); vrfIt == vrfs.end() ) {
+            return { false, 0 };
+        } else {
+            req.decap_vrf_id = vrfIt->second;
+        }
+    }
     req.session_id = session_id;
     if( is_add ) {
         req.is_add = 1;
@@ -465,7 +473,7 @@ bool VPPAPI::set_unnumbered( uint32_t unnumbered, uint32_t iface ) {
         return false;
     }
 
-    return {};
+    return true;
 }
 
 
@@ -678,6 +686,36 @@ void VPPAPI::collect_counters() {
     }
     stat_segment_vec_free( ls );
     stat_client_free( client );
+}
+
+bool VPPAPI::add_vrf( const std::string &name, uint32_t id ) {
+    vapi::Ip_table_add_del table { con };
+
+    auto &req = table.get_request().get_payload();
+    req.is_add = 1;
+    req.table.is_ip6 = false;
+    std::memset( req.table.name, 0, sizeof( req.table.name ) );
+    std::copy( name.begin(), name.end(), req.table.name );
+    req.table.table_id = id;
+
+    auto ret = table.execute();
+    if( ret != VAPI_OK ) {
+        return false;
+    }
+
+    do {
+        ret = con.wait_for_response( table );
+    } while( ret == VAPI_EAGAIN );
+
+    auto &repl = table.get_response().get_payload();
+    if( repl.retval != 0 ) {
+        return false;
+    }
+
+    uint32_t vrf_id = repl.retval;
+    vrfs.emplace( name, vrf_id );
+
+    return true;
 }
 
 std::tuple<bool,VPPIfaceCounters> VPPAPI::get_counters_by_index( uint32_t ifindex ) {

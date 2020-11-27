@@ -36,6 +36,7 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPP
     dns1( resp.dns1 ),
     dns2( resp.dns2 ),
     address( resp.framed_ip ),
+    vrf( resp.vrf ),
     acct( s )
 {
     if( address.to_uint() == 0 ) {

@@ -78,9 +78,12 @@ public:
     bool set_unnumbered( uint32_t unnumbered, uint32_t iface );
 
     // PPPoE methods
-    std::tuple<bool,uint32_t> add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, bool is_add = true );
+    std::tuple<bool,uint32_t> add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, const std::string &vrf, bool is_add = true );
     bool add_pppoe_cp( uint32_t sw_if_index, bool to_del = false );
     std::vector<VPP_PPPOE_Session> dump_pppoe_sessions();
+
+    // VRF methods
+    bool add_vrf( const std::string &name, uint32_t id );
 
     // Stats
     std::tuple<bool,VPPIfaceCounters> get_counters_by_index( uint32_t ifindex );
@@ -92,6 +95,7 @@ private:
     boost::asio::steady_timer timer;
     std::unique_ptr<Logger> &logger;
     std::map<uint32_t,VPPIfaceCounters> counters;
+    std::map<std::string,uint32_t> vrfs;
     vapi::Connection con;
 };
 

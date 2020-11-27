@@ -137,6 +137,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
         return { PPP_FSM_ACTION::NONE, "Cannot send conf nak cause: "s + err };
     } else {
         session.address = aaa_session->address.to_uint();
+        session.vrf = aaa_session->vrf;
     }
 
     LCP_CODE code = LCP_CODE::CONF_ACK;

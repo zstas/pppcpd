@@ -25,6 +25,7 @@ struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     std::string username;
     uint32_t address;
     uint32_t ifindex;
+    std::string vrf;
 
     // PPP FSM for all the protocols we support
     struct LCP_FSM lcp;

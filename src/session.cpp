@@ -22,7 +22,7 @@ PPPOESession::~PPPOESession() {
 }
 
 std::string PPPOESession::provision_dp() {
-    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac ); !ret ) {
+    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, vrf, true ); !ret ) {
         return "Cannot add new session to vpp ";
     } else {
         ifindex = ifi;
@@ -31,7 +31,7 @@ std::string PPPOESession::provision_dp() {
 }
 
 std::string PPPOESession::deprovision_dp() {
-    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, false ); !ret ) {
+    if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, vrf, false ); !ret ) {
         return "Cannot delete session from vpp ";
     }
     return {};

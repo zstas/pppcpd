@@ -24,6 +24,7 @@ public:
     uint32_t session_id;
     std::string username;
     address_v4_t address;
+    std::string vrf;
 
     address_v4_t dns1;
     address_v4_t dns2;
