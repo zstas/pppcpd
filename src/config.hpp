@@ -63,10 +63,26 @@ struct InterfaceConf {
     std::optional<uint16_t> mtu;
     std::optional<uint16_t> conf_as_subif;
     std::optional<network_v4_t> address;
-    std::optional<address_v4_t> gateway;
     std::vector<uint16_t> vlans;
     bool is_wan{ false };
     bool unnumbered_on_wan{ false };
+};
+
+struct StaticRIBEntry {
+    network_v4_t destination;
+    address_v4_t nexthop;
+    std::optional<std::string> description;
+    int32_t rid_in_vpp;
+};
+
+struct StaticRIB {
+    std::vector<StaticRIBEntry> entries;
+};
+
+struct VRFConf {
+    std::string name;
+    uint32_t table_id;
+    StaticRIB rib;
 };
 
 struct PPPOEGlobalConf {
@@ -75,6 +91,8 @@ struct PPPOEGlobalConf {
     PPPOEPolicy default_pppoe_conf;
     std::map<uint16_t,PPPOEPolicy> pppoe_confs;
     AAAConf aaa_conf;
+    StaticRIB global_rib;
+    std::vector<VRFConf> vrfs;
 };
 
 #endif

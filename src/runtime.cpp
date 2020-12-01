@@ -44,6 +44,12 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
     }
     vpp->setup_interfaces( conf.interfaces );
 
+    for( auto &rib_entry: conf.global_rib.entries ) {
+        if( auto const &[ success, rid ] = vpp->add_route( rib_entry.destination, rib_entry.nexthop, 0 ); success ) {
+            rib_entry.rid_in_vpp = rid;
+        }
+    }
+
     std::ofstream dis_ipv6 { "/proc/sys/net/ipv6/conf/tap0/disable_ipv6" };
     if( dis_ipv6.is_open() ) {
         dis_ipv6 << "1";

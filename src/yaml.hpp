@@ -62,6 +62,27 @@ namespace YAML {
         static Node encode(const PPPOEGlobalConf &rhs);
         static bool decode(const Node &node, PPPOEGlobalConf &rhs);
     };
+
+    template <>
+    struct convert<StaticRIB>
+    {
+        static Node encode(const StaticRIB &rhs);
+        static bool decode(const Node &node, StaticRIB &rhs);
+    };
+
+    template <>
+    struct convert<StaticRIBEntry>
+    {
+        static Node encode(const StaticRIBEntry &rhs);
+        static bool decode(const Node &node, StaticRIBEntry &rhs);
+    };
+
+    template <>
+    struct convert<VRFConf>
+    {
+        static Node encode(const VRFConf &rhs);
+        static bool decode(const Node &node, VRFConf &rhs);
+    };
 }
 
 #endif

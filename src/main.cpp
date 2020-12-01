@@ -71,10 +71,17 @@ static void conf_init() {
         iconf.device = "GigabitEthernet0/9/0";
         iconf.mtu.emplace( 1500 );
         iconf.conf_as_subif.emplace( 150 );
-        iconf.gateway.emplace( boost::asio::ip::make_address_v4( "10.0.0.1" ) );
         iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
         iconf.is_wan = true;
         global_conf.interfaces.push_back( std::move( iconf ) );
+    }
+
+    {
+        StaticRIBEntry rib_entry;
+        rib_entry.destination = boost::asio::ip::make_network_v4( "0.0.0.0/0" );
+        rib_entry.nexthop = boost::asio::ip::make_address_v4( "10.0.0.1" );
+        rib_entry.description = "default gateway";
+        global_conf.global_rib.entries.push_back( std::move( rib_entry ) );
     }
 
     YAML::Node config;

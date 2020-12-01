@@ -74,8 +74,10 @@ public:
     bool set_ip( uint32_t id, network_v4_t address );
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
-    std::tuple<uint32_t,std::string> set_gateway( const network_v4_t &prefix, const address_v4_t &nexthop );
     bool set_unnumbered( uint32_t unnumbered, uint32_t iface );
+
+    // Route methods
+    std::tuple<bool,int32_t> add_route( const network_v4_t &prefix, const address_v4_t &nexthop, uint32_t table_id );
 
     // PPPoE methods
     std::tuple<bool,uint32_t> add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, const std::string &vrf, bool is_add = true );

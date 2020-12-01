@@ -401,9 +401,6 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
         if( iface.address ) {
             set_ip( conf_ifi, iface.address.value() );
         }
-        if( iface.gateway ) {
-            set_gateway( boost::asio::ip::make_network_v4( "0.0.0.0/0" ), *iface.gateway );
-        }
         if( iface.is_wan ) {
             wan_sw_ifindex = conf_ifi;
         }
@@ -477,7 +474,7 @@ bool VPPAPI::set_unnumbered( uint32_t unnumbered, uint32_t iface ) {
 }
 
 
-std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix, const address_v4_t &nexthop ) {
+std::tuple<bool,int32_t> VPPAPI::add_route( const network_v4_t &prefix, const address_v4_t &nexthop, uint32_t table_id ) {
     vapi::Ip_route_add_del route { con, 0 };
 
     auto &req = route.get_request().get_payload();
@@ -486,7 +483,7 @@ std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix
     req.route.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
     *reinterpret_cast<uint32_t*>( req.route.prefix.address.un.ip4 ) = bswap( prefix.address().to_uint() );
     req.route.prefix.len = prefix.prefix_length();
-    req.route.table_id = 0;
+    req.route.table_id = table_id;
     req.route.n_paths = 1;
     *reinterpret_cast<uint32_t*>( req.route.paths[0].nh.address.ip4 ) = bswap( nexthop.to_uint() );
     req.route.paths[0].sw_if_index = ~0;
@@ -494,7 +491,7 @@ std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix
     auto ret = route.execute();
     if( ret != VAPI_OK ) {
         log( "error!" );
-        return { -1, "Cannot execute Ip_route_add_del method" };
+        return { false, -1 };
     }
 
     do {
@@ -503,11 +500,11 @@ std::tuple<uint32_t,std::string> VPPAPI::set_gateway( const network_v4_t &prefix
 
     auto &repl = route.get_response().get_payload();
     if( repl.retval != 0 ) {
-        return { -1, "Error on adding route to vpp" };
+        return  { false, -1 };
     }
 
     auto rid = repl.stats_index;
-    return { rid, "" };
+    return { true, rid  };
 }
 
 bool VPPAPI::del_subif( uint32_t sw_if_index ) {

@@ -112,9 +112,6 @@ YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
     }
-    if( rhs.gateway.has_value() ) {
-        node[ "gateway" ] = rhs.gateway.value().to_string();
-    }
     node[ "vlans" ] = rhs.vlans;
     return node;
 }
@@ -133,9 +130,6 @@ bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf
     if( node[ "address" ].IsDefined() ) {
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
     }
-    if( node[ "gateway" ].IsDefined() ) {
-        rhs.gateway = boost::asio::ip::make_address_v4( node[ "gateway" ].as<std::string>() );
-    }
     rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
     if( node[ "is_wan" ].IsDefined() ) {
         rhs.is_wan = node[ "is_wan" ].as<bool>();
@@ -153,6 +147,8 @@ YAML::Node YAML::convert<PPPOEGlobalConf>::encode( const PPPOEGlobalConf &rhs ) 
     node[ "default_pppoe_conf" ] = rhs.default_pppoe_conf;
     node[ "pppoe_confs" ] = rhs.pppoe_confs;
     node[ "aaa_conf" ] = rhs.aaa_conf;
+    node[ "global_rib" ] = rhs.global_rib;
+    node[ "vrfs" ] = rhs.vrfs;
     return node;
 }
 
@@ -177,5 +173,50 @@ bool YAML::convert<AAARadConf>::decode( const YAML::Node &node, AAARadConf &rhs 
     rhs.address = address_v4_t::from_string( node[ "address" ].as<std::string>() );
     rhs.port = node[ "port" ].as<uint16_t>();
     rhs.secret = node[ "secret" ].as<std::string>();
+    return true;
+}
+
+YAML::Node YAML::convert<StaticRIBEntry>::encode( const StaticRIBEntry &rhs ) {
+    Node node;
+    node[ "destination" ] = rhs.destination.to_string();
+    node[ "nexthop" ] = rhs.nexthop.to_string();
+    if( rhs.description.has_value() ) {
+        node[ "description" ] = *rhs.description;
+    }
+    return node;
+}
+
+bool YAML::convert<StaticRIBEntry>::decode( const YAML::Node &node, StaticRIBEntry &rhs ) {
+    rhs.destination = boost::asio::ip::make_network_v4( node[ "destination" ].as<std::string>() );
+    rhs.nexthop = address_v4_t::from_string( node[ "nexthop" ].as<std::string>() );
+    if( node[ "description" ].IsDefined() ) {
+        rhs.description = node[ "description" ].as<std::string>();
+    }
+    return true;
+}
+
+YAML::Node YAML::convert<StaticRIB>::encode( const StaticRIB &rhs ) {
+    Node node;
+    node[ "entries" ] = rhs.entries;
+    return node;
+}
+
+bool YAML::convert<StaticRIB>::decode( const YAML::Node &node, StaticRIB &rhs ) {
+    rhs.entries = node[ "entries" ].as<std::vector<StaticRIBEntry>>();
+    return true;
+}
+
+YAML::Node YAML::convert<VRFConf>::encode( const VRFConf &rhs ) {
+    Node node;
+    node[ "name" ] = rhs.name;
+    node[ "table_id" ] = rhs.table_id;
+    node[ "rib" ] = rhs.rib;
+    return node;
+}
+
+bool YAML::convert<VRFConf>::decode( const YAML::Node &node, VRFConf &rhs ) {
+    rhs.name = node[ "destination" ].as<std::string>();
+    rhs.table_id = node[ "table_id" ].as<uint32_t>();
+    rhs.rib = node[ "rib" ].as<StaticRIB>();
     return true;
 }
