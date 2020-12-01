@@ -1,5 +1,9 @@
 #include "yaml.hpp"
 
+#include "policy.hpp"
+#include "config.hpp"
+#include "aaa.hpp"
+
 YAML::Node YAML::convert<PPPOEPolicy>::encode( const PPPOEPolicy &rhs ) {
     Node node;
     node["ac_name"] = rhs.ac_name;
@@ -97,46 +101,59 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
     return true;
 }
 
-YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
+YAML::Node YAML::convert<InterfaceUnit>::encode( const InterfaceUnit &rhs ) {
     Node node;
-    node[ "device" ] = rhs.device;
     node[ "admin_state" ] = rhs.admin_state;
     node[ "is_wan" ] = rhs.is_wan;
     node[ "unnumbered_on_wan" ] = rhs.unnumbered_on_wan;
-    if( rhs.mtu.has_value() ) {
-        node[ "mtu" ] = rhs.mtu.value();
-    }
-    if( rhs.conf_as_subif.has_value() ) {
-        node[ "conf_as_subif" ] = rhs.conf_as_subif.value();
-    }
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
     }
-    node[ "vlans" ] = rhs.vlans;
+    node[ "vlan" ] = rhs.vlan;
+    if( !rhs.vrf.empty() ) {
+        node[ "vrf" ] = rhs.vrf;
+    }
     return node;
 }
 
-bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf &rhs ) {
-    rhs.device = node[ "device" ].as<std::string>();
+bool YAML::convert<InterfaceUnit>::decode( const YAML::Node &node, InterfaceUnit &rhs ) {
     if( node[ "admin_state" ].IsDefined() ) {
         rhs.admin_state = node[ "admin_state" ].as<bool>();
-    }
-    if( node[ "mtu" ].IsDefined() ) {
-        rhs.mtu = node[ "mtu" ].as<uint16_t>();
-    }
-    if( node[ "conf_as_subif" ].IsDefined() ) {
-        rhs.conf_as_subif = node[ "conf_as_subif" ].as<uint16_t>();
     }
     if( node[ "address" ].IsDefined() ) {
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
     }
-    rhs.vlans = node[ "vlans" ].as<std::vector<uint16_t>>();
+    rhs.vlan = node[ "vlan" ].as<uint16_t>();
     if( node[ "is_wan" ].IsDefined() ) {
         rhs.is_wan = node[ "is_wan" ].as<bool>();
     }
     if( node[ "unnumbered_on_wan" ].IsDefined() ) {
         rhs.unnumbered_on_wan = node[ "unnumbered_on_wan" ].as<bool>();
     }
+    if( node[ "vrf" ].IsDefined() ) {
+        rhs.vrf = node[ "vrf" ].as<std::string>();
+    }
+    return true;
+}
+
+YAML::Node YAML::convert<InterfaceConf>::encode( const InterfaceConf &rhs ) {
+    Node node;
+    node[ "device" ] = rhs.device;
+    node[ "admin_state" ] = rhs.admin_state;
+    if( rhs.mtu ) {
+        node[ "mtu" ] = *rhs.mtu;
+    }
+    node[ "units" ] = rhs.units;
+    return node;
+}
+
+bool YAML::convert<InterfaceConf>::decode( const YAML::Node &node, InterfaceConf &rhs ) {
+    rhs.device = node[ "device" ].as<std::string>();
+    rhs.admin_state = node[ "admin_state" ].as<bool>();
+    if( node[ "mtu" ].IsDefined() ) {
+        rhs.mtu = node[ "mtu" ].as<uint16_t>();
+    }
+    rhs.units = node[ "units" ].as<std::map<uint16_t,InterfaceUnit>>();
     return true;
 }
 
@@ -158,6 +175,8 @@ bool YAML::convert<PPPOEGlobalConf>::decode( const YAML::Node &node, PPPOEGlobal
     rhs.default_pppoe_conf = node[ "default_pppoe_conf" ].as<PPPOEPolicy>();
     rhs.pppoe_confs = node[ "pppoe_confs" ].as<std::map<uint16_t,PPPOEPolicy>>();
     rhs.aaa_conf = node[ "aaa_conf" ].as<AAAConf>();
+    rhs.global_rib = node[ "global_rib" ].as<StaticRIB>();
+    rhs.vrfs = node[ "vrfs" ].as<std::vector<VRFConf>>();
     return true;
 }
 
@@ -215,7 +234,7 @@ YAML::Node YAML::convert<VRFConf>::encode( const VRFConf &rhs ) {
 }
 
 bool YAML::convert<VRFConf>::decode( const YAML::Node &node, VRFConf &rhs ) {
-    rhs.name = node[ "destination" ].as<std::string>();
+    rhs.name = node[ "name" ].as<std::string>();
     rhs.table_id = node[ "table_id" ].as<uint32_t>();
     rhs.rib = node[ "rib" ].as<StaticRIB>();
     return true;

@@ -2,9 +2,19 @@
 #define YAML_HPP
 
 #include <yaml-cpp/yaml.h>
-#include "policy.hpp"
-#include "config.hpp"
-#include "aaa.hpp"
+
+struct PPPOEPolicy;
+struct FRAMED_POOL;
+enum class AAA_METHODS: uint8_t;
+struct PPPOELocalTemplate;
+struct AAARadConf;
+struct AAAConf;
+struct InterfaceUnit;
+struct InterfaceConf;
+struct PPPOEGlobalConf;
+struct StaticRIB;
+struct StaticRIBEntry;
+struct VRFConf;
 
 namespace YAML {
     template <>
@@ -47,6 +57,13 @@ namespace YAML {
     {
         static Node encode(const AAAConf &rhs);
         static bool decode(const Node &node, AAAConf &rhs);
+    };
+
+    template <>
+    struct convert<InterfaceUnit>
+    {
+        static Node encode(const InterfaceUnit &rhs);
+        static bool decode(const Node &node, InterfaceUnit &rhs);
     };
 
     template <>

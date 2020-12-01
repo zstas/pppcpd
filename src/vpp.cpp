@@ -141,16 +141,18 @@ std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16
     return { true, { repl.sw_if_index } };
 }
 
-std::tuple<bool,uint32_t> VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan ) {
+std::tuple<bool,int32_t> VPPAPI::add_subif( int32_t interface, uint16_t unit, uint16_t outer_vlan, uint16_t inner_vlan ) {
     vapi::Create_subif subif{ con };
 
     auto &req = subif.get_request().get_payload();
-    req.sw_if_index = iface;
+    req.sw_if_index = interface;
+    req.sub_id = unit;
     req.outer_vlan_id = outer_vlan;
     req.inner_vlan_id = inner_vlan;
-    req.sub_id = outer_vlan;
     req.sub_if_flags = vapi_enum_sub_if_flags::SUB_IF_API_FLAG_EXACT_MATCH;
-    if( inner_vlan != 0 ) {
+    if( outer_vlan == 0 ) {
+        req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_NO_TAGS );
+    } else if( inner_vlan != 0 ) {
         req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_TWO_TAGS );
     } else {
         req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_ONE_TAG );
@@ -172,6 +174,32 @@ std::tuple<bool,uint32_t> VPPAPI::add_subif( uint32_t iface, uint16_t outer_vlan
     }
 
     return { true, uint32_t{ repl.sw_if_index } };
+}
+
+bool VPPAPI::set_interface_table( int32_t ifi, int32_t table_id ) {
+    vapi::Sw_interface_set_table set_table{ con };
+
+    auto &req = set_table.get_request().get_payload();
+    req.vrf_id = table_id;
+    req.sw_if_index = ifi;
+    req.is_ipv6 = false;
+    
+    auto ret = set_table.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_set_table api method" << std::endl;
+    }
+
+    do {
+        ret = con.wait_for_response( set_table );
+    } while( ret == VAPI_EAGAIN );
+
+    auto repl = set_table.get_response().get_payload();
+    logger->logDebug() << LOGS::VPP << "Moved interface: " << ifi << std::endl;
+    if( repl.retval == -1 ) {
+        return false;
+    }
+
+    return true;
 }
 
 std::tuple<bool,uint32_t> VPPAPI::create_tap( const std::string &host_name ) {
@@ -291,19 +319,21 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
     return output;
 }
 
-bool VPPAPI::set_ip( uint32_t id, network_v4_t address ) {
+bool VPPAPI::set_ip( uint32_t id, network_v4_t address, bool clearIP ) {
     vapi::Sw_interface_add_del_address setaddr{ con };
 
     auto &req = setaddr.get_request().get_payload();
     req.sw_if_index = id;
-    req.is_add = true;
-    // req.del_all = true;
-    req.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
-    req.prefix.address.un.ip4[0] = address.address().to_bytes()[0];
-    req.prefix.address.un.ip4[1] = address.address().to_bytes()[1];
-    req.prefix.address.un.ip4[2] = address.address().to_bytes()[2];
-    req.prefix.address.un.ip4[3] = address.address().to_bytes()[3];
-    req.prefix.len = address.prefix_length();
+    if( clearIP ) {
+        req.del_all = true;
+        req.is_add = false;
+    } else {
+        req.del_all = false;
+        req.is_add = true;
+        req.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
+        *reinterpret_cast<uint32_t*>( req.prefix.address.un.ip4 ) = bswap( address.address().to_uint() );
+        req.prefix.len = address.prefix_length();
+    }
 
     auto ret = setaddr.execute();
     if( ret != VAPI_OK ) {
@@ -356,19 +386,34 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
     uint32_t wan_sw_ifindex = { 0 };
 
     // process wan in first place
-    {
-        InterfaceConf wan_iface;
-        for( auto it = ifaces.begin(); it != ifaces.end(); it++ ) {
-            if( it->is_wan ) {
-                wan_iface = *it;
-                ifaces.erase( it );
-                break;
+    if( auto it = std::find_if(
+        ifaces.begin(), ifaces.end(),
+        []( const InterfaceConf &v ) -> bool {
+            for( auto const &[ id, unit ]: v.units ) {
+                if( unit.is_wan ) {
+                    return true;
+                }
             }
+            return false;
         }
+    ); it != ifaces.end() ) {
+        InterfaceConf wan_iface = *it;
+        ifaces.erase( it );
         ifaces.insert( ifaces.begin(), wan_iface );
     }
 
-    for( auto const &iface: ifaces ) {
+    auto findWan = [ &ifaces ]() -> int32_t {
+        for( auto const &iface: ifaces ) {
+            for( auto const &[ id, unit ]: iface.units ) {
+                if( unit.is_wan ) {
+                    return unit.sw_if_index;
+                }
+            }
+        }
+        return -1;
+    };
+
+    for( auto &iface: ifaces ) {
         auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
             if( iface.device == vpp_if.name ) {
                 return true;
@@ -386,35 +431,38 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
         if( iface.mtu.has_value() ) {
             set_mtu( vppif.sw_if_index, iface.mtu.value() );
         }
-        auto conf_ifi = vppif.sw_if_index;
-        if( iface.conf_as_subif ) {
-            bool ret;
-            uint32_t ifi;
-            std::tie( ret, ifi ) = add_subif( vppif.sw_if_index, *iface.conf_as_subif, 0 );
-            if( !ret ) {
-                logger->logError() << LOGS::VPP << "Cannot create subinterface: " << iface.device << " vlan: " << *iface.conf_as_subif << std::endl;
+        for( auto &[ id, unit ]: iface.units ) {
+            if( auto [ ret, ifi ] = add_subif( vppif.sw_if_index, id, unit.vlan, 0 ); !ret ) {
+                logger->logError() << LOGS::VPP << "Cannot create unit: " << iface.device << "." << id << std::endl;
+                continue;
+            } else {
+                unit.sw_if_index = ifi;
             }
-            set_state( ifi, true );
-            set_mtu( ifi, iface.mtu.value() );
-            conf_ifi = ifi;
-        }
-        if( iface.address ) {
-            set_ip( conf_ifi, iface.address.value() );
-        }
-        if( iface.is_wan ) {
-            wan_sw_ifindex = conf_ifi;
-        }
-        for( auto const &vlan: iface.vlans ) {
-            bool ret;
-            uint32_t ifi;
-            std::tie( ret, ifi ) = add_subif( vppif.sw_if_index, vlan, 0 );
-            if( !ret ) {
-                logger->logError() << LOGS::VPP << "Cannot create subinterface: " << iface.device << " vlan: " << vlan << std::endl;
+            if( !set_state( unit.sw_if_index, unit.admin_state ) ) {
+                logger->logError() << LOGS::VPP << "Cannot set admin state to interface: " << iface.device << "." << id << std::endl;
             }
-            set_state( ifi, true );
-            set_mtu( ifi, iface.mtu.value() );
-            if( iface.unnumbered_on_wan ) {
-                set_unnumbered( ifi, wan_sw_ifindex );
+            if( !unit.vrf.empty() ) {
+                if( auto const &it = vrfs.find( unit.vrf ); it != vrfs.end() ) {
+                    set_interface_table( unit.sw_if_index, it->second );
+                } else {
+                    logger->logError() << LOGS::VPP << "Cannot move interface: " << iface.device << "." << id << "to VRF " << unit.vrf << std::endl;
+                }
+            }
+            if( unit.address ) {
+                if( !set_ip( unit.sw_if_index, *unit.address, true ) ) {
+                    logger->logError() << LOGS::VPP << "Cannot clear IP on interface: " << iface.device << "." << id << std::endl;
+                }
+                if( !set_ip( unit.sw_if_index, *unit.address ) ) {
+                    logger->logError() << LOGS::VPP << "Cannot set IP on interface: " << iface.device << "." << id << std::endl;
+                }
+            }
+            if( unit.unnumbered_on_wan ) {
+                auto wan = findWan();
+                if( wan < 0 ) {
+                    logger->logError() << LOGS::VPP << "Cannot set unnumbered on wan (it's not found) to unit: " << iface.device << "." << id << std::endl;
+                } else {
+                    set_unnumbered( unit.sw_if_index, wan );
+                }
             }
         }
     }
@@ -487,6 +535,7 @@ std::tuple<bool,int32_t> VPPAPI::add_route( const network_v4_t &prefix, const ad
     req.route.n_paths = 1;
     *reinterpret_cast<uint32_t*>( req.route.paths[0].nh.address.ip4 ) = bswap( nexthop.to_uint() );
     req.route.paths[0].sw_if_index = ~0;
+    req.route.paths[0].table_id = table_id;
     
     auto ret = route.execute();
     if( ret != VAPI_OK ) {
@@ -507,7 +556,7 @@ std::tuple<bool,int32_t> VPPAPI::add_route( const network_v4_t &prefix, const ad
     return { true, rid  };
 }
 
-bool VPPAPI::del_subif( uint32_t sw_if_index ) {
+bool VPPAPI::del_subif( int32_t sw_if_index ) {
     vapi::Delete_subif del_subif{ con };
 
     auto &req = del_subif.get_request().get_payload();
@@ -685,15 +734,19 @@ void VPPAPI::collect_counters() {
     stat_client_free( client );
 }
 
-bool VPPAPI::add_vrf( const std::string &name, uint32_t id ) {
+bool VPPAPI::set_vrf( const std::string &name, uint32_t id, bool is_add ) {
     vapi::Ip_table_add_del table { con };
 
     auto &req = table.get_request().get_payload();
-    req.is_add = 1;
     req.table.is_ip6 = false;
-    std::memset( req.table.name, 0, sizeof( req.table.name ) );
-    std::copy( name.begin(), name.end(), req.table.name );
     req.table.table_id = id;
+    if( is_add ) {
+        std::memset( req.table.name, 0, sizeof( req.table.name ) );
+        std::copy( name.begin(), name.end(), req.table.name );
+        req.is_add = 1;
+    } else {
+        req.is_add = 0;
+    }
 
     auto ret = table.execute();
     if( ret != VAPI_OK ) {
@@ -705,14 +758,37 @@ bool VPPAPI::add_vrf( const std::string &name, uint32_t id ) {
     } while( ret == VAPI_EAGAIN );
 
     auto &repl = table.get_response().get_payload();
-    if( repl.retval != 0 ) {
+    if( repl.retval < 0 ) {
         return false;
     }
 
-    uint32_t vrf_id = repl.retval;
-    vrfs.emplace( name, vrf_id );
+    vrfs.emplace( name, id );
 
     return true;
+}
+
+std::vector<VPPVRF> VPPAPI::dump_vrfs() {
+    std::vector<VPPVRF> output;
+    vapi::Ip_table_dump dump { con };
+
+    auto ret = dump.execute();
+    if( ret != VAPI_OK ) {
+        return output;
+    }
+
+    do {
+        ret = con.wait_for_response( dump );
+    } while( ret == VAPI_EAGAIN );
+
+    auto &repl = dump.get_result_set();
+    for( auto const &e: repl ) {
+        auto entry = e.get_payload();
+        VPPVRF vrf;
+        vrf.table_id = entry.table.table_id;
+        vrf.name = std::string{ &entry.table.name[0], &entry.table.name[63] };
+        output.push_back( std::move( vrf ) );
+    }
+    return output;
 }
 
 std::tuple<bool,VPPIfaceCounters> VPPAPI::get_counters_by_index( uint32_t ifindex ) {

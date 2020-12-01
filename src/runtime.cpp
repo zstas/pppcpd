@@ -12,8 +12,8 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
     conf_path( cp ),
     io( i )
 {
-    reloadConfig();
     logger = std::make_unique<Logger>();
+    reloadConfig();
     aaa = std::make_shared<AAA>( io, conf.aaa_conf );
 
     logger->setLevel( LOGL::INFO );
@@ -27,6 +27,12 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
         }
     }
     if( auto const &[ ret, ifi ] = vpp->create_tap( conf.tap_name ); ret ) {
+        std::string path { "/proc/sys/net/ipv6/conf/" + conf.tap_name + "/disable_ipv6" };
+        std::ofstream dis_ipv6 { path };
+        if( dis_ipv6.is_open() ) {
+            dis_ipv6 << "1";
+            dis_ipv6.close();
+        }
         if( !vpp->set_state( ifi, true ) ) {
             logger->logError() << LOGS::VPP << "Cannot set state to interface: " << ifi << std::endl;
         }
@@ -34,9 +40,31 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
             logger->logError() << LOGS::VPP << "Cannot set pppoe cp interface: " << ifi << std::endl;
         }
     }
-    auto temp = vpp->get_ifaces();
-    for( auto const &el: temp ) {
+    for( auto const &vrf: vpp->dump_vrfs() ) {
+        if( vrf.table_id == 0 ) {
+            // keep default table
+            continue;
+        }
+        logger->logInfo() << LOGS::MAIN << "Deleting VRF " << vrf.name << " with table id: " << vrf.table_id << std::endl;
+        if( !vpp->set_vrf( vrf.name, vrf.table_id, false ) ) {
+            logger->logError() << LOGS::MAIN << "Cannot delete VRF " << vrf.name << std::endl;
+        }
+    }
+    for( auto const &vrf: conf.vrfs ) {
+        if( !vpp->set_vrf( vrf.name, vrf.table_id ) ) {
+            logger->logError() << LOGS::MAIN << "Cannot create VRF" << vrf.name << std::endl;
+            continue;
+        }
+        for( auto const &route: vrf.rib.entries ) {
+            if( auto const &[ ret, rid ] = vpp->add_route( route.destination, route.nexthop, vrf.table_id ); !ret ) {
+                logger->logError() << LOGS::MAIN << "Cannot add route " << route.destination.to_string() << 
+                    " via " << route.nexthop.to_string() << " in VRF " << vrf.name << std::endl;
+            }
+        }
+    }
+    for( auto const &el: vpp->get_ifaces() ) {
         if( el.type == IfaceType::SUBIF ) {
+            logger->logInfo() << LOGS::VPP << "Deleting subinterface: " << el << std::endl;
             vpp->del_subif( el.sw_if_index );
             continue;
         }
@@ -48,12 +76,6 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
         if( auto const &[ success, rid ] = vpp->add_route( rib_entry.destination, rib_entry.nexthop, 0 ); success ) {
             rib_entry.rid_in_vpp = rid;
         }
-    }
-
-    std::ofstream dis_ipv6 { "/proc/sys/net/ipv6/conf/tap0/disable_ipv6" };
-    if( dis_ipv6.is_open() ) {
-        dis_ipv6 << "1";
-        dis_ipv6.close();
     }
 }
 

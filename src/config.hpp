@@ -57,15 +57,23 @@ struct AAAConf {
     std::map<std::string,AAARadConf> acct_servers;
 };
 
+struct InterfaceUnit {
+    std::optional<network_v4_t> address;
+    uint16_t vlan;
+    bool is_wan{ false };
+    bool unnumbered_on_wan{ false };
+    bool admin_state { true };
+    std::string vrf;
+
+    // Not in YAML config
+    int32_t sw_if_index{ -1 };
+};
+
 struct InterfaceConf {
     std::string device;
     bool admin_state { true };
     std::optional<uint16_t> mtu;
-    std::optional<uint16_t> conf_as_subif;
-    std::optional<network_v4_t> address;
-    std::vector<uint16_t> vlans;
-    bool is_wan{ false };
-    bool unnumbered_on_wan{ false };
+    std::map<uint16_t,InterfaceUnit> units;
 };
 
 struct StaticRIBEntry {

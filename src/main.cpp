@@ -59,10 +59,19 @@ static void conf_init() {
         InterfaceConf iconf;
         iconf.device = "GigabitEthernet0/8/0";
         iconf.mtu.emplace( 1500 );
-        iconf.vlans.emplace_back( 200 );
-        iconf.vlans.emplace_back( 201 );
-        iconf.vlans.emplace_back( 202 );
-        iconf.unnumbered_on_wan = true;
+
+        InterfaceUnit unit;
+        unit.unnumbered_on_wan = true;
+        unit.vlan = 200;
+        unit.admin_state = true;
+        iconf.units.emplace( 200, unit );
+
+        unit.vlan = 201;
+        iconf.units.emplace( 201, unit );
+
+        unit.vlan = 202;
+        iconf.units.emplace( 202, unit );
+
         global_conf.interfaces.push_back( std::move( iconf ) );
     }
 
@@ -70,9 +79,19 @@ static void conf_init() {
         InterfaceConf iconf;
         iconf.device = "GigabitEthernet0/9/0";
         iconf.mtu.emplace( 1500 );
-        iconf.conf_as_subif.emplace( 150 );
-        iconf.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
-        iconf.is_wan = true;
+
+        InterfaceUnit unit;
+        unit.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
+        unit.is_wan = true;
+        unit.admin_state = true;
+        unit.vlan = 150;
+        iconf.units.emplace( 150, unit );
+
+        unit.address.emplace( boost::asio::ip::make_network_v4( "10.10.0.2/24" ) );
+        unit.vlan = 250;
+        unit.vrf = "RED";
+        iconf.units.emplace( 250, unit );
+
         global_conf.interfaces.push_back( std::move( iconf ) );
     }
 
@@ -82,6 +101,18 @@ static void conf_init() {
         rib_entry.nexthop = boost::asio::ip::make_address_v4( "10.0.0.1" );
         rib_entry.description = "default gateway";
         global_conf.global_rib.entries.push_back( std::move( rib_entry ) );
+    }
+
+    {
+        VRFConf vrf;
+        vrf.name = "RED";
+        vrf.table_id = 10;
+        StaticRIBEntry rib_entry;
+        rib_entry.destination = boost::asio::ip::make_network_v4( "0.0.0.0/0" );
+        rib_entry.nexthop = boost::asio::ip::make_address_v4( "10.10.0.1" );
+        rib_entry.description = "default gateway";
+        vrf.rib.entries.push_back( std::move( rib_entry ) );
+        global_conf.vrfs.push_back( vrf );
     }
 
     YAML::Node config;
@@ -100,23 +131,28 @@ int main( int argc, char *argv[] ) {
         "\n"
         "Arguments"
     };
+
     desc.add_options()
     ( "path,p", boost::program_options::value( &path_config), "Path to config: default is \"config.yaml\"" )
     ( "genconf,g", "Generate a sample configuration" )
-    ( "help,h", "Print this message" )
-    ;
+    ( "help,h", "Print this message" );
 
-    boost::program_options::variables_map vm;
-    boost::program_options::store( boost::program_options::parse_command_line( argc, argv, desc ), vm );
+    try {
+        boost::program_options::variables_map vm;
+        boost::program_options::store( boost::program_options::parse_command_line( argc, argv, desc ), vm );
 
-    if( vm.count( "help" ) ) {  
-        std::cout << desc << "\n";
-        return 0;
-    }
+        if( vm.count( "help" ) ) {  
+            std::cout << desc << "\n";
+            return 0;
+        }
 
-    if( vm.count( "genconf" ) ) {
-        conf_init();
-        return 0;
+        if( vm.count( "genconf" ) ) {
+            conf_init();
+            return 0;
+        }
+    } catch( std::exception &e ) {
+        std::cerr << "Error on parsing arguments: " << e.what() << std::endl;
+        return -1;
     }
 
     io_service io;

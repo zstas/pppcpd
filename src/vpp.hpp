@@ -48,6 +48,11 @@ struct VPPIfaceCounters {
     uint64_t drops;
 };
 
+struct VPPVRF {
+    std::string name;
+    uint32_t table_id;
+};
+
 std::ostream& operator<<( std::ostream &stream, const IfaceType &iface );
 std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface );
 
@@ -62,8 +67,8 @@ public:
     void get_stats( uint32_t sw_if_index );
 
     // Subif
-    std::tuple<bool,uint32_t> add_subif( uint32_t iface, uint16_t outer_vlan, uint16_t inner_vlan );
-    bool del_subif( uint32_t sw_if_index );
+    std::tuple<bool,int32_t> add_subif( int32_t interface, uint16_t unit, uint16_t outer_vlan, uint16_t inner_vlan );
+    bool del_subif( int32_t sw_if_index );
 
     // Tap
     std::tuple<bool,uint32_t> create_tap( const std::string &host_name );
@@ -71,10 +76,11 @@ public:
 
     // Interface configuration
     bool setup_interfaces( std::vector<InterfaceConf> ifaces );
-    bool set_ip( uint32_t id, network_v4_t address );
+    bool set_ip( uint32_t id, network_v4_t address, bool clearIP = false );
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
     bool set_unnumbered( uint32_t unnumbered, uint32_t iface );
+    bool set_interface_table( int32_t ifi, int32_t table_id );
 
     // Route methods
     std::tuple<bool,int32_t> add_route( const network_v4_t &prefix, const address_v4_t &nexthop, uint32_t table_id );
@@ -85,7 +91,8 @@ public:
     std::vector<VPP_PPPOE_Session> dump_pppoe_sessions();
 
     // VRF methods
-    bool add_vrf( const std::string &name, uint32_t id );
+    bool set_vrf( const std::string &name, uint32_t id, bool is_add = true );
+    std::vector<VPPVRF> dump_vrfs();
 
     // Stats
     std::tuple<bool,VPPIfaceCounters> get_counters_by_index( uint32_t ifindex );
