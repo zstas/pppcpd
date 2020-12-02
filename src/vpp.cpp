@@ -352,6 +352,36 @@ bool VPPAPI::set_ip( uint32_t id, network_v4_t address, bool clearIP ) {
     return true;
 }
 
+std::vector<VPPIP> VPPAPI::dump_ip( uint32_t id ) {
+    std::vector<VPPIP> output;
+    vapi::Ip_address_dump dumpaddr{ con };
+
+    auto &req = dumpaddr.get_request().get_payload();
+    req.sw_if_index = id;
+    req.is_ipv6 = false;
+
+    auto ret = dumpaddr.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_add_del_address api method" << std::endl;
+        return output;
+    }
+
+    do {
+        ret = con.wait_for_response( dumpaddr );
+    } while( ret == VAPI_EAGAIN );
+
+    for( auto &ip: dumpaddr.get_result_set() ) {
+        auto &ret = ip.get_payload();
+        VPPIP entry;
+        address_v4_t addr { *reinterpret_cast<uint32_t*>( ret.prefix.address.un.ip4 ) };
+        entry.address = boost::asio::ip::make_network_v4( addr, ret.prefix.len );
+        entry.sw_if_index = ret.sw_if_index;
+        output.push_back( std::move( entry ) );
+    }
+
+    return output;
+}
+
 bool VPPAPI::set_state( uint32_t ifi, bool admin_state ) {
     vapi::Sw_interface_set_flags setstate{ con };
 
@@ -448,10 +478,10 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
                     logger->logError() << LOGS::VPP << "Cannot move interface: " << iface.device << "." << id << "to VRF " << unit.vrf << std::endl;
                 }
             }
+            if( !set_ip( unit.sw_if_index, *unit.address, true ) ) {
+                logger->logError() << LOGS::VPP << "Cannot clear IP on interface: " << iface.device << "." << id << std::endl;
+            }
             if( unit.address ) {
-                if( !set_ip( unit.sw_if_index, *unit.address, true ) ) {
-                    logger->logError() << LOGS::VPP << "Cannot clear IP on interface: " << iface.device << "." << id << std::endl;
-                }
                 if( !set_ip( unit.sw_if_index, *unit.address ) ) {
                     logger->logError() << LOGS::VPP << "Cannot set IP on interface: " << iface.device << "." << id << std::endl;
                 }
@@ -496,11 +526,11 @@ bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {
     return true;
 }
 
-bool VPPAPI::set_unnumbered( uint32_t unnumbered, uint32_t iface ) {
+bool VPPAPI::set_unnumbered( uint32_t unnumbered, uint32_t iface, bool is_add ) {
     vapi::Sw_interface_set_unnumbered unn { con };
 
     auto &req = unn.get_request().get_payload();
-    req.is_add = 1;
+    req.is_add = is_add ? 1 : 0;
     req.sw_if_index = iface;
     req.unnumbered_sw_if_index = unnumbered;
 

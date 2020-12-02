@@ -53,6 +53,11 @@ struct VPPVRF {
     uint32_t table_id;
 };
 
+struct VPPIP {
+    uint32_t sw_if_index;
+    network_v4_t address;
+};
+
 std::ostream& operator<<( std::ostream &stream, const IfaceType &iface );
 std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface );
 
@@ -79,8 +84,9 @@ public:
     bool set_ip( uint32_t id, network_v4_t address, bool clearIP = false );
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
-    bool set_unnumbered( uint32_t unnumbered, uint32_t iface );
+    bool set_unnumbered( uint32_t unnumbered, uint32_t iface, bool is_add = true );
     bool set_interface_table( int32_t ifi, int32_t table_id );
+    std::vector<VPPIP> dump_ip( uint32_t id );
 
     // Route methods
     std::tuple<bool,int32_t> add_route( const network_v4_t &prefix, const address_v4_t &nexthop, uint32_t table_id );
