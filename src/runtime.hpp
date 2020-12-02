@@ -3,14 +3,11 @@
 
 #include <memory>
 
-#include "aaa.hpp"
-#include "ethernet.hpp"
-#include "encap.hpp"
 #include "config.hpp"
-#include "vpp.hpp"
-#include "session.hpp"
 
 class AAA;
+class VPPAPI;
+struct PPPOEQ;
 
 class pppoe_conn_t {
     mac_t mac;

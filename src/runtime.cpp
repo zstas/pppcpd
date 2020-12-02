@@ -7,6 +7,11 @@
 #include "log.hpp"
 #include "string_helpers.hpp"
 #include "yaml.hpp"
+#include "aaa.hpp"
+#include "ethernet.hpp"
+#include "encap.hpp"
+#include "vpp.hpp"
+#include "session.hpp"
 
 PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) : 
     conf_path( cp ),
@@ -63,13 +68,16 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
         }
     }
     for( auto const &el: vpp->get_ifaces() ) {
+        for( auto const &el: vpp->dump_ip( el.sw_if_index ) ) {
+            logger->logInfo() << LOGS::VPP << "Clearing IP on interface " << el.sw_if_index << " addr: " << el.address.to_string() << std::endl;
+            vpp->set_ip( el.sw_if_index, el.address, false );
+        }
+        for( auto const &el: vpp->dump_unnumbered( el.sw_if_index ) ) {
+            logger->logInfo() << LOGS::VPP << "Clearing unnumbered on interface " << el.unnumbered_sw_if_index << " IP iface: " << el.iface_sw_if_index << std::endl;
+            vpp->set_unnumbered( el.unnumbered_sw_if_index, el.iface_sw_if_index, false );
+        }
         if( el.type == IfaceType::SUBIF ) {
-            for( auto const &el: vpp->dump_ip( el.sw_if_index ) ) {
-                logger->logInfo() << LOGS::VPP << "Dumped IP on interface " << el.sw_if_index << " addr: " << el.address.to_string() << std::endl;
-            }
             logger->logInfo() << LOGS::VPP << "Deleting subinterface: " << el << std::endl;
-            vpp->set_unnumbered( el.sw_if_index, 0, false );
-            vpp->set_ip( el.sw_if_index, boost::asio::ip::make_network_v4( "0.0.0.0/0" ), true );
             vpp->del_subif( el.sw_if_index );
             continue;
         }

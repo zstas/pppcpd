@@ -135,7 +135,7 @@ RadiusResponse deserialize<RadiusResponse>( const RadiusDict &dict, std::vector<
         } else if( attr.first == "Framed-Pool" ) {
             res.framed_pool = { avp.value.begin(), avp.value.end() };
         } else if( attr.first == "Subscriber-Profile-Name" ) {
-            res.vrf = { avp.value.begin(), avp.value.end() };
+            res.pppoe_template = { avp.value.begin(), avp.value.end() };
         }
     }
     return res;

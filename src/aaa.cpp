@@ -6,7 +6,6 @@
 #include "aaa_session.hpp"
 #include "radius_dict.hpp"
 #include "request_response.hpp"
-#include "vpp.hpp"
 #include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
@@ -190,7 +189,7 @@ void AAA::processRadiusAnswer( aaa_callback callback, std::string user, RADIUS_C
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct, 
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, *conf.local_template, res, acct.begin()->second ) )
+        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, conf.local_template, res, acct.begin()->second ) )
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA << "failed to emplace user " << user << std::endl;
         callback( SESSION_ERROR, "Failed to emplace user" );
@@ -207,7 +206,7 @@ void AAA::processRadiusError( aaa_callback callback, const std::string &error ) 
 
 std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user, const std::string &pass ) {
     runtime->logger->logDebug() << LOGS::AAA << "NONE auth, starting session user: " << user << " password: " << pass << std::endl;
-    if( !conf.local_template.has_value() ) {
+    if( conf.local_template.empty() ) {
         return { SESSION_ERROR, "No template for non-radius pppoe user" };
     }
     
@@ -225,7 +224,7 @@ std::tuple<uint32_t,std::string> AAA::startSessionNone( const std::string &user,
     if( auto const &[ it, ret ] = sessions.emplace( 
         std::piecewise_construct,
         std::forward_as_tuple( i ), 
-        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, *conf.local_template ) ) 
+        std::forward_as_tuple( std::make_shared<AAA_Session>( io, i, user, conf.local_template ) ) 
     ); !ret ) {
         runtime->logger->logError() << LOGS::AAA <<  "failer to emplace user " << user << std::endl;
         return { SESSION_ERROR, "Failed to emplace user" };

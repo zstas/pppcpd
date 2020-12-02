@@ -10,38 +10,53 @@
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
-AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t ):
+AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name ):
     io( i ),
     timer( io ),
     session_id( sid ),
-    username( u ),
-    templ( t ),
-    dns1( t.dns1 ),
-    dns2( t.dns2 )
+    username( u )
 {
     auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
     if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
+        return;
     }
     address = address_v4_t{ fr_pool->second.allocate_ip() };
     runtime->logger->logDebug() << LOGS::AAA << "Allocated IP: " << address.to_string() << std::endl;
     free_ip = true;
+    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
+        templ = tIt->second;
+    }
 }
 
-AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
+AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
     io( i ),
     timer( io ),
     session_id( sid ),
     username( u ),
-    templ( t ),
-    dns1( resp.dns1 ),
-    dns2( resp.dns2 ),
     address( resp.framed_ip ),
-    vrf( resp.vrf ),
     acct( s )
 {
+    auto template_to_find = template_name;
+    if( !resp.pppoe_template.empty() ) {
+        template_to_find = resp.pppoe_template;
+    }
+    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
+        templ = tIt->second;
+    }
+
+    // Filling template with RADIUS information
+    if( !resp.framed_pool.empty() ) {
+        templ.framed_pool = resp.framed_pool;
+    }
+    if( resp.dns1 != boost::asio::ip::make_address_v4( "0.0.0.0" ) ) {
+        templ.dns1 = resp.dns1;
+    }
+    if( resp.dns2 != boost::asio::ip::make_address_v4( "0.0.0.0" ) ) {
+        templ.dns2 = resp.dns2;
+    }
     if( address.to_uint() == 0 ) {
-        if( !resp.framed_pool.empty() ) {
-            auto const &fr_pool = runtime->conf.aaa_conf.pools.find( resp.framed_pool );
+        if( !templ.framed_pool.empty() ) {
+            auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
             if( fr_pool != runtime->conf.aaa_conf.pools.end() ) {
                 address = address_v4_t{ fr_pool->second.allocate_ip() };
             }

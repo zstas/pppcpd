@@ -32,6 +32,7 @@ struct PPPOELocalTemplate {
     std::string framed_pool;
     address_v4_t dns1;
     address_v4_t dns2;
+    std::string vrf;
 };
 
 struct AAARadConf {
@@ -51,7 +52,7 @@ struct AAARadConf {
 struct AAAConf {
     std::vector<AAA_METHODS> method;
     std::map<std::string,FRAMED_POOL> pools;
-    std::optional<PPPOELocalTemplate> local_template;
+    std::string local_template;
     std::vector<std::string> dictionaries;
     std::map<std::string,AAARadConf> auth_servers;
     std::map<std::string,AAARadConf> acct_servers;
@@ -98,6 +99,7 @@ struct PPPOEGlobalConf {
     std::vector<InterfaceConf> interfaces;
     PPPOEPolicy default_pppoe_conf;
     std::map<uint16_t,PPPOEPolicy> pppoe_confs;
+    std::map<std::string,PPPOELocalTemplate> pppoe_templates;
     AAAConf aaa_conf;
     StaticRIB global_rib;
     std::vector<VRFConf> vrfs;

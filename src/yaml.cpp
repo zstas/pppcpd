@@ -66,6 +66,9 @@ YAML::Node YAML::convert<PPPOELocalTemplate>::encode( const PPPOELocalTemplate &
     node["framed_pool"] = rhs.framed_pool;
     node["dns1"] = rhs.dns1.to_string();
     node["dns2"] = rhs.dns2.to_string();
+    if( !rhs.vrf.empty() ) {
+        node[ "vrf" ] = rhs.vrf;
+    }
     return node;
 }
 
@@ -73,6 +76,9 @@ bool YAML::convert<PPPOELocalTemplate>::decode( const YAML::Node &node, PPPOELoc
     rhs.framed_pool = node[ "framed_pool" ].as<std::string>();
     rhs.dns1 = address_v4_t::from_string( node[ "dns1" ].as<std::string>() );
     rhs.dns2 = address_v4_t::from_string( node[ "dns2" ].as<std::string>() );
+    if( node[ "vrf" ].IsDefined() ) {
+        rhs.vrf = node[ "vrf" ].as<std::string>();
+    }
     return true;
 }
 
@@ -80,8 +86,8 @@ YAML::Node YAML::convert<AAAConf>::encode( const AAAConf &rhs ) {
     Node node;
     node[ "pools" ] = rhs.pools;
     node[ "method" ] = rhs.method;
-    if( rhs.local_template.has_value() ) {
-        node[ "local_template" ] = rhs.local_template.value();
+    if( !rhs.local_template.empty() ) {
+        node[ "local_template" ] = rhs.local_template;
     }
     node[ "dictionaries" ] = rhs.dictionaries;
     node[ "auth_servers" ] = rhs.auth_servers;
@@ -93,7 +99,7 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
     rhs.pools = node[ "pools" ].as<std::map<std::string,FRAMED_POOL>>();
     rhs.method = node[ "method" ].as<std::vector<AAA_METHODS>>();
     if( node[ "local_template" ].IsDefined() ) {
-        rhs.local_template = node[ "local_template" ].as<PPPOELocalTemplate>();
+        rhs.local_template = node[ "local_template" ].as<std::string>();
     }
     rhs.dictionaries = node[ "dictionaries" ].as<std::vector<std::string>>();
     rhs.auth_servers = node[ "auth_servers" ].as<std::map<std::string,AAARadConf>>();
@@ -163,6 +169,7 @@ YAML::Node YAML::convert<PPPOEGlobalConf>::encode( const PPPOEGlobalConf &rhs ) 
     node[ "interfaces" ] = rhs.interfaces;
     node[ "default_pppoe_conf" ] = rhs.default_pppoe_conf;
     node[ "pppoe_confs" ] = rhs.pppoe_confs;
+    node[ "pppoe_templates" ] = rhs.pppoe_templates;
     node[ "aaa_conf" ] = rhs.aaa_conf;
     node[ "global_rib" ] = rhs.global_rib;
     node[ "vrfs" ] = rhs.vrfs;
@@ -174,6 +181,7 @@ bool YAML::convert<PPPOEGlobalConf>::decode( const YAML::Node &node, PPPOEGlobal
     rhs.interfaces = node[ "interfaces" ].as<std::vector<InterfaceConf>>();
     rhs.default_pppoe_conf = node[ "default_pppoe_conf" ].as<PPPOEPolicy>();
     rhs.pppoe_confs = node[ "pppoe_confs" ].as<std::map<uint16_t,PPPOEPolicy>>();
+    rhs.pppoe_templates = node[ "pppoe_templates" ].as<std::map<std::string,PPPOELocalTemplate>>();
     rhs.aaa_conf = node[ "aaa_conf" ].as<AAAConf>();
     rhs.global_rib = node[ "global_rib" ].as<StaticRIB>();
     rhs.vrfs = node[ "vrfs" ].as<std::vector<VRFConf>>();

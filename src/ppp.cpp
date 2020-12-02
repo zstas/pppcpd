@@ -3,9 +3,12 @@
 #include <vector>
 
 #include "ppp.hpp"
+#include "log.hpp"
+#include "string_helpers.hpp"
 #include "encap.hpp"
 #include "net_integer.hpp"
 #include "runtime.hpp"
+#include "aaa.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

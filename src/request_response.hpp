@@ -37,7 +37,7 @@ struct RadiusResponse {
     address_v4_t dns1;
     address_v4_t dns2;
     std::string framed_pool;
-    std::string vrf;
+    std::string pppoe_template;
 };
 
 struct AcctRequest {

@@ -2,6 +2,7 @@
 #define AAA_SESSION
 
 #include "auth_client.hpp"
+#include "config.hpp"
 
 using aaa_callback = std::function<void(uint32_t,std::string)>;
 
@@ -17,20 +18,16 @@ public:
     AAA_Session& operator=( const AAA_Session& ) = delete;
     AAA_Session& operator=( AAA_Session&& ) = default;
 
-    AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t );
-    AAA_Session( io_service &i, uint32_t sid, const std::string &u, PPPOELocalTemplate &t, RadiusResponse resp, std::shared_ptr<AuthClient> s );
+    AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name );
+    AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name, RadiusResponse resp, std::shared_ptr<AuthClient> s );
     ~AAA_Session();
 
     uint32_t session_id;
     std::string username;
     address_v4_t address;
-    std::string vrf;
-
-    address_v4_t dns1;
-    address_v4_t dns2;
 
     std::shared_ptr<AuthClient> acct { nullptr };
-    PPPOELocalTemplate &templ;
+    PPPOELocalTemplate templ;
     bool free_ip { false };
     bool to_stop_acct{ false };
 

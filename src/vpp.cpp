@@ -319,21 +319,15 @@ std::vector<VPPInterface> VPPAPI::get_ifaces() {
     return output;
 }
 
-bool VPPAPI::set_ip( uint32_t id, network_v4_t address, bool clearIP ) {
+bool VPPAPI::set_ip( uint32_t id, network_v4_t address, bool is_add ) {
     vapi::Sw_interface_add_del_address setaddr{ con };
 
     auto &req = setaddr.get_request().get_payload();
     req.sw_if_index = id;
-    if( clearIP ) {
-        req.del_all = true;
-        req.is_add = false;
-    } else {
-        req.del_all = false;
-        req.is_add = true;
-        req.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
-        *reinterpret_cast<uint32_t*>( req.prefix.address.un.ip4 ) = bswap( address.address().to_uint() );
-        req.prefix.len = address.prefix_length();
-    }
+    req.is_add = is_add;
+    req.prefix.address.af = vapi_enum_address_family::ADDRESS_IP4;
+    *reinterpret_cast<uint32_t*>( req.prefix.address.un.ip4 ) = bswap( address.address().to_uint() );
+    req.prefix.len = address.prefix_length();
 
     auto ret = setaddr.execute();
     if( ret != VAPI_OK ) {
@@ -362,7 +356,7 @@ std::vector<VPPIP> VPPAPI::dump_ip( uint32_t id ) {
 
     auto ret = dumpaddr.execute();
     if( ret != VAPI_OK ) {
-        logger->logError() << LOGS::VPP << "Error on executing Sw_interface_add_del_address api method" << std::endl;
+        logger->logError() << LOGS::VPP << "Error on executing Ip_address_dump api method" << std::endl;
         return output;
     }
 
@@ -373,9 +367,37 @@ std::vector<VPPIP> VPPAPI::dump_ip( uint32_t id ) {
     for( auto &ip: dumpaddr.get_result_set() ) {
         auto &ret = ip.get_payload();
         VPPIP entry;
-        address_v4_t addr { *reinterpret_cast<uint32_t*>( ret.prefix.address.un.ip4 ) };
+        address_v4_t addr { bswap( *reinterpret_cast<uint32_t*>( ret.prefix.address.un.ip4 ) ) };
         entry.address = boost::asio::ip::make_network_v4( addr, ret.prefix.len );
         entry.sw_if_index = ret.sw_if_index;
+        output.push_back( std::move( entry ) );
+    }
+
+    return output;
+}
+
+std::vector<VPPUnnumbered> VPPAPI::dump_unnumbered( uint32_t id ) {
+    std::vector<VPPUnnumbered> output;
+    vapi::Ip_unnumbered_dump dump_unn{ con };
+
+    auto &req = dump_unn.get_request().get_payload();
+    req.sw_if_index = id;
+
+    auto ret = dump_unn.execute();
+    if( ret != VAPI_OK ) {
+        logger->logError() << LOGS::VPP << "Error on executing Ip_unnumbered_dump api method" << std::endl;
+        return output;
+    }
+
+    do {
+        ret = con.wait_for_response( dump_unn );
+    } while( ret == VAPI_EAGAIN );
+
+    for( auto &ip: dump_unn.get_result_set() ) {
+        auto &ret = ip.get_payload();
+        VPPUnnumbered entry;
+        entry.unnumbered_sw_if_index = ret.sw_if_index;
+        entry.iface_sw_if_index = ret.ip_sw_if_index;
         output.push_back( std::move( entry ) );
     }
 
@@ -420,7 +442,7 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
         ifaces.begin(), ifaces.end(),
         []( const InterfaceConf &v ) -> bool {
             for( auto const &[ id, unit ]: v.units ) {
-                if( unit.is_wan ) {
+                if( unit.vrf.empty() && unit.is_wan ) {
                     return true;
                 }
             }
@@ -477,9 +499,6 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
                 } else {
                     logger->logError() << LOGS::VPP << "Cannot move interface: " << iface.device << "." << id << "to VRF " << unit.vrf << std::endl;
                 }
-            }
-            if( !set_ip( unit.sw_if_index, *unit.address, true ) ) {
-                logger->logError() << LOGS::VPP << "Cannot clear IP on interface: " << iface.device << "." << id << std::endl;
             }
             if( unit.address ) {
                 if( !set_ip( unit.sw_if_index, *unit.address ) ) {
