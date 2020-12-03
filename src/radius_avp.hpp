@@ -12,6 +12,7 @@ struct AVP {
     uint8_t length;
     std::vector<uint8_t> value;
     uint32_t vendor;
+    uint8_t original_len;
 
     explicit AVP( const RadiusDict &dict, const std::string &attr, BE32 v );
     explicit AVP( const RadiusDict &dict, const std::string &attr, BE16 v );

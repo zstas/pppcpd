@@ -12,6 +12,11 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "radius_avp.hpp"
 #include "radius_dict.hpp"
 #include "net_integer.hpp"
+#include "log.hpp"
+#include "string_helpers.hpp"
+#include "runtime.hpp"
+
+extern std::shared_ptr<PPPOERuntime> runtime;
 
 AVP::AVP( const RadiusDict &dict, const std::string &attr, BE32 v ) {
     auto [ id, vendorid ] = dict.getIdByName( attr );
@@ -46,11 +51,12 @@ AVP::AVP( const RadiusDict &dict, const std::string &attr, const std::string &s 
 
 AVP::AVP( const std::vector<uint8_t> &v, std::vector<uint8_t>::iterator it ) {
     if( ( v.end() - it ) < 2 ) {
-        return;
+        throw std::runtime_error( "No room for parsing VSA" );
     }
 
     type = *it;
     it++;
+    original_len = *it;
     if( type == RADIUS_VSA ) {
         it++; //pass the length
         vendor = bswap( *( reinterpret_cast<uint32_t*>( &( *it ) ) ) );
@@ -64,7 +70,7 @@ AVP::AVP( const std::vector<uint8_t> &v, std::vector<uint8_t>::iterator it ) {
 }
 
 size_t AVP::getSize() const {
-    return sizeof( type ) + sizeof( length ) + value.size();
+    return original_len;
 }
 
 bool AVP::operator<( const AVP &r ) const {
@@ -114,10 +120,14 @@ std::tuple<BE16, bool> AVP::getVal<BE16>() const {
 
 std::vector<AVP> parseAVP( std::vector<uint8_t> &v ) {
     std::vector<AVP> ret;
-    auto it = v.begin();
-    while( it != v.end() ) {
-        ret.emplace_back( v, it );
-        it += ret.back().getSize();
+    try {
+        auto it = v.begin();
+        while( it != v.end() ) {
+            ret.emplace_back( v, it );
+            it += ret.back().getSize();
+        }
+    } catch( std::exception &e ) {
+        runtime->logger->logError() << LOGS::RADIUS << e.what() << std::endl;
     }
 
     return ret;

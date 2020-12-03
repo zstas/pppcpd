@@ -172,6 +172,7 @@ void AAA_Session::on_interim( const boost::system::error_code& ec ) {
 void AAA_Session::on_stopped( RADIUS_CODE code, std::vector<uint8_t> pkt ) {
     runtime->logger->logInfo() << LOGS::SESSION << "Radius Accouting session stopped" << std::endl;
     auto resp = deserialize<AcctResponse>( *runtime->aaa->dict, pkt );
+    timer.cancel();
 }
 
 void AAA_Session::on_failed( std::string err ) {
