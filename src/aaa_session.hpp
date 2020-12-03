@@ -25,9 +25,12 @@ public:
     uint32_t session_id;
     std::string username;
     address_v4_t address;
+    address_v4_t dns1;
+    address_v4_t dns2;
+    std::string framed_pool;
+    std::string vrf;
 
     std::shared_ptr<AuthClient> acct { nullptr };
-    PPPOELocalTemplate templ;
     bool free_ip { false };
     bool to_stop_acct{ false };
 

@@ -16,16 +16,19 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
     session_id( sid ),
     username( u )
 {
-    auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
+    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
+        dns1 = tIt->second.dns1;
+        dns2 = tIt->second.dns2;
+        framed_pool = tIt->second.framed_pool;
+        vrf = tIt->second.vrf;
+    }
+    auto const &fr_pool = runtime->conf.aaa_conf.pools.find( framed_pool );
     if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
         return;
     }
     address = address_v4_t{ fr_pool->second.allocate_ip() };
     runtime->logger->logDebug() << LOGS::AAA << "Allocated IP: " << address.to_string() << std::endl;
     free_ip = true;
-    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
-        templ = tIt->second;
-    }
 }
 
 AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
@@ -41,32 +44,33 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
         template_to_find = resp.pppoe_template;
     }
     if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
-        templ = tIt->second;
+        dns1 = tIt->second.dns1;
+        dns2 = tIt->second.dns2;
+        framed_pool = tIt->second.framed_pool;
+        vrf = tIt->second.vrf;
     }
 
     // Filling template with RADIUS information
     if( !resp.framed_pool.empty() ) {
-        templ.framed_pool = resp.framed_pool;
+        framed_pool = resp.framed_pool;
     }
-    if( resp.dns1 != boost::asio::ip::make_address_v4( "0.0.0.0" ) ) {
-        templ.dns1 = resp.dns1;
+    if( resp.dns1.to_uint() != 0 ) {
+        dns1 = resp.dns1;
     }
-    if( resp.dns2 != boost::asio::ip::make_address_v4( "0.0.0.0" ) ) {
-        templ.dns2 = resp.dns2;
+    if( resp.dns2.to_uint() != 0 ) {
+        dns2 = resp.dns2;
     }
-    if( address.to_uint() == 0 ) {
-        if( !templ.framed_pool.empty() ) {
-            auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
-            if( fr_pool != runtime->conf.aaa_conf.pools.end() ) {
-                address = address_v4_t{ fr_pool->second.allocate_ip() };
-            }
+    if( ( address.to_uint() == 0 ) && ( !framed_pool.empty() ) ) {
+        auto const &fr_pool = runtime->conf.aaa_conf.pools.find( framed_pool );
+        if( fr_pool != runtime->conf.aaa_conf.pools.end() ) {
+            address = address_v4_t{ fr_pool->second.allocate_ip() };
         }
     }
 }
 
 AAA_Session::~AAA_Session() {
     if( free_ip ) {
-        auto const &fr_pool = runtime->conf.aaa_conf.pools.find( templ.framed_pool );
+        auto const &fr_pool = runtime->conf.aaa_conf.pools.find( framed_pool );
         if( fr_pool == runtime->conf.aaa_conf.pools.end() ) {
             runtime->logger->logDebug() << LOGS::AAA << "Can't deallocate IP: " << address.to_string() << ", can't find the pool" << std::endl;
             return;
@@ -110,6 +114,7 @@ void AAA_Session::stop() {
         req.in_bytes = counters.rxBytes;
         req.out_bytes = counters.txBytes;
     }
+
 
     acct->acct_request( req, 
         std::bind( &AAA_Session::on_stopped, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
@@ -155,6 +160,8 @@ void AAA_Session::on_interim( const boost::system::error_code& ec ) {
         req.in_bytes = counters.rxBytes;
         req.out_bytes = counters.txBytes;
     }
+
+    timer.cancel();
 
     acct->acct_request( req, 
         std::bind( &AAA_Session::on_interim_answer, shared_from_this(), std::placeholders::_1, std::placeholders::_2 ),
