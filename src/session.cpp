@@ -28,10 +28,27 @@ std::string PPPOESession::provision_dp() {
     } else {
         ifindex = ifi;
     }
+    if( !vrf.empty() ) {
+        if( !runtime->vpp->set_interface_table( ifindex, vrf ) ) {
+            return "Cannot move new session to vrf";
+        }
+    }
+    if( !unnumbered.empty() ) {
+        auto [ sw_ifi, success ] = runtime->vpp->get_iface_by_name( unnumbered );
+        if( !success ) {
+            return "Cannot set unnumbered to new session: can't find interface with such name";
+        }
+        if( !runtime->vpp->set_unnumbered( ifindex, sw_ifi ) ) {
+            return "Cannot set unnumbered to new session";
+        }
+    }
     return {};
 }
 
 std::string PPPOESession::deprovision_dp() {
+    for( auto const &el: runtime->vpp->dump_unnumbered( ifindex ) ) {
+        runtime->vpp->set_unnumbered( el.unnumbered_sw_if_index, el.iface_sw_if_index, false );
+    }
     if( auto const &[ ret, ifi ] = runtime->vpp->add_pppoe_session( address, session_id, encap.source_mac, vrf, false ); !ret ) {
         return "Cannot delete session from vpp ";
     }

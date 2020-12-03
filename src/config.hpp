@@ -33,6 +33,7 @@ struct PPPOELocalTemplate {
     address_v4_t dns1;
     address_v4_t dns2;
     std::string vrf;
+    std::string unnumbered;
 };
 
 struct AAARadConf {
@@ -61,10 +62,9 @@ struct AAAConf {
 struct InterfaceUnit {
     std::optional<network_v4_t> address;
     uint16_t vlan;
-    bool is_wan{ false };
-    bool unnumbered_on_wan{ false };
     bool admin_state { true };
     std::string vrf;
+    std::string unnumbered;
 
     // Not in YAML config
     int32_t sw_if_index{ -1 };

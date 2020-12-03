@@ -74,6 +74,7 @@ public:
     // Interface dump methods
     std::set<uint32_t> get_tap_interfaces();
     std::vector<VPPInterface> get_ifaces();
+    std::tuple<uint32_t,bool> get_iface_by_name( const std::string &name );
     void get_stats( uint32_t sw_if_index );
 
     // Subif
@@ -90,7 +91,7 @@ public:
     bool set_state( uint32_t ifi, bool admin_state );
     bool set_mtu( uint32_t ifi, uint16_t mtu );
     bool set_unnumbered( uint32_t unnumbered, uint32_t iface, bool is_add = true );
-    bool set_interface_table( int32_t ifi, int32_t table_id );
+    bool set_interface_table( int32_t ifi, const std::string &vrf );
     std::vector<VPPIP> dump_ip( uint32_t id );
     std::vector<VPPUnnumbered> dump_unnumbered( uint32_t id );
 

@@ -138,6 +138,7 @@ FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     } else {
         session.address = aaa_session->address.to_uint();
         session.vrf = aaa_session->vrf;
+        session.unnumbered = aaa_session->unnumbered;
     }
 
     LCP_CODE code = LCP_CODE::CONF_ACK;

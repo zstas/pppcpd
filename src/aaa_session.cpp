@@ -29,6 +29,8 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
     address = address_v4_t{ fr_pool->second.allocate_ip() };
     runtime->logger->logDebug() << LOGS::AAA << "Allocated IP: " << address.to_string() << std::endl;
     free_ip = true;
+
+    runtime->logger->logInfo() << "Creating new AAA session: " << username << " " << address.to_string() << " vrf: " << vrf << std::endl;
 }
 
 AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name, RadiusResponse resp, std::shared_ptr<AuthClient> s ):
@@ -43,11 +45,12 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
     if( !resp.pppoe_template.empty() ) {
         template_to_find = resp.pppoe_template;
     }
-    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_name ); tIt != runtime->conf.pppoe_templates.end() ) {
+    if( auto const &tIt = runtime->conf.pppoe_templates.find( template_to_find ); tIt != runtime->conf.pppoe_templates.end() ) {
         dns1 = tIt->second.dns1;
         dns2 = tIt->second.dns2;
         framed_pool = tIt->second.framed_pool;
         vrf = tIt->second.vrf;
+        unnumbered = tIt->second.unnumbered;
     }
 
     // Filling template with RADIUS information
@@ -64,8 +67,11 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
         auto const &fr_pool = runtime->conf.aaa_conf.pools.find( framed_pool );
         if( fr_pool != runtime->conf.aaa_conf.pools.end() ) {
             address = address_v4_t{ fr_pool->second.allocate_ip() };
+            free_ip = true;
         }
     }
+
+    runtime->logger->logInfo() << "Creating new AAA session: " << username << " " << address.to_string() << " vrf: " << vrf << std::endl;
 }
 
 AAA_Session::~AAA_Session() {

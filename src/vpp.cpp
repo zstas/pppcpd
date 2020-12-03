@@ -95,6 +95,12 @@ VPPAPI::~VPPAPI() {
 std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16_t session_id, std::array<uint8_t,6> mac, const std::string &vrf, bool is_add ) {
     vapi::Pppoe_add_del_session pppoe( con );
 
+    logger->logInfo() << LOGS::VPP << 
+        "Set up PPPoE session " << session_id << ": " << 
+        mac << " " << boost::asio::ip::address_v4( ip_address ).to_string() << 
+        " vrf: " << ( vrf.empty() ? "global" : vrf ) <<
+        " action: " << ( is_add ? "add" : "del" ) << std::endl;
+
     auto &req = pppoe.get_request().get_payload();
 
     req.client_ip.af = vapi_enum_address_family::ADDRESS_IP4;
@@ -176,13 +182,18 @@ std::tuple<bool,int32_t> VPPAPI::add_subif( int32_t interface, uint16_t unit, ui
     return { true, uint32_t{ repl.sw_if_index } };
 }
 
-bool VPPAPI::set_interface_table( int32_t ifi, int32_t table_id ) {
+bool VPPAPI::set_interface_table( int32_t ifi, const std::string &vrf ) {
     vapi::Sw_interface_set_table set_table{ con };
 
     auto &req = set_table.get_request().get_payload();
-    req.vrf_id = table_id;
     req.sw_if_index = ifi;
     req.is_ipv6 = false;
+
+    if( auto const &it = vrfs.find( vrf ); it != vrfs.end() ) {
+        req.vrf_id = it->second;
+    } else {
+        req.vrf_id = 0;
+    }
     
     auto ret = set_table.execute();
     if( ret != VAPI_OK ) {
@@ -434,36 +445,6 @@ bool VPPAPI::set_state( uint32_t ifi, bool admin_state ) {
 
 bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
     auto vpp_ifs { get_ifaces() };
-    // std::map<VPPInterface,InterfaceConf> conf;
-    uint32_t wan_sw_ifindex = { 0 };
-
-    // process wan in first place
-    if( auto it = std::find_if(
-        ifaces.begin(), ifaces.end(),
-        []( const InterfaceConf &v ) -> bool {
-            for( auto const &[ id, unit ]: v.units ) {
-                if( unit.vrf.empty() && unit.is_wan ) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    ); it != ifaces.end() ) {
-        InterfaceConf wan_iface = *it;
-        ifaces.erase( it );
-        ifaces.insert( ifaces.begin(), wan_iface );
-    }
-
-    auto findWan = [ &ifaces ]() -> int32_t {
-        for( auto const &iface: ifaces ) {
-            for( auto const &[ id, unit ]: iface.units ) {
-                if( unit.is_wan ) {
-                    return unit.sw_if_index;
-                }
-            }
-        }
-        return -1;
-    };
 
     for( auto &iface: ifaces ) {
         auto find_lambda = [ &, iface ]( const VPPInterface &vpp_if ) -> bool {
@@ -494,9 +475,7 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
                 logger->logError() << LOGS::VPP << "Cannot set admin state to interface: " << iface.device << "." << id << std::endl;
             }
             if( !unit.vrf.empty() ) {
-                if( auto const &it = vrfs.find( unit.vrf ); it != vrfs.end() ) {
-                    set_interface_table( unit.sw_if_index, it->second );
-                } else {
+                if( !set_interface_table( unit.sw_if_index, unit.vrf ) ) {
                     logger->logError() << LOGS::VPP << "Cannot move interface: " << iface.device << "." << id << "to VRF " << unit.vrf << std::endl;
                 }
             }
@@ -505,17 +484,25 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
                     logger->logError() << LOGS::VPP << "Cannot set IP on interface: " << iface.device << "." << id << std::endl;
                 }
             }
-            if( unit.unnumbered_on_wan ) {
-                auto wan = findWan();
-                if( wan < 0 ) {
-                    logger->logError() << LOGS::VPP << "Cannot set unnumbered on wan (it's not found) to unit: " << iface.device << "." << id << std::endl;
+            if( !unit.unnumbered.empty() ) {
+                if( auto [ ip_iface, success ] = get_iface_by_name( unit.unnumbered ); success ) {
+                    set_unnumbered( unit.sw_if_index, ip_iface );
                 } else {
-                    set_unnumbered( unit.sw_if_index, wan );
+                    logger->logError() << LOGS::VPP << "Cannot set unnumbered on wan (it's not found) to unit: " << iface.device << "." << id << std::endl;
                 }
             }
         }
     }
     return true;
+}
+
+std::tuple<uint32_t,bool> VPPAPI::get_iface_by_name( const std::string &name ) {
+    for( auto const &iface: get_ifaces() ) {
+        if( iface.name == name ) {
+            return { iface.sw_if_index, true };
+        }
+    }
+    return { 0, false };
 }
 
 bool VPPAPI::set_mtu( uint32_t ifi, uint16_t mtu ) {

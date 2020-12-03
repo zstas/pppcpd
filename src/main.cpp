@@ -30,10 +30,12 @@ static void conf_init() {
     pppoe_template.framed_pool = "pppoe_pool1";
     pppoe_template.dns1 = address_v4_t::from_string( "8.8.8.8" );
     pppoe_template.dns2 = address_v4_t::from_string( "1.1.1.1" );
+    pppoe_template.unnumbered = "GigabitEthernet0/9/0.150";
     global_conf.pppoe_templates.emplace( "template1", pppoe_template );
 
     pppoe_template.framed_pool = "vrf_pool1";
     pppoe_template.vrf = "RED";
+    pppoe_template.unnumbered = "GigabitEthernet0/9/0.250";
     global_conf.pppoe_templates.emplace( "template2", pppoe_template );
 
     global_conf.aaa_conf.local_template = "template1";
@@ -42,7 +44,7 @@ static void conf_init() {
         std::forward_as_tuple( "pppoe_pool1" ),
         std::forward_as_tuple( "100.64.0.10", "100.64.255.255" ) );
     global_conf.aaa_conf.pools.emplace( std::piecewise_construct,
-        std::forward_as_tuple( "pppoe_pool2" ),
+        std::forward_as_tuple( "vrf_pool1" ),
         std::forward_as_tuple( "100.66.0.10", "100.66.0.255" ) );
 
     global_conf.aaa_conf.dictionaries = {
@@ -66,7 +68,6 @@ static void conf_init() {
         iconf.mtu.emplace( 1500 );
 
         InterfaceUnit unit;
-        unit.unnumbered_on_wan = true;
         unit.vlan = 200;
         unit.admin_state = true;
         iconf.units.emplace( 200, unit );
@@ -87,7 +88,6 @@ static void conf_init() {
 
         InterfaceUnit unit;
         unit.address.emplace( boost::asio::ip::make_network_v4( "10.0.0.2/24" ) );
-        unit.is_wan = true;
         unit.admin_state = true;
         unit.vlan = 150;
         iconf.units.emplace( 150, unit );

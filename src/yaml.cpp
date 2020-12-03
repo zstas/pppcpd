@@ -69,6 +69,9 @@ YAML::Node YAML::convert<PPPOELocalTemplate>::encode( const PPPOELocalTemplate &
     if( !rhs.vrf.empty() ) {
         node[ "vrf" ] = rhs.vrf;
     }
+    if( !rhs.unnumbered.empty() ) {
+        node[ "unnumbered" ] = rhs.unnumbered;
+    }
     return node;
 }
 
@@ -78,6 +81,9 @@ bool YAML::convert<PPPOELocalTemplate>::decode( const YAML::Node &node, PPPOELoc
     rhs.dns2 = address_v4_t::from_string( node[ "dns2" ].as<std::string>() );
     if( node[ "vrf" ].IsDefined() ) {
         rhs.vrf = node[ "vrf" ].as<std::string>();
+    }
+    if( node[ "unnumbered" ].IsDefined() ) {
+        rhs.unnumbered = node[ "unnumbered" ].as<std::string>();
     }
     return true;
 }
@@ -110,8 +116,6 @@ bool YAML::convert<AAAConf>::decode( const YAML::Node &node, AAAConf &rhs ) {
 YAML::Node YAML::convert<InterfaceUnit>::encode( const InterfaceUnit &rhs ) {
     Node node;
     node[ "admin_state" ] = rhs.admin_state;
-    node[ "is_wan" ] = rhs.is_wan;
-    node[ "unnumbered_on_wan" ] = rhs.unnumbered_on_wan;
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
     }
@@ -130,12 +134,6 @@ bool YAML::convert<InterfaceUnit>::decode( const YAML::Node &node, InterfaceUnit
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
     }
     rhs.vlan = node[ "vlan" ].as<uint16_t>();
-    if( node[ "is_wan" ].IsDefined() ) {
-        rhs.is_wan = node[ "is_wan" ].as<bool>();
-    }
-    if( node[ "unnumbered_on_wan" ].IsDefined() ) {
-        rhs.unnumbered_on_wan = node[ "unnumbered_on_wan" ].as<bool>();
-    }
     if( node[ "vrf" ].IsDefined() ) {
         rhs.vrf = node[ "vrf" ].as<std::string>();
     }

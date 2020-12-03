@@ -29,6 +29,7 @@ public:
     address_v4_t dns2;
     std::string framed_pool;
     std::string vrf;
+    std::string unnumbered;
 
     std::shared_ptr<AuthClient> acct { nullptr };
     bool free_ip { false };
