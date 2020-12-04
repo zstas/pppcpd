@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "ppp_fsm.hpp"
+#include "packet.hpp"
 #include "runtime.hpp"
 #include "log.hpp"
 #include "string_helpers.hpp"
@@ -15,7 +16,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 FSM_RET PPP_FSM::receive( std::vector<uint8_t> &inPkt ) {
     runtime->logger->logDebug() << "receive pkt in state: " << state << std::endl;
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
 
     if( lcp == nullptr ) {
         return { PPP_FSM_ACTION::NONE, "LCP pointer is incorrect" };
@@ -144,7 +145,7 @@ FSM_RET PPP_FSM::recv_conf_ack( std::vector<uint8_t> &inPkt ) {
 
     // Parse in case of moved data
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
 
     if( lcp->identifier != pkt_id ) {
         return { PPP_FSM_ACTION::NONE, "Packet identifier is not match with our" };

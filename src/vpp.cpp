@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include "vpp.hpp"
+#include "log.hpp"
+#include "string_helpers.hpp"
 
 extern "C" {
     #include "vpp-api/client/stat_client.h"

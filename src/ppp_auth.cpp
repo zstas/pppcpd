@@ -6,12 +6,13 @@
 #include "evloop.hpp"
 #include "ppp_auth.hpp"
 #include "runtime.hpp"
+#include "packet.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
 FSM_RET PPP_AUTH::receive( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
+    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->data );
     switch( auth->code ) {
     case PAP_CODE::AUTHENTICATE_REQ:
         recv_auth_req( inPkt );
@@ -28,12 +29,12 @@ void PPP_AUTH::recv_auth_req( std::vector<uint8_t> &inPkt ) {
         return;
     }
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
+    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->data );
 
-    uint8_t user_len = *( auth->getPayload() );
-    std::string username { reinterpret_cast<char*>( auth->getPayload() + 1 ), reinterpret_cast<char*>( auth->getPayload() + 1 + user_len ) };
-    uint8_t pass_len = *( auth->getPayload() + user_len + 1 );
-    std::string password { reinterpret_cast<char*>( auth->getPayload() + 1 + user_len + 1 ), reinterpret_cast<char*>( auth->getPayload() + 1 + user_len + 1 + pass_len ) };
+    uint8_t user_len = *( auth->data );
+    std::string username { reinterpret_cast<char*>( auth->data + 1 ), reinterpret_cast<char*>( auth->data + 1 + user_len ) };
+    uint8_t pass_len = *( auth->data + user_len + 1 );
+    std::string password { reinterpret_cast<char*>( auth->data + 1 + user_len + 1 ), reinterpret_cast<char*>( auth->data + 1 + user_len + 1 + pass_len ) };
 
     session.username = username;
 
@@ -54,7 +55,7 @@ FSM_RET PPP_AUTH::send_auth_ack() {
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_AUTH_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
+    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->data );
 
     pppoe->type = 1;
     pppoe->version = 1;
@@ -64,7 +65,7 @@ FSM_RET PPP_AUTH::send_auth_ack() {
     auth->code = PAP_CODE::AUTHENTICATE_ACK;
 
     // append empty tag with message
-    *auth->getPayload() = 0;
+    *auth->data = 0;
     auth->length = bswap( (uint16_t)sizeof( PPP_AUTH_HDR) );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_AUTH_HDR) + 2 ) );
 
@@ -84,7 +85,7 @@ FSM_RET PPP_AUTH::send_auth_nak() {
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_AUTH_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->getPayload() );
+    PPP_AUTH_HDR *auth = reinterpret_cast<PPP_AUTH_HDR*>( pppoe->data );
 
     pppoe->type = 1;
     pppoe->version = 1;
@@ -94,7 +95,7 @@ FSM_RET PPP_AUTH::send_auth_nak() {
     auth->code = PAP_CODE::AUTHENTICATE_NAK;
 
     // append empty tag with message
-    *auth->getPayload() = 0;
+    *auth->data = 0;
     auth->length = bswap( (uint16_t)sizeof( PPP_AUTH_HDR) );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_AUTH_HDR) + 2 ) );
 

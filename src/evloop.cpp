@@ -11,6 +11,7 @@
 #include "runtime.hpp"
 #include "ppp.hpp"
 #include "pppoe.hpp"
+#include "string_helpers.hpp"
 
 extern std::atomic_bool interrupted;
 extern std::shared_ptr<PPPOERuntime> runtime;

@@ -1,5 +1,6 @@
 #include "cli.hpp"
 #include "runtime.hpp"
+#include "string_helpers.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

@@ -1,51 +1,57 @@
+#include <vector>
+
 #include "packet.hpp"
+#include "net_integer.hpp"
+#include "ethernet.hpp"
 
-extern std::ostream& operator<<( std::ostream &stream, const ETHERNET_HDR &disc ); 
-
-std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &code ) {
-    switch( code ) {
-    case PPPOE_CODE::PADI: stream << "PADI"; break;
-    case PPPOE_CODE::PADO: stream << "PADO"; break;
-    case PPPOE_CODE::PADR: stream << "PADR"; break;
-    case PPPOE_CODE::PADS: stream << "PADS"; break;
-    case PPPOE_CODE::PADT: stream << "PADT"; break;
-    }
-    return stream;
+std::set<LCP_OPT_HDR*> PPP_LCP::parseLCPOptions() {
+    std::set<LCP_OPT_HDR*> options;
+    size_t offset = 0;
+    do {
+        auto opt = reinterpret_cast<LCP_OPT_HDR*>( data + offset );
+        offset += opt->len;
+    } while( offset + sizeof( *this ) < bswap( length ) );
+    return options;
 }
 
-std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &code ) {
-    switch( code ) {
-    case PPP_PROTO::CHAP: stream << "CHAP"; break;
-    case PPP_PROTO::IPCP: stream << "IPCP"; break;
-    case PPP_PROTO::LCP: stream << "LCP"; break;
-    case PPP_PROTO::IPV4: stream << "IPV4"; break;
-    case PPP_PROTO::IPV6: stream << "IPV6"; break;
-    case PPP_PROTO::IPV6CP: stream << "IPV6CP"; break;
-    case PPP_PROTO::PAP: stream << "PAP"; break;
-    case PPP_PROTO::LQR: stream << "LQR"; break;
-    }
-    return stream;
+std::set<IPCP_OPT_HDR*> PPP_LCP::parseIPCPOptions() {
+    std::set<IPCP_OPT_HDR*> options;
+    size_t offset = 0;
+    while( offset + sizeof( *this ) < bswap( length ) ) {
+        auto opt = reinterpret_cast<IPCP_OPT_HDR*>( data + offset );
+        offset += opt->len;
+        options.emplace( opt );
+    } 
+    return options;
 }
 
-std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt ) {
-    auto eth = reinterpret_cast<ETHERNET_HDR*>( pkt.bytes.data() );
-    stream << *eth;
-    uint8_t* payload = eth->getPayload();
-    auto eth_type = bswap( eth->ethertype );
-    if( eth_type == ETH_VLAN ) {
-        auto vlan = reinterpret_cast<VLAN_HDR*>( eth->getPayload() );
-        stream << " vlan " << (int)( 0xFFF & bswap( vlan->vlan_id ) );
-        payload = vlan->getPayload();
-        eth_type = bswap( vlan->ethertype );
-    }
+void LCP_OPT_1B::set( LCP_OPTIONS o, uint8_t v ) {
+    opt = o;
+    val = v;
+    len = 3;
+}
 
-    if( eth_type == ETH_PPPOE_DISCOVERY ) {
-        auto disc = reinterpret_cast<PPPOEDISC_HDR*>( payload );
-        stream << " PPPoE Discovery: " << disc->code;
-    } else if( eth_type == ETH_PPPOE_SESSION ) {
-        auto sess = reinterpret_cast<PPPOESESSION_HDR*>( payload );
-        stream << " PPPoE Session: " << bswap( sess->session_id ) << " proto: " << static_cast<PPP_PROTO>( bswap( sess->ppp_protocol ) );
-    }
+void LCP_OPT_2B::set( LCP_OPTIONS o, uint16_t v ) {
+    opt = o;
+    val = bswap( v );
+    len = 4;
+}
 
-    return stream;
+void LCP_OPT_3B::set( LCP_OPTIONS o, uint16_t v, uint8_t v2 ) {
+    opt = o;
+    val = bswap( v );
+    val_additional = v2;
+    len = 5;
+}
+
+void LCP_OPT_4B::set( LCP_OPTIONS o, uint32_t v ) {
+    opt = o;
+    val = bswap( v );
+    len = 6;
+}
+
+void IPCP_OPT_4B::set( IPCP_OPTIONS o, uint32_t v ) {
+    opt = o;
+    val = bswap( v );
+    len = 6;
 }

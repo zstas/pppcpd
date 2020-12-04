@@ -1,6 +1,8 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <set>
+
 #include "aaa.hpp"
 #include "policy.hpp"
 

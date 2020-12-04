@@ -4,6 +4,7 @@
 
 #include "ppp_ipcp.hpp"
 #include "packet.hpp"
+#include "ethernet.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
 #include "aaa_session.hpp"
@@ -20,7 +21,7 @@ IPCP_FSM::IPCP_FSM( PPPOESession &s ):
 FSM_RET IPCP_FSM::send_conf_req() {
     runtime->logger->logDebug() << LOGS::IPCP << "send_conf_req current state: " << state << std::endl;
     std::vector<uint8_t> pkt;
-    pkt.resize( sizeof( ETHERNET_HDR) + sizeof( PPPOESESSION_HDR ) + 256 );
+    pkt.resize( sizeof( ETHERNET_HDR ) + sizeof( PPPOESESSION_HDR ) + 256 );
 
     // Fill pppoe part
     PPPOESESSION_HDR* pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
@@ -31,12 +32,12 @@ FSM_RET IPCP_FSM::send_conf_req() {
     pppoe->session_id = bswap( session_id );
 
     // Fill IPCP part; here we just can use lcp header
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_REQ;
     lcp->identifier = pkt_id;
     // Fill LCP options
     auto ipcpOpts = 0;
-    auto ipad = reinterpret_cast<IPCP_OPT_4B*>( lcp->getPayload() );
+    auto ipad = reinterpret_cast<IPCP_OPT_4B*>( lcp->data );
     ipad->set( IPCP_OPTIONS::IP_ADDRESS, 0x64400001 );
     ipcpOpts += ipad->len;
 
@@ -61,7 +62,7 @@ FSM_RET IPCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_ACK;
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
@@ -87,7 +88,7 @@ FSM_RET IPCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_NAK;
 
     // Set our parameters
@@ -125,7 +126,7 @@ FSM_RET IPCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
 
 FSM_RET IPCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
 
     uint32_t len = bswap( lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
@@ -223,7 +224,7 @@ FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t
     pppoe->session_id = bswap( session_id );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_REJ;
     lcp->identifier = pkt_id;
     lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() ) );
@@ -233,7 +234,7 @@ FSM_RET IPCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t
 
     // After all fix lenght in headers
     pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
-    lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() + 2 ) ); // plus 2 bytes of ppp proto
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );

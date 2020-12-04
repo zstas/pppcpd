@@ -4,6 +4,7 @@
 
 #include "ppp_lcp.hpp"
 #include "packet.hpp"
+#include "ethernet.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
 #include "utils.hpp"
@@ -29,27 +30,27 @@ FSM_RET LCP_FSM::send_conf_req() {
     pppoe->session_id = bswap( session_id );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_REQ;
     lcp->identifier = pkt_id;
 
     // Fill LCP options
     auto lcpOpts = 0;
-    auto mru = reinterpret_cast<LCP_OPT_2B*>( lcp->getPayload() );
+    auto mru = reinterpret_cast<LCP_OPT_2B*>( lcp->data );
     mru->set( LCP_OPTIONS::MRU, runtime->lcp_conf->MRU );
     lcpOpts += mru->len;
 
     uint8_t *after_auth = nullptr;
     if( runtime->lcp_conf->authCHAP ) {
-        auto auth = reinterpret_cast<LCP_OPT_3B*>( mru->getPayload() );
+        auto auth = reinterpret_cast<LCP_OPT_3B*>( mru->data );
         auth->set( LCP_OPTIONS::AUTH_PROTO, static_cast<uint16_t>( PPP_PROTO::CHAP ), 5 );
         lcpOpts += auth->len;
-        after_auth = auth->getPayload();
+        after_auth = auth->data;
     } else if( runtime->lcp_conf->authPAP ) {
-        auto auth = reinterpret_cast<LCP_OPT_2B*>( mru->getPayload() );
+        auto auth = reinterpret_cast<LCP_OPT_2B*>( mru->data );
         auth->set( LCP_OPTIONS::AUTH_PROTO, static_cast<uint16_t>( PPP_PROTO::PAP ) );
         lcpOpts += auth->len;
-        after_auth = auth->getPayload();
+        after_auth = auth->data;
     } else {
         return { PPP_FSM_ACTION::NONE, "No Auth proto is chosen!" };
     }
@@ -82,7 +83,7 @@ FSM_RET LCP_FSM::send_conf_ack( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_ACK;
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
@@ -103,7 +104,7 @@ FSM_RET LCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_NAK;
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
@@ -117,7 +118,7 @@ FSM_RET LCP_FSM::send_conf_nak( std::vector<uint8_t> &inPkt ) {
 
 FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
 
     uint32_t len = bswap( lcp->length ) - sizeof( PPP_LCP );
     if( len <= 0 ) {
@@ -128,7 +129,7 @@ FSM_RET LCP_FSM::check_conf( std::vector<uint8_t> &inPkt ) {
     std::vector<uint8_t> rejected_options;
     uint32_t offset = 0;
     while( len > offset ) {
-        auto opt = reinterpret_cast<LCP_OPT_HDR*>( lcp->getPayload() + offset );
+        auto opt = reinterpret_cast<LCP_OPT_HDR*>( lcp->data + offset );
         offset += opt->len;
         if( opt->opt == LCP_OPTIONS::MRU ) {
             auto mru = reinterpret_cast<LCP_OPT_2B*>( opt );
@@ -183,7 +184,7 @@ FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t 
     pppoe->session_id = bswap( session_id );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::CONF_REJ;
     lcp->identifier = pkt_id;
     lcp->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() ) );
@@ -193,7 +194,7 @@ FSM_RET LCP_FSM::send_conf_rej( std::vector<uint8_t> &rejected_options, uint8_t 
 
     // After all fix lenght in headers
     pppoe = reinterpret_cast<PPPOESESSION_HDR*>( pkt.data() );
-    lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_LCP ) + rejected_options.size() + 2 ) ); // plus 2 bytes of ppp proto
 
     auto header = session.encap.generate_header( runtime->hwaddr, ETH_PPPOE_SESSION );
@@ -215,7 +216,7 @@ FSM_RET LCP_FSM::send_term_req() {
 
 FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->getPayload() );
+    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->data );
 
     lcp_echo->code = LCP_CODE::TERM_ACK;
     if( lcp_echo->magic_number != bswap( session.peer_magic_number ) ) {
@@ -234,7 +235,7 @@ FSM_RET LCP_FSM::send_term_ack( std::vector<uint8_t> &inPkt ) {
 
 FSM_RET LCP_FSM::send_echo_rep( std::vector<uint8_t> &inPkt ) {
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->getPayload() );
+    PPP_LCP_ECHO *lcp_echo = reinterpret_cast<PPP_LCP_ECHO*>( pppoe->data );
 
     lcp_echo->code = LCP_CODE::ECHO_REPLY;
     if( lcp_echo->magic_number != htonl( session.peer_magic_number ) ) {
@@ -263,13 +264,13 @@ FSM_RET LCP_FSM::send_echo_req() {
     pppoe->session_id = bswap( session_id );
 
     // Fill LCP part
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
     lcp->code = LCP_CODE::ECHO_REQ;
     lcp->identifier = pkt_id;
 
     // Fill LCP options
     auto lcpOpts = 0;
-    auto mn = reinterpret_cast<LCP_OPT_4B*>( lcp->getPayload() );
+    auto mn = reinterpret_cast<LCP_OPT_4B*>( lcp->data );
     mn->set( LCP_OPTIONS::MAGIC_NUMBER, session.our_magic_number );
     lcpOpts += mn->len;
 

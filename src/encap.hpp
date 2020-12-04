@@ -1,8 +1,7 @@
 #ifndef ENCAP_HPP
 #define ENCAP_HPP
 
-#include "packet.hpp"
-#include "net_integer.hpp"
+using mac_t = std::array<uint8_t,6>;
 
 class encapsulation_t {
 public:

@@ -1,4 +1,10 @@
+#include <vector>
+#include <array>
+
 #include "encap.hpp"
+#include "ethernet.hpp"
+#include "net_integer.hpp"
+#include "packet.hpp"
 
 encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt, uint16_t o, uint16_t i ):
     outer_vlan( o ),
@@ -17,12 +23,12 @@ encapsulation_t::encapsulation_t( std::vector<uint8_t> &pkt, uint16_t o, uint16_
     type = bswap( h->ethertype );
 
     if( type == ETH_VLAN ) {
-        VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
+        VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->data );
         outer_vlan = 0x0FFF & bswap( v->vlan_id );
         type = bswap( v->ethertype );
         len += sizeof( VLAN_HDR );
         if( type == ETH_VLAN ) {
-            v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
+            v = reinterpret_cast<VLAN_HDR*>( v->data );
             inner_vlan = 0x0FFF & bswap( v->vlan_id );
             type = bswap( v->ethertype );
             len += sizeof( VLAN_HDR );
@@ -57,7 +63,7 @@ std::vector<uint8_t> encapsulation_t::generate_header( mac_t mac, uint16_t ether
 
     h->ethertype = bswap( (uint16_t)ETH_VLAN );
 
-    VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->getPayload() );
+    VLAN_HDR *v = reinterpret_cast<VLAN_HDR*>( h->data );
     v->vlan_id = bswap( outer_vlan );
     if( inner_vlan == 0 ) {
         v->ethertype = bswap( ethertype );
@@ -65,7 +71,7 @@ std::vector<uint8_t> encapsulation_t::generate_header( mac_t mac, uint16_t ether
     }
 
     v->ethertype = bswap( (uint16_t)ETH_VLAN );
-    v = reinterpret_cast<VLAN_HDR*>( v->getPayload() );
+    v = reinterpret_cast<VLAN_HDR*>( v->data );
     v->vlan_id = bswap( inner_vlan );
     v->ethertype = bswap( ethertype );
 

@@ -11,7 +11,6 @@
 #include "vapi/ip.api.vapi.hpp"
 
 #include "config.hpp"
-#include "log.hpp"
 
 struct InterfaceConf;
 

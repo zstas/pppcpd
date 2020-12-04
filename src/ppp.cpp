@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "ppp.hpp"
+#include "packet.hpp"
 #include "log.hpp"
 #include "string_helpers.hpp"
 #include "encap.hpp"
@@ -32,7 +33,7 @@ std::string ppp::processPPP( std::vector<uint8_t> &inPkt, const encapsulation_t 
         session.started = true;
     }
 
-    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->getPayload() );
+    PPP_LCP *lcp = reinterpret_cast<PPP_LCP*>( pppoe->data );
 
     runtime->logger->logDebug() << LOGS::PPP << "proto " << static_cast<PPP_PROTO>( bswap( pppoe->ppp_protocol ) ) << " for session " << session.session_id << std::endl;
 

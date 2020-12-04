@@ -13,7 +13,7 @@ extern std::shared_ptr<PPPOERuntime> runtime;
 FSM_RET PPP_CHAP::receive( std::vector<uint8_t> &inPkt ) {
     runtime->logger->logDebug() << LOGS::CHAP << "Receive chap packet" << std::endl;
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
     switch( auth->code ) {
     case CHAP_CODE::RESPONSE:
         recv_auth_req( inPkt );
@@ -31,10 +31,10 @@ void PPP_CHAP::recv_auth_req( std::vector<uint8_t> &inPkt ) {
         return;
     }
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
 
     uint8_t user_len = bswap( auth->length ) - sizeof( *auth );
-    std::string username { reinterpret_cast<char*>( auth->getPayload() ), reinterpret_cast<char*>( auth->getPayload() + user_len ) };
+    std::string username { reinterpret_cast<char*>( auth->data ), reinterpret_cast<char*>( auth->data + user_len ) };
     std::string response { auth->value.begin(), auth->value.end() };
     response.insert( response.begin(), auth->identifier );
 
@@ -58,7 +58,7 @@ FSM_RET PPP_CHAP::send_auth_ack() {
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_CHAP_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
 
     pppoe->type = 1;
     pppoe->version = 1;
@@ -68,7 +68,7 @@ FSM_RET PPP_CHAP::send_auth_ack() {
     auth->code = CHAP_CODE::SUCCESS;
 
     // append empty tag with message
-    *auth->getPayload() = 0;
+    *auth->data = 0;
     auth->length = bswap( (uint16_t)sizeof( PPP_CHAP_HDR) );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR) + 2 ) );
 
@@ -88,7 +88,7 @@ FSM_RET PPP_CHAP::send_auth_nak() {
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_CHAP_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
 
     pppoe->type = 1;
     pppoe->version = 1;
@@ -98,7 +98,7 @@ FSM_RET PPP_CHAP::send_auth_nak() {
     auth->code = CHAP_CODE::FAILURE;
 
     // append empty tag with message
-    *auth->getPayload() = 0;
+    *auth->data = 0;
     auth->length = bswap( (uint16_t)sizeof( PPP_CHAP_HDR) );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR) + 2 ) );
 
@@ -115,7 +115,7 @@ FSM_RET PPP_CHAP::send_conf_req() {
     std::vector<uint8_t> inPkt;
     inPkt.resize( sizeof( PPPOESESSION_HDR ) + sizeof( PPP_CHAP_HDR ) );
     PPPOESESSION_HDR *pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    PPP_CHAP_HDR *auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
 
     auto const &pol_it = runtime->conf.pppoe_confs.find( session.encap.outer_vlan );
     const PPPOEPolicy &pppoe_conf = ( pol_it == runtime->conf.pppoe_confs.end() ) ? runtime->conf.default_pppoe_conf : pol_it->second;
@@ -133,7 +133,7 @@ FSM_RET PPP_CHAP::send_conf_req() {
     inPkt.insert( inPkt.end(), pppoe_conf.ac_name.begin(), pppoe_conf.ac_name.end() );
 
     pppoe = reinterpret_cast<PPPOESESSION_HDR*>( inPkt.data() );
-    auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->getPayload() );
+    auth = reinterpret_cast<PPP_CHAP_HDR*>( pppoe->data );
 
     auth->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() ) );
     pppoe->length = bswap( (uint16_t)( sizeof( PPP_CHAP_HDR ) + pppoe_conf.ac_name.size() + 2 ) );

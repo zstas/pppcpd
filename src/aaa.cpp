@@ -7,6 +7,8 @@
 #include "radius_dict.hpp"
 #include "request_response.hpp"
 #include "runtime.hpp"
+#include "log.hpp"
+#include "string_helpers.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 

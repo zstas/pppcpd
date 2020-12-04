@@ -1,18 +1,17 @@
 #ifndef PACKET_HPP_
 #define PACKET_HPP_
 
-#include <array>
-#include <vector>
 #include <set>
-#include <iostream>
-
-#include "net_integer.hpp"
-#include "ethernet.hpp"
+#include <array>
 
 /* Ethernet frame types according to RFC 2516 */
 #define ETH_PPPOE_DISCOVERY 0x8863
 #define ETH_PPPOE_SESSION   0x8864
 #define ETH_VLAN            0x8100
+
+struct ETHERNET_HDR;
+struct VLAN_HDR;
+using mac_t = std::array<uint8_t,6>;
 
 enum class PPPOE_CODE: uint8_t {
     SESSION_DATA = 0x00,
@@ -22,8 +21,6 @@ enum class PPPOE_CODE: uint8_t {
     PADS = 0x65,
     PADT = 0xa7
 };
-
-std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &pkt ); 
 
 enum class PPP_PROTO : uint16_t {
     IPV4 = 0x0021,
@@ -35,8 +32,6 @@ enum class PPP_PROTO : uint16_t {
     IPCP = 0x8021,
     LQR = 0xc025,
 };
-
-std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &pkt ); 
 
 enum class PPPOE_TAG: uint16_t {
     END_OF_LIST = 0x0000,
@@ -109,10 +104,7 @@ struct PPPOEDISC_HDR {
     enum PPPOE_CODE code;
     uint16_t session_id;
     uint16_t length;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 static_assert( sizeof( PPPOEDISC_HDR ) == 6 );
 
@@ -123,60 +115,30 @@ struct PPPOESESSION_HDR {
     uint16_t session_id;
     uint16_t length;
     uint16_t ppp_protocol;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 static_assert( sizeof( PPPOESESSION_HDR ) == 8 );
 
 struct LCP_OPT_HDR {
     LCP_OPTIONS opt;
     uint8_t len;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 
 struct IPCP_OPT_HDR {
     IPCP_OPTIONS opt;
     uint8_t len;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 
 struct PPP_LCP {
     LCP_CODE code;
     uint8_t identifier;
     uint16_t length;
+    uint8_t data[0];
 
-    uint8_t* getPayload( size_t offset = 0 ) {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this ) + offset;
-    }
-
-    std::set<LCP_OPT_HDR*> parseLCPOptions() {
-        std::set<LCP_OPT_HDR*> options;
-        size_t offset = 0;
-        do {
-            auto opt = reinterpret_cast<LCP_OPT_HDR*>( getPayload( offset ) );
-            offset += opt->len;
-        } while( offset + sizeof( *this ) < bswap( length ) );
-        return options;
-    }
-
-    std::set<IPCP_OPT_HDR*> parseIPCPOptions() {
-        std::set<IPCP_OPT_HDR*> options;
-        size_t offset = 0;
-        while( offset + sizeof( *this ) < bswap( length ) ) {
-            auto opt = reinterpret_cast<IPCP_OPT_HDR*>( getPayload( offset ) );
-            offset += opt->len;
-            options.emplace( opt );
-        } 
-        return options;
-    }
+    std::set<LCP_OPT_HDR*> parseLCPOptions();
+    std::set<IPCP_OPT_HDR*> parseIPCPOptions();
 }__attribute__((__packed__));
 
 struct PPP_LCP_ECHO {
@@ -190,10 +152,7 @@ struct PPP_AUTH_HDR {
     PAP_CODE code;
     uint8_t identifier;
     uint16_t length;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 
 struct PPP_CHAP_HDR {
@@ -202,42 +161,25 @@ struct PPP_CHAP_HDR {
     uint16_t length;
     uint8_t value_len;
     std::array<uint8_t,16> value;
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    uint8_t data[0];
 }__attribute__((__packed__));
 
 struct LCP_OPT_1B {
     LCP_OPTIONS opt;
     uint8_t len;
     uint8_t val;
+    uint8_t data[0];
 
-    void set( LCP_OPTIONS o, uint8_t v ) {
-        opt = o;
-        val = v;
-        len = 3;
-    }
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    void set( LCP_OPTIONS o, uint8_t v );
 }__attribute__((__packed__));
 
 struct LCP_OPT_2B {
     LCP_OPTIONS opt;
     uint8_t len;
     uint16_t val;
+    uint8_t data[0];
 
-    void set( LCP_OPTIONS o, uint16_t v ) {
-        opt = o;
-        val = bswap( v );
-        len = 4;
-    }
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    void set( LCP_OPTIONS o, uint16_t v );
 }__attribute__((__packed__));
 
 struct LCP_OPT_3B {
@@ -245,49 +187,27 @@ struct LCP_OPT_3B {
     uint8_t len;
     uint16_t val;
     uint8_t val_additional;
+    uint8_t data[0];
 
-    void set( LCP_OPTIONS o, uint16_t v, uint8_t v2 ) {
-        opt = o;
-        val = bswap( v );
-        val_additional = v2;
-        len = 5;
-    }
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    void set( LCP_OPTIONS o, uint16_t v, uint8_t v2 );
 }__attribute__((__packed__));
 
 struct LCP_OPT_4B {
     LCP_OPTIONS opt;
     uint8_t len;
     uint32_t val;
+    uint8_t data[0];
 
-    void set( LCP_OPTIONS o, uint32_t v ) {
-        opt = o;
-        val = bswap( v );
-        len = 6;
-    }
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    void set( LCP_OPTIONS o, uint32_t v );
 }__attribute__((__packed__));
 
 struct IPCP_OPT_4B {
     IPCP_OPTIONS opt;
     uint8_t len;
     uint32_t val;
+    uint8_t data[0];
 
-    void set( IPCP_OPTIONS o, uint32_t v ) {
-        opt = o;
-        val = bswap( v );
-        len = 6;
-    }
-
-    uint8_t* getPayload() {
-        return reinterpret_cast<uint8_t*>( this ) + sizeof( *this );
-    }
+    void set( IPCP_OPTIONS o, uint32_t v );
 }__attribute__((__packed__));
 
 struct Packet {
@@ -317,8 +237,6 @@ struct PacketPrint {
     PacketPrint( std::vector<uint8_t> &p ):
         bytes( p )
     {}
-
-    friend std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt ); 
 };
 
 #endif
