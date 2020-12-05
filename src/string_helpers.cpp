@@ -126,3 +126,11 @@ std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt ) {
 
     return stream;
 }
+
+std::ostream& operator<<( std::ostream &stream, const PPPOESession &session ) {
+    stream << std::setw( 6 ) << std::setfill( ' ' ) << std::left << session.session_id;
+    stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.encap.destination_mac;
+    stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.username;
+    stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << address_v4_t( session.address );
+    return stream;
+}

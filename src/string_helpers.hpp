@@ -13,6 +13,7 @@ struct RadiusPacket;
 struct PacketPrint;
 enum class PPPOE_CODE: uint8_t;
 enum class PPP_PROTO : uint16_t;
+struct PPPOESession;
 
 using mac_t = std::array<uint8_t,6>;
 
@@ -27,5 +28,6 @@ std::ostream& operator<<( std::ostream &stream, const mac_t &mac );
 std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &pkt );
+std::ostream& operator<<( std::ostream &stream, const PPPOESession &session );
 
 #endif

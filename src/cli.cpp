@@ -65,11 +65,7 @@ void CLISession::run_cmd( const std::string &cmd ) {
         stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "IP-Address"; 
         stream << std::endl;
         for( auto const &[ key, session ]: runtime->activeSessions ) {
-            stream << std::setw( 6 ) << std::setfill( ' ' ) << std::left << session.session_id;
-            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.encap.destination_mac;
-            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.username;
-            stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << address_v4_t( session.address );
-            stream << std::endl;
+            stream << session << std::endl;
         }
         output = stream.str();
     } else {
