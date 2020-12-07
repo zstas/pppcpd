@@ -1,3 +1,8 @@
+#include <memory>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/optional.hpp>
+
 #include "cli.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
@@ -37,12 +42,11 @@ void CLISession::do_read() {
     );
 }
 
-void CLISession::do_write( std::string &out ) {
+void CLISession::do_write( std::shared_ptr<std::string> &out ) {
     auto self( shared_from_this() );
-    out.append( "\r\n\r\n" );
     socket_.async_write_some(
-        boost::asio::buffer( out.data(), out.size() ),
-        [ this, self ]( boost::system::error_code ec, std::size_t ) {
+        boost::asio::buffer( out->data(), out->size() ),
+        [ this, self, out ]( boost::system::error_code ec, std::size_t ) {
             if( !ec ) {
                 do_read();
             }
@@ -55,21 +59,18 @@ inline bool startWith( const std::string &s1, const std::string &s2 ) {
 }
 
 void CLISession::run_cmd( const std::string &cmd ) {
-    std::string output;
-    std::ostringstream stream;
-    if( startWith( cmd, "show subscribers" ) ) {
-        stream.width( 20 );
-        stream << std::setw( 6 ) << std::setfill( ' ' ) << std::left << "ID";
-        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "MAC";
-        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "Username"; 
-        stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << "IP-Address"; 
-        stream << std::endl;
-        for( auto const &[ key, session ]: runtime->activeSessions ) {
-            stream << session << std::endl;
-        }
-        output = stream.str();
-    } else {
-        output = "unknown command";
+    CLI_MSG out_msg;
+
+    auto in_msg = deserialize<CLI_MSG>( cmd );
+    switch( in_msg.cmd ) {
+    case CLI_CMD::GET_VERSION:
+        break;
+    default:
+        out_msg.error = "Can't process this command";
+        break;
     }
+
+    auto output = std::make_shared<std::string>( serialize( out_msg ) );
+    
     do_write( output );
 }
