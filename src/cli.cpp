@@ -65,12 +65,31 @@ void CLISession::run_cmd( const std::string &cmd ) {
     switch( in_msg.cmd ) {
     case CLI_CMD::GET_VERSION:
         break;
+    case CLI_CMD::GET_PPPOE_SESSIONS: {
+        GET_PPPOE_SESSION_RESP val;
+        for( auto const &[ k, v ]: runtime->activeSessions ) {
+            PPPOE_SESSION_DUMP d;
+            d.aaa_session_id = v.aaa_session_id;
+            d.session_id = v.session_id;
+            d.cookie = v.cookie;
+            d.username = v.username;
+            d.address = v.address;
+            d.ifindex = v.ifindex;
+            d.vrf = v.vrf;
+            d.unnumbered = v.unnumbered;
+            val.sessions.push_back( std::move( d ) );
+        }
+        out_msg.data = serialize( val );
+        break;
+    }
     default:
         out_msg.error = "Can't process this command";
         break;
     }
 
-    auto output = std::make_shared<std::string>( serialize( out_msg ) );
+    auto out_string { serialize( out_msg ) };
+    out_string += "\r\n\r\n";
+    auto output = std::make_shared<std::string>( std::move( out_string ) );
     
     do_write( output );
 }

@@ -25,15 +25,47 @@ enum class CLI_CMD: uint8_t {
 struct CLI_MSG {
     CLI_CMD_TYPE type;
     CLI_CMD cmd;
-    std::string response;
+    std::string data;
     std::string error;
 
     template<class Archive>
     void serialize( Archive &archive, const unsigned int version ) {
         archive & type;
         archive & cmd;
-        archive & response;
+        archive & data;
         archive & error;
+    }
+};
+
+struct PPPOE_SESSION_DUMP {
+    uint32_t aaa_session_id;
+    uint16_t session_id;
+    std::string cookie;
+    std::string username;
+    uint32_t address;
+    uint32_t ifindex;
+    std::string vrf;
+    std::string unnumbered;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & aaa_session_id;
+        archive & session_id;
+        archive & cookie;
+        archive & username;
+        archive & address;
+        archive & ifindex;
+        archive & vrf;
+        archive & unnumbered;
+    }
+};
+
+struct GET_PPPOE_SESSION_RESP {
+    std::vector<PPPOE_SESSION_DUMP> sessions;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & sessions;
     }
 };
 
