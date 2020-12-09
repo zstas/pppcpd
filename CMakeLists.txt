@@ -37,7 +37,7 @@ list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
 
 # add the executable
 add_executable(pppcpd ${SOURCES})
-add_executable(pppctl ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp)
+add_executable(pppctl ${CMAKE_CURRENT_SOURCE_DIR}/src/pppctl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/string_helpers.cpp)
 
 target_link_libraries(pppctl PUBLIC pthread)
 target_link_libraries(pppctl PUBLIC boost_serialization)

@@ -112,6 +112,7 @@ private:
 
     stream_protocol::socket socket_;
     std::array<char, 1024> data_;
+    boost::asio::streambuf request;
 };
 
 

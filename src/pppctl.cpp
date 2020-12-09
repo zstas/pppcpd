@@ -1,9 +1,13 @@
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/optional.hpp>
 
 #include "pppctl.hpp"
 #include "cli.hpp"
+#include "string_helpers.hpp"
 
 inline constexpr char greeting[] { "pppctl# " };
 inline constexpr char unix_socket_path[] { "/var/run/pppcpd.sock" };
@@ -19,17 +23,32 @@ CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     }
 }
 
-std::string CLIClient::process_input( const std::string &input ) {
+void CLIClient::process_input( const std::string &input ) {
     CLI_MSG out_msg;
     out_msg.type = CLI_CMD_TYPE::REQUEST;
     out_msg.cmd = CLI_CMD::GET_PPPOE_SESSIONS;
-    auto out = serialize( out_msg );
+    auto out = serialize( out_msg ) + "\r\n\r\n";
 
     boost::asio::write( socket, boost::asio::buffer( out ) );
     std::string buf;
     auto n = boost::asio::read_until( socket, boost::asio::dynamic_buffer( buf ), "\r\n\r\n" );
 
-    return buf;
+    auto result = deserialize<CLI_MSG>( buf );
+    if( !result.error.empty() ) {
+        std::cout << "Error: " << result.error << std::endl;
+    }
+    switch( result.cmd ) {
+    case CLI_CMD::GET_PPPOE_SESSIONS: {
+        std::cout << "GET_PPPOE_SESSIONS" << std::endl;
+        auto resp = deserialize<GET_PPPOE_SESSION_RESP>( result.data );
+        std::cout << resp << std::endl;
+        break;
+    }
+    case CLI_CMD::GET_AAA_SESSIONS:
+    case CLI_CMD::GET_VERSION:
+    case CLI_CMD::GET_VPP_IFACES:
+        break;
+    }
 }
 
 int main( int argc, char *argv[] ) {
@@ -44,7 +63,7 @@ int main( int argc, char *argv[] ) {
         while( cmd != "exit" ) {
             std::cout << greeting;
             std::getline( std::cin, cmd );
-            std::cout << cli.process_input( cmd );
+            cli.process_input( cmd );
         }
 
     } catch( std::exception &e ) {

@@ -32,11 +32,16 @@ void CLISession::start() {
 
 void CLISession::do_read() {
     auto self( shared_from_this() );
-    socket_.async_read_some(
-        boost::asio::buffer( data_ ),
-        [ this, self ]( boost::system::error_code ec, std::size_t length ) {
+    boost::asio::async_read_until(
+        socket_,
+        request,
+        "\r\n\r\n",
+        [ this, self ]( const boost::system::error_code &ec, std::size_t length ) {
             if( !ec ) {
-                run_cmd( { data_.begin(), data_.begin() + length } );
+                boost::asio::streambuf::const_buffers_type bufs = request.data();
+                std::string cmd { boost::asio::buffers_begin( bufs ), boost::asio::buffers_begin( bufs ) + ( length - 4 ) };
+                request.consume( length );
+                run_cmd( cmd );
             }
         }
     );
@@ -60,8 +65,10 @@ inline bool startWith( const std::string &s1, const std::string &s2 ) {
 
 void CLISession::run_cmd( const std::string &cmd ) {
     CLI_MSG out_msg;
+    out_msg.type = CLI_CMD_TYPE::RESPONSE;
 
     auto in_msg = deserialize<CLI_MSG>( cmd );
+    out_msg.cmd = in_msg.cmd;
     switch( in_msg.cmd ) {
     case CLI_CMD::GET_VERSION:
         break;

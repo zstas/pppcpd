@@ -1,10 +1,12 @@
 #include <iostream>
 #include <iomanip>
+#include <boost/asio/ip/address_v4.hpp>
 
 #include "string_helpers.hpp"
 #include "runtime.hpp"
 #include "packet.hpp"
 #include "ethernet.hpp"
+#include "cli.hpp"
 
 std::ostream& operator<<( std::ostream &stream, const PPP_FSM_STATE &state ) {
     switch( state ) {
@@ -133,4 +135,32 @@ std::ostream& operator<<( std::ostream &stream, const PPPOESession &session ) {
     stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << session.username;
     stream << std::setw( 20 ) << std::setfill( ' ' ) << std::left << address_v4_t( session.address );
     return stream;
+}
+
+std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) {
+    auto flags = os.flags();
+    os << std::left;
+    os << "  ";
+    os << std::setw( 10 ) << "AAA SID";
+    os << std::setw( 10 ) << "SessID";
+    os << std::setw( 10 ) << "Cookie";
+    os << std::setw( 20 ) << "Username";
+    os << std::setw( 20 ) << "Address";
+    os << std::setw( 10 ) << "Ifindex";
+    os << std::setw( 10 ) << "VRF";
+    os << std::setw( 10 ) << "Unnumbered";
+    for( auto const &sess: val.sessions ) {
+        os << "  ";
+        os << std::setw( 10 ) << sess.aaa_session_id;
+        os << std::setw( 10 ) << sess.session_id;
+        os << std::setw( 10 ) << sess.cookie;
+        os << std::setw( 20 ) << sess.username;
+        os << std::setw( 20 ) << boost::asio::ip::make_address_v4( sess.address ).to_string();
+        os << std::setw( 10 ) << sess.ifindex;
+        os << std::setw( 10 ) << sess.vrf;
+        os << std::setw( 10 ) << sess.unnumbered;
+    }
+
+    os.flags( flags );
+    return os;
 }

@@ -15,6 +15,9 @@ enum class PPPOE_CODE: uint8_t;
 enum class PPP_PROTO : uint16_t;
 struct PPPOESession;
 
+// CLI types
+struct GET_PPPOE_SESSION_RESP;
+
 using mac_t = std::array<uint8_t,6>;
 
 std::ostream& operator<<( std::ostream &stream, const PPP_FSM_STATE &state );
@@ -29,5 +32,7 @@ std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPPOESession &session );
+
+std::ostream& operator<<( std::ostream &stream, const GET_PPPOE_SESSION_RESP &session );
 
 #endif
