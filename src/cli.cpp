@@ -1,11 +1,20 @@
 #include <memory>
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/network_v4.hpp>
+
+using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
+
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/optional.hpp>
+#include <boost/serialization/array.hpp>
 
 #include "cli.hpp"
 #include "runtime.hpp"
 #include "string_helpers.hpp"
+#include "vpp_types.hpp"
+#include "vpp.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
@@ -72,8 +81,14 @@ void CLISession::run_cmd( const std::string &cmd ) {
     switch( in_msg.cmd ) {
     case CLI_CMD::GET_VERSION:
         break;
+    case CLI_CMD::GET_VPP_IFACES: {
+        GET_VPP_IFACES_RESP resp;
+        resp.ifaces = runtime->vpp->get_ifaces();
+        out_msg.data = serialize( resp );
+        break;
+    }
     case CLI_CMD::GET_PPPOE_SESSIONS: {
-        GET_PPPOE_SESSION_RESP val;
+        GET_PPPOE_SESSION_RESP resp;
         for( auto const &[ k, v ]: runtime->activeSessions ) {
             PPPOE_SESSION_DUMP d;
             d.aaa_session_id = v.aaa_session_id;
@@ -84,9 +99,9 @@ void CLISession::run_cmd( const std::string &cmd ) {
             d.ifindex = v.ifindex;
             d.vrf = v.vrf;
             d.unnumbered = v.unnumbered;
-            val.sessions.push_back( std::move( d ) );
+            resp.sessions.push_back( std::move( d ) );
         }
-        out_msg.data = serialize( val );
+        out_msg.data = serialize( resp );
         break;
     }
     default:

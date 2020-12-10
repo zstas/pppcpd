@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
+#include "vpp_types.hpp"
 
 using stream_protocol = boost::asio::local::stream_protocol;
 
@@ -66,6 +67,15 @@ struct GET_PPPOE_SESSION_RESP {
     template<class Archive>
     void serialize( Archive &archive, const unsigned int version ) {
         archive & sessions;
+    }
+};
+
+struct GET_VPP_IFACES_RESP {
+    std::vector<VPPInterface> ifaces;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & ifaces;
     }
 };
 

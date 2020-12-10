@@ -5,6 +5,7 @@
 #include "aaa_session.hpp"
 #include "radius_dict.hpp"
 #include "request_response.hpp"
+#include "vpp_types.hpp"
 #include "vpp.hpp"
 #include "runtime.hpp"
 

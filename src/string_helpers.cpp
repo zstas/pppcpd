@@ -7,6 +7,7 @@
 #include "packet.hpp"
 #include "ethernet.hpp"
 #include "cli.hpp"
+#include "vpp_types.hpp"
 
 std::ostream& operator<<( std::ostream &stream, const PPP_FSM_STATE &state ) {
     switch( state ) {
@@ -149,6 +150,7 @@ std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) 
     os << std::setw( 10 ) << "Ifindex";
     os << std::setw( 10 ) << "VRF";
     os << std::setw( 10 ) << "Unnumbered";
+    os << std::endl;
     for( auto const &sess: val.sessions ) {
         os << "  ";
         os << std::setw( 10 ) << sess.aaa_session_id;
@@ -159,8 +161,69 @@ std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) 
         os << std::setw( 10 ) << sess.ifindex;
         os << std::setw( 10 ) << sess.vrf;
         os << std::setw( 10 ) << sess.unnumbered;
+        os << std::endl;
     }
 
     os.flags( flags );
     return os;
+}
+
+std::ostream& operator<<( std::ostream &os, const GET_VPP_IFACES_RESP &resp ) {
+    auto flags = os.flags();
+    os << std::left;
+    os << "  ";
+    os << std::setw( 6 ) << "Ifx";
+    os << std::setw( 30 ) << "Name";
+    os << std::setw( 10 ) << "Device";
+    os << std::setw( 20 ) << "MAC";
+    os << std::setw( 10 ) << "MTU";
+    os << std::setw( 10 ) << "Speed";
+    os << std::setw( 10 ) << "Type";
+    os << std::endl;
+    for( auto const &iface: resp.ifaces ) {
+        os << "  ";
+        os << std::setw( 6 ) << iface.sw_if_index;
+        os << std::setw( 30 ) << iface.name;
+        os << std::setw( 10 ) << iface.device;
+        os << std::setw( 20 ) << iface.mac;
+        os << std::setw( 10 ) << iface.mtu;
+        os << std::setw( 10 ) << iface.speed;
+        os << std::setw( 10 ) << iface.type;
+        os << std::endl;
+    }
+
+    os.flags( flags );
+    return os;
+}
+
+std::ostream& operator<<( std::ostream &stream, const IfaceType &iface ) {
+    switch( iface ) {
+    case IfaceType::HW_IFACE: stream << "HW_IFACE"; break;
+    case IfaceType::LOOPBACK: stream << "LOOPBACK"; break;
+    case IfaceType::TAP: stream << "TAP"; break;
+    case IfaceType::SUBIF: stream << "SUBIF"; break;
+    default: stream << "UNKNOWN"; break;
+    }
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface ) {
+    stream << "VPP interface " << iface.name;
+    stream << "; Device: " << iface.device;
+    stream << "; mac: " << iface.mac;
+    stream << "; ifindex: " << iface.sw_if_index;
+    stream << "; speed: " << iface.speed;
+    stream << "; MTU: " << iface.mtu;
+    stream << "; type: " << iface.type;
+    return stream;
+}
+
+std::ostream& operator<<( std::ostream &stream, const struct VPPIfaceCounters &ctr ) {
+    stream << std::dec;
+    stream << "Drops:  " << ctr.drops;
+    stream << " TxPkts: " << ctr.txPkts;
+    stream << " TxBytes: " << ctr.txBytes;
+    stream << " RxPkts: " << ctr.rxPkts;
+    stream << " RxBytes: " << ctr.rxBytes;
+    return stream;
 }

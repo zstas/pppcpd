@@ -1,5 +1,6 @@
 #include "session.hpp"
 #include "runtime.hpp"
+#include "vpp_types.hpp"
 #include "vpp.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;

@@ -10,6 +10,7 @@
 #include "aaa.hpp"
 #include "ethernet.hpp"
 #include "encap.hpp"
+#include "vpp_types.hpp"
 #include "vpp.hpp"
 #include "session.hpp"
 

@@ -1,9 +1,16 @@
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/network_v4.hpp>
+
+using address_v4_t = boost::asio::ip::address_v4;
+using network_v4_t = boost::asio::ip::network_v4;
+
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/optional.hpp>
+#include <boost/serialization/array.hpp>
 
 #include "pppctl.hpp"
 #include "cli.hpp"
@@ -26,7 +33,7 @@ CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
 void CLIClient::process_input( const std::string &input ) {
     CLI_MSG out_msg;
     out_msg.type = CLI_CMD_TYPE::REQUEST;
-    out_msg.cmd = CLI_CMD::GET_PPPOE_SESSIONS;
+    out_msg.cmd = CLI_CMD::GET_VPP_IFACES;
     auto out = serialize( out_msg ) + "\r\n\r\n";
 
     boost::asio::write( socket, boost::asio::buffer( out ) );
@@ -39,15 +46,18 @@ void CLIClient::process_input( const std::string &input ) {
     }
     switch( result.cmd ) {
     case CLI_CMD::GET_PPPOE_SESSIONS: {
-        std::cout << "GET_PPPOE_SESSIONS" << std::endl;
         auto resp = deserialize<GET_PPPOE_SESSION_RESP>( result.data );
         std::cout << resp << std::endl;
         break;
     }
     case CLI_CMD::GET_AAA_SESSIONS:
     case CLI_CMD::GET_VERSION:
-    case CLI_CMD::GET_VPP_IFACES:
+    break;
+    case CLI_CMD::GET_VPP_IFACES: {
+        auto resp = deserialize<GET_VPP_IFACES_RESP>( result.data );
+        std::cout << resp << std::endl;
         break;
+    }
     }
 }
 

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "vpp.hpp"
+#include "vpp_types.hpp"
 #include "log.hpp"
 #include "string_helpers.hpp"
 
@@ -14,38 +15,6 @@ DEFINE_VAPI_MSG_IDS_TAPV2_API_JSON
 DEFINE_VAPI_MSG_IDS_PPPOE_API_JSON
 DEFINE_VAPI_MSG_IDS_POLICER_API_JSON
 DEFINE_VAPI_MSG_IDS_IP_API_JSON
-
-std::ostream& operator<<( std::ostream &stream, const IfaceType &iface ) {
-    switch( iface ) {
-    case IfaceType::HW_IFACE: stream << "HW_IFACE"; break;
-    case IfaceType::LOOPBACK: stream << "LOOPBACK"; break;
-    case IfaceType::TAP: stream << "TAP"; break;
-    case IfaceType::SUBIF: stream << "SUBIF"; break;
-    default: stream << "UNKNOWN"; break;
-    }
-    return stream;
-}
-
-std::ostream& operator<<( std::ostream &stream, const struct VPPInterface &iface ) {
-    stream << "VPP interface " << iface.name;
-    stream << "; Device: " << iface.device;
-    stream << "; mac: " << iface.mac;
-    stream << "; ifindex: " << iface.sw_if_index;
-    stream << "; speed: " << iface.speed;
-    stream << "; MTU: " << iface.mtu;
-    stream << "; type: " << iface.type;
-    return stream;
-}
-
-std::ostream& operator<<( std::ostream &stream, const struct VPPIfaceCounters &ctr ) {
-    stream << std::dec;
-    stream << "Drops:  " << ctr.drops;
-    stream << " TxPkts: " << ctr.txPkts;
-    stream << " TxBytes: " << ctr.txBytes;
-    stream << " RxPkts: " << ctr.rxPkts;
-    stream << " RxBytes: " << ctr.rxBytes;
-    return stream;
-}
 
 VPPAPI::VPPAPI( boost::asio::io_context &i, std::unique_ptr<Logger> &l ):
         io( i ),

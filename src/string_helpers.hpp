@@ -14,9 +14,13 @@ struct PacketPrint;
 enum class PPPOE_CODE: uint8_t;
 enum class PPP_PROTO : uint16_t;
 struct PPPOESession;
+enum class IfaceType: uint8_t;
+struct VPPInterface;
+struct VPPIfaceCounters;
 
 // CLI types
 struct GET_PPPOE_SESSION_RESP;
+struct GET_VPP_IFACES_RESP;
 
 using mac_t = std::array<uint8_t,6>;
 
@@ -32,7 +36,11 @@ std::ostream& operator<<( std::ostream &stream, const PacketPrint &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPPOE_CODE &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPP_PROTO &pkt );
 std::ostream& operator<<( std::ostream &stream, const PPPOESession &session );
+std::ostream& operator<<( std::ostream &stream, const IfaceType &iface );
+std::ostream& operator<<( std::ostream &stream, const VPPInterface &iface );
+std::ostream& operator<<( std::ostream &stream, const VPPIfaceCounters &ctr );
 
-std::ostream& operator<<( std::ostream &stream, const GET_PPPOE_SESSION_RESP &session );
+std::ostream& operator<<( std::ostream &stream, const GET_PPPOE_SESSION_RESP &resp );
+std::ostream& operator<<( std::ostream &stream, const GET_VPP_IFACES_RESP &resp );
 
 #endif
