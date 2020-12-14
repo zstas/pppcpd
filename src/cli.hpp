@@ -61,8 +61,49 @@ struct PPPOE_SESSION_DUMP {
     }
 };
 
+struct AAA_SESSION_DUMP {
+    uint32_t session_id;
+    std::string username;
+    std::string address;
+    std::string dns1;
+    std::string dns2;
+    std::string framed_pool;
+    std::string vrf;
+    std::string unnumbered;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & session_id;
+        archive & username;
+        archive & address;
+        archive & dns1;
+        archive & dns2;
+        archive & framed_pool;
+        archive & vrf;
+        archive & unnumbered;
+    }
+};
+
 struct GET_PPPOE_SESSION_RESP {
     std::vector<PPPOE_SESSION_DUMP> sessions;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & sessions;
+    }
+};
+
+struct GET_VERSION_RESP {
+    std::string version_string;
+
+    template<class Archive>
+    void serialize( Archive &archive, const unsigned int version ) {
+        archive & version_string;
+    }
+};
+
+struct GET_AAA_SESSIONS_RESP {
+    std::vector<AAA_SESSION_DUMP> sessions;
 
     template<class Archive>
     void serialize( Archive &archive, const unsigned int version ) {

@@ -227,3 +227,38 @@ std::ostream& operator<<( std::ostream &stream, const struct VPPIfaceCounters &c
     stream << " RxBytes: " << ctr.rxBytes;
     return stream;
 }
+
+std::ostream& operator<<( std::ostream &os, const GET_VERSION_RESP &resp ) {
+    os << "Version: " << resp.version_string;
+    return os;
+}
+
+std::ostream& operator<<( std::ostream &os, const GET_AAA_SESSIONS_RESP &resp ) {
+    auto flags = os.flags();
+    os << std::left;
+    os << "  ";
+    os << std::setw( 6 ) << "SID";
+    os << std::setw( 16 ) << "Username";
+    os << std::setw( 16 ) << "Address";
+    os << std::setw( 16 ) << "DNS1";
+    os << std::setw( 16 ) << "DNS2";
+    os << std::setw( 16 ) << "FramedPool";
+    os << std::setw( 16 ) << "Unnumbered";
+    os << std::setw( 16 ) << "VRF";
+    os << std::endl;
+    for( auto const &iface: resp.sessions ) {
+        os << "  ";
+        os << std::setw( 6 ) << iface.session_id;
+        os << std::setw( 16 ) << iface.username;
+        os << std::setw( 16 ) << iface.address;
+        os << std::setw( 16 ) << iface.dns1;
+        os << std::setw( 16 ) << iface.dns2;
+        os << std::setw( 16 ) << iface.framed_pool;
+        os << std::setw( 16 ) << iface.unnumbered;
+        os << std::setw( 16 ) << iface.vrf;
+        os << std::endl;
+    }
+
+    os.flags( flags );
+    return os;
+}

@@ -15,6 +15,7 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include "string_helpers.hpp"
 #include "vpp_types.hpp"
 #include "vpp.hpp"
+#include "aaa_session.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
 
@@ -79,8 +80,12 @@ void CLISession::run_cmd( const std::string &cmd ) {
     auto in_msg = deserialize<CLI_MSG>( cmd );
     out_msg.cmd = in_msg.cmd;
     switch( in_msg.cmd ) {
-    case CLI_CMD::GET_VERSION:
+    case CLI_CMD::GET_VERSION: {
+        GET_VERSION_RESP resp;
+        resp.version_string = "v1.0";
+        out_msg.data = serialize( resp );
         break;
+    }
     case CLI_CMD::GET_VPP_IFACES: {
         GET_VPP_IFACES_RESP resp;
         resp.ifaces = runtime->vpp->get_ifaces();
@@ -99,6 +104,28 @@ void CLISession::run_cmd( const std::string &cmd ) {
             d.ifindex = v.ifindex;
             d.vrf = v.vrf;
             d.unnumbered = v.unnumbered;
+            resp.sessions.push_back( std::move( d ) );
+        }
+        out_msg.data = serialize( resp );
+        break;
+    }
+    case CLI_CMD::GET_AAA_SESSIONS: {
+        GET_AAA_SESSIONS_RESP resp;
+        for( auto const &[ k, v ]: runtime->activeSessions ) {
+            auto [ sess_ptr, err ] = runtime->aaa->getSession( v.aaa_session_id );
+            if( !err.empty() ) {
+                continue;
+            }
+            AAA_SESSION_DUMP d;
+            d.session_id = sess_ptr->session_id;
+            d.username = sess_ptr->username;
+            d.address = sess_ptr->address.to_string();
+            d.dns1 = sess_ptr->dns1.to_string();
+            d.dns2 = sess_ptr->dns2.to_string();
+            d.framed_pool = sess_ptr->framed_pool;
+            d.unnumbered = sess_ptr->unnumbered;
+            d.vrf = sess_ptr->vrf;
+           
             resp.sessions.push_back( std::move( d ) );
         }
         out_msg.data = serialize( resp );

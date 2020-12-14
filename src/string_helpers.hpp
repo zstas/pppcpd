@@ -21,6 +21,8 @@ struct VPPIfaceCounters;
 // CLI types
 struct GET_PPPOE_SESSION_RESP;
 struct GET_VPP_IFACES_RESP;
+struct GET_VERSION_RESP;
+struct GET_AAA_SESSIONS_RESP;
 
 using mac_t = std::array<uint8_t,6>;
 
@@ -42,5 +44,7 @@ std::ostream& operator<<( std::ostream &stream, const VPPIfaceCounters &ctr );
 
 std::ostream& operator<<( std::ostream &stream, const GET_PPPOE_SESSION_RESP &resp );
 std::ostream& operator<<( std::ostream &stream, const GET_VPP_IFACES_RESP &resp );
+std::ostream& operator<<( std::ostream &stream, const GET_VERSION_RESP &resp );
+std::ostream& operator<<( std::ostream &stream, const GET_AAA_SESSIONS_RESP &resp );
 
 #endif

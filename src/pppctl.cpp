@@ -40,7 +40,11 @@ void CLIClient::process_input( const std::string &input ) {
     std::string buf;
     auto n = boost::asio::read_until( socket, boost::asio::dynamic_buffer( buf ), "\r\n\r\n" );
 
-    auto result = deserialize<CLI_MSG>( buf );
+    print_resp( buf );
+}
+
+void CLIClient::print_resp( const std::string &msg ) {
+    auto result = deserialize<CLI_MSG>( msg );
     if( !result.error.empty() ) {
         std::cout << "Error: " << result.error << std::endl;
     }
@@ -50,9 +54,17 @@ void CLIClient::process_input( const std::string &input ) {
         std::cout << resp << std::endl;
         break;
     }
-    case CLI_CMD::GET_AAA_SESSIONS:
-    case CLI_CMD::GET_VERSION:
+    case CLI_CMD::GET_AAA_SESSIONS: {
+        auto resp = deserialize<GET_AAA_SESSIONS_RESP>( result.data );
+        std::cout << resp << std::endl;
+        break;
     break;
+    }
+    case CLI_CMD::GET_VERSION: {
+        auto resp = deserialize<GET_VERSION_RESP>( result.data );
+        std::cout << resp << std::endl;
+        break;
+    }
     case CLI_CMD::GET_VPP_IFACES: {
         auto resp = deserialize<GET_VPP_IFACES_RESP>( result.data );
         std::cout << resp << std::endl;
