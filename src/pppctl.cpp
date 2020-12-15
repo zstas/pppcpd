@@ -19,6 +19,10 @@ using network_v4_t = boost::asio::ip::network_v4;
 inline constexpr char greeting[] { "pppctl# " };
 inline constexpr char unix_socket_path[] { "/var/run/pppcpd.sock" };
 
+CLICMD::CLICMD():
+    start_node( std::make_shared<CLINode>( CLINodeType::BEGIN ) )
+{}
+
 CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     io( i ),
     endpoint( path ),
