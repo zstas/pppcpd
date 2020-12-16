@@ -12,6 +12,8 @@ using network_v4_t = boost::asio::ip::network_v4;
 #include <boost/serialization/optional.hpp>
 #include <boost/serialization/array.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 #include "pppctl.hpp"
 #include "cli.hpp"
 #include "string_helpers.hpp"
@@ -19,9 +21,68 @@ using network_v4_t = boost::asio::ip::network_v4;
 inline constexpr char greeting[] { "pppctl# " };
 inline constexpr char unix_socket_path[] { "/var/run/pppcpd.sock" };
 
+std::string get_version( const std::map<std::string,std::string> &args ) {
+    CLI_MSG out_msg;
+    out_msg.type = CLI_CMD_TYPE::REQUEST;
+    out_msg.cmd = CLI_CMD::GET_VERSION;
+    return serialize( out_msg );
+}
+
+std::string get_interfaces( const std::map<std::string,std::string> &args ) {
+    CLI_MSG out_msg;
+    out_msg.type = CLI_CMD_TYPE::REQUEST;
+    out_msg.cmd = CLI_CMD::GET_VPP_IFACES;
+    return serialize( out_msg );
+}
+
+std::string get_pppoe_sessions( const std::map<std::string,std::string> &args ) {
+    CLI_MSG out_msg;
+    out_msg.type = CLI_CMD_TYPE::REQUEST;
+    out_msg.cmd = CLI_CMD::GET_PPPOE_SESSIONS;
+    return serialize( out_msg );
+}
+
+std::string get_aaa_sessions( const std::map<std::string,std::string> &args ) {
+    CLI_MSG out_msg;
+    out_msg.type = CLI_CMD_TYPE::REQUEST;
+    out_msg.cmd = CLI_CMD::GET_AAA_SESSIONS;
+    return serialize( out_msg );
+}
+
 CLICMD::CLICMD():
     start_node( std::make_shared<CLINode>( CLINodeType::BEGIN ) )
-{}
+{
+    add_cmd( "show version", get_version );
+    add_cmd( "show interfaces", get_interfaces );
+    add_cmd( "show pppoe sessions", get_pppoe_sessions );
+    add_cmd( "show aaa sessions", get_aaa_sessions );
+}
+
+void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
+    auto node = start_node;
+    std::vector<std::string> tokens;
+    boost::split( tokens, full_command, boost::is_any_of( " " ) );
+
+    while( !tokens.empty() ) {
+        auto ntoken = tokens.front();
+        tokens.erase( tokens.begin() );
+
+        if( auto nnode = std::find_if(
+            node->next_nodes.begin(),
+            node->next_nodes.end(),
+            [ ntoken ]( const std::shared_ptr<CLINode> v ) -> bool {
+                return v->token == ntoken;
+            }
+        ); nnode != node->next_nodes.end() ) {
+            node = *nnode;
+            continue;
+        } else {
+            node->next_nodes.push_back( std::make_shared<CLINode>( CLINodeType::STATIC, ntoken ) );
+            node = node->next_nodes.back();
+        }
+    }
+    node->next_nodes.push_back( std::make_shared<CLINode>( CLINodeType::STATIC, callback ) );
+}
 
 CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     io( i ),
