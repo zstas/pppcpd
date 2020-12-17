@@ -38,6 +38,7 @@ class CLICMD {
 public:
     CLICMD();
     void add_cmd( const std::string &full_command, cmd_callback callback );
+    std::string call_cmd( const std::string &cmd );
 private:
     std::shared_ptr<CLINode> start_node;
 };
@@ -51,6 +52,7 @@ private:
     boost::asio::io_context &io;
     boost::asio::local::stream_protocol::endpoint endpoint;
     boost::asio::local::stream_protocol::socket socket;
+    CLICMD cmd;
 };
 
 #endif

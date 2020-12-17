@@ -84,6 +84,35 @@ void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
     node->next_nodes.push_back( std::make_shared<CLINode>( CLINodeType::STATIC, callback ) );
 }
 
+std::string CLICMD::call_cmd( const std::string &cmd ) {
+    auto node = start_node;
+    std::vector<std::string> tokens;
+    boost::split( tokens, cmd, boost::is_any_of( " " ) );
+
+    std::map<std::string,std::string> arguments;
+
+    while( !tokens.empty() ) {
+        auto ntoken = tokens.front();
+        tokens.erase( tokens.begin() );
+
+        if( auto nnode = std::find_if(
+            node->next_nodes.begin(),
+            node->next_nodes.end(),
+            [ ntoken ]( const std::shared_ptr<CLINode> v ) -> bool {
+                return v->token == ntoken;
+            }
+        ); nnode != node->next_nodes.end() ) {
+            node = *nnode;
+            continue;
+        }
+    }
+
+    if( node->type != CLINodeType::END ) {
+        throw std::runtime_error( "Wrong command" );
+    }
+    return node->callback( arguments );
+}
+
 CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     io( i ),
     endpoint( path ),
@@ -96,16 +125,17 @@ CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
 }
 
 void CLIClient::process_input( const std::string &input ) {
-    CLI_MSG out_msg;
-    out_msg.type = CLI_CMD_TYPE::REQUEST;
-    out_msg.cmd = CLI_CMD::GET_VPP_IFACES;
-    auto out = serialize( out_msg ) + "\r\n\r\n";
+    try {
+        auto out = cmd.call_cmd( input ) + "\r\n\r\n";
 
-    boost::asio::write( socket, boost::asio::buffer( out ) );
-    std::string buf;
-    auto n = boost::asio::read_until( socket, boost::asio::dynamic_buffer( buf ), "\r\n\r\n" );
-
-    print_resp( buf );
+        boost::asio::write( socket, boost::asio::buffer( out ) );
+        std::string buf;
+        auto n = boost::asio::read_until( socket, boost::asio::dynamic_buffer( buf ), "\r\n\r\n" );
+        
+        print_resp( buf );
+    } catch( std::exception &e ) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
 }
 
 void CLIClient::print_resp( const std::string &msg ) {
