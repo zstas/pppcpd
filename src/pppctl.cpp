@@ -21,6 +21,24 @@ using network_v4_t = boost::asio::ip::network_v4;
 inline constexpr char greeting[] { "pppctl# " };
 inline constexpr char unix_socket_path[] { "/var/run/pppcpd.sock" };
 
+static std::vector<std::string> split( const std::string &input ) {
+    std::vector<std::string> tokens;
+    boost::split( tokens, input, boost::is_any_of( " " ) );
+
+    tokens.erase(
+        std::remove_if(
+            tokens.begin(),
+            tokens.end(),
+            []( const std::string &i ) {
+                return i.empty();
+            }
+        ),
+        tokens.end()
+    );
+
+    return tokens;
+}
+
 std::string get_version( const std::map<std::string,std::string> &args ) {
     CLI_MSG out_msg;
     out_msg.type = CLI_CMD_TYPE::REQUEST;
@@ -60,8 +78,7 @@ CLICMD::CLICMD():
 
 void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
     auto node = start_node;
-    std::vector<std::string> tokens;
-    boost::split( tokens, full_command, boost::is_any_of( " " ) );
+    auto tokens = split( full_command );
 
     while( !tokens.empty() ) {
         auto ntoken = tokens.front();
@@ -86,14 +103,14 @@ void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
 
 std::string CLICMD::call_cmd( const std::string &cmd ) {
     auto node = start_node;
-    std::vector<std::string> tokens;
-    boost::split( tokens, cmd, boost::is_any_of( " " ) );
+    auto tokens = split( cmd );
 
     std::map<std::string,std::string> arguments;
 
     while( !tokens.empty() ) {
         auto ntoken = tokens.front();
         tokens.erase( tokens.begin() );
+        std::cout << "Current token: " << ntoken << std::endl;
 
         if( auto nnode = std::find_if(
             node->next_nodes.begin(),
