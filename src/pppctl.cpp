@@ -67,6 +67,10 @@ std::string get_aaa_sessions( const std::map<std::string,std::string> &args ) {
     return serialize( out_msg );
 }
 
+std::string exit_cb( const std::map<std::string,std::string> &args ) {
+    exit( 0 );
+    return {};
+}
 CLICMD::CLICMD():
     start_node( std::make_shared<CLINode>( CLINodeType::BEGIN ) )
 {
@@ -74,6 +78,7 @@ CLICMD::CLICMD():
     add_cmd( "show interfaces", get_interfaces );
     add_cmd( "show pppoe sessions", get_pppoe_sessions );
     add_cmd( "show aaa sessions", get_aaa_sessions );
+    add_cmd( "exit", exit_cb );
 }
 
 void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
@@ -98,7 +103,7 @@ void CLICMD::add_cmd( const std::string &full_command, cmd_callback callback ) {
             node = node->next_nodes.back();
         }
     }
-    node->next_nodes.push_back( std::make_shared<CLINode>( CLINodeType::STATIC, callback ) );
+    node->next_nodes.push_back( std::make_shared<CLINode>( CLINodeType::END, callback ) );
 }
 
 std::string CLICMD::call_cmd( const std::string &cmd ) {
@@ -110,7 +115,6 @@ std::string CLICMD::call_cmd( const std::string &cmd ) {
     while( !tokens.empty() ) {
         auto ntoken = tokens.front();
         tokens.erase( tokens.begin() );
-        std::cout << "Current token: " << ntoken << std::endl;
 
         if( auto nnode = std::find_if(
             node->next_nodes.begin(),
@@ -122,6 +126,11 @@ std::string CLICMD::call_cmd( const std::string &cmd ) {
             node = *nnode;
             continue;
         }
+    }
+
+    // we need to get forward to callback node
+    if( node->next_nodes.size() == 1 ) {
+        node = node->next_nodes.front();
     }
 
     if( node->type != CLINodeType::END ) {
