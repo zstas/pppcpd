@@ -52,6 +52,7 @@ private:
     boost::asio::io_context &io;
     boost::asio::local::stream_protocol::endpoint endpoint;
     boost::asio::local::stream_protocol::socket socket;
+    boost::asio::posix::stream_descriptor stdio;
     CLICMD cmd;
 };
 

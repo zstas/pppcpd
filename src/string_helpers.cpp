@@ -141,7 +141,7 @@ std::ostream& operator<<( std::ostream &stream, const PPPOESession &session ) {
 std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) {
     auto flags = os.flags();
     os << std::left;
-    os << "  ";
+    os << " ";
     os << std::setw( 10 ) << "AAA SID";
     os << std::setw( 10 ) << "SessID";
     os << std::setw( 10 ) << "Cookie";
@@ -152,7 +152,6 @@ std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) 
     os << std::setw( 10 ) << "Unnumbered";
     os << std::endl;
     for( auto const &sess: val.sessions ) {
-        os << "  ";
         os << std::setw( 10 ) << sess.aaa_session_id;
         os << std::setw( 10 ) << sess.session_id;
         os << std::setw( 10 ) << sess.cookie;
@@ -171,7 +170,7 @@ std::ostream& operator<<( std::ostream &os, const GET_PPPOE_SESSION_RESP &val ) 
 std::ostream& operator<<( std::ostream &os, const GET_VPP_IFACES_RESP &resp ) {
     auto flags = os.flags();
     os << std::left;
-    os << "  ";
+    os << " ";
     os << std::setw( 6 ) << "Ifx";
     os << std::setw( 30 ) << "Name";
     os << std::setw( 10 ) << "Device";
@@ -181,7 +180,6 @@ std::ostream& operator<<( std::ostream &os, const GET_VPP_IFACES_RESP &resp ) {
     os << std::setw( 10 ) << "Type";
     os << std::endl;
     for( auto const &iface: resp.ifaces ) {
-        os << "  ";
         os << std::setw( 6 ) << iface.sw_if_index;
         os << std::setw( 30 ) << iface.name;
         os << std::setw( 10 ) << iface.device;
@@ -236,7 +234,7 @@ std::ostream& operator<<( std::ostream &os, const GET_VERSION_RESP &resp ) {
 std::ostream& operator<<( std::ostream &os, const GET_AAA_SESSIONS_RESP &resp ) {
     auto flags = os.flags();
     os << std::left;
-    os << "  ";
+    os << " ";
     os << std::setw( 6 ) << "SID";
     os << std::setw( 16 ) << "Username";
     os << std::setw( 16 ) << "Address";
@@ -247,7 +245,6 @@ std::ostream& operator<<( std::ostream &os, const GET_AAA_SESSIONS_RESP &resp ) 
     os << std::setw( 16 ) << "VRF";
     os << std::endl;
     for( auto const &iface: resp.sessions ) {
-        os << "  ";
         os << std::setw( 6 ) << iface.session_id;
         os << std::setw( 16 ) << iface.username;
         os << std::setw( 16 ) << iface.address;

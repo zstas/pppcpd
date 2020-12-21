@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
+#include <boost/asio/signal_set.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 #include <boost/asio/ip/network_v4.hpp>
 
@@ -20,6 +22,7 @@ using network_v4_t = boost::asio::ip::network_v4;
 
 inline constexpr char greeting[] { "pppctl# " };
 inline constexpr char unix_socket_path[] { "/var/run/pppcpd.sock" };
+termios orig_tio;
 
 static std::vector<std::string> split( const std::string &input ) {
     std::vector<std::string> tokens;
@@ -37,6 +40,11 @@ static std::vector<std::string> split( const std::string &input ) {
     );
 
     return tokens;
+}
+
+static void signal_handler_term( const boost::system::error_code &ec, int signum ) {
+    tcsetattr( STDIN_FILENO, TCSAFLUSH, &orig_tio );
+    exit( 0 );
 }
 
 std::string get_version( const std::map<std::string,std::string> &args ) {
@@ -68,6 +76,7 @@ std::string get_aaa_sessions( const std::map<std::string,std::string> &args ) {
 }
 
 std::string exit_cb( const std::map<std::string,std::string> &args ) {
+    tcsetattr( STDIN_FILENO, TCSAFLUSH, &orig_tio );
     exit( 0 );
     return {};
 }
@@ -142,7 +151,8 @@ std::string CLICMD::call_cmd( const std::string &cmd ) {
 CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     io( i ),
     endpoint( path ),
-    socket( i )
+    socket( i ),
+    stdio( i, STDIN_FILENO )
 {
     socket.connect( endpoint );
     if( !socket.is_open() ) {
@@ -198,12 +208,36 @@ int main( int argc, char *argv[] ) {
     std::cout << "Control utility of ppp control daemon" << std::endl;
     std::string cmd;
 
+    termios tio;
+    std::memset( &tio, 0, sizeof( tio ) );
+
+    /* Save the original tty state so we can restore it later */
+    if( tcgetattr( STDIN_FILENO, &orig_tio ) < 0 ) {
+        std::cerr << "Cannot get terminal settings" << std::endl;
+        exit( -1 );
+    }
+
+    /* Tweak the tty settings */
+    tio = orig_tio;
+    /* echo off, canonical mode off, ext'd input processing off */
+    tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+    tio.c_cc[VMIN] = 1;       /* 1 byte at a time */
+    tio.c_cc[VTIME] = 0;      /* no timer */
+
+    if( tcsetattr( STDIN_FILENO, TCSAFLUSH, &tio ) < 0 ) {
+        std::cerr << "Cannot set terminal settings" << std::endl;
+        exit( -1 );
+    }
+
     try {
         boost::asio::io_context io;
 
+        boost::asio::signal_set signals{ io, SIGTERM, SIGINT };
+        signals.async_wait( signal_handler_term );
+
         CLIClient cli { io, unix_socket_path };
 
-        while( cmd != "exit" ) {
+        while( true ) {
             std::cout << greeting;
             std::getline( std::cin, cmd );
             cli.process_input( cmd );
