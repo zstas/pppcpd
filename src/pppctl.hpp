@@ -48,12 +48,18 @@ public:
     CLIClient( boost::asio::io_context &i, const std::string &path );
     void process_input( const std::string &input );
 private:
+    void read_input();
+    void on_read( const boost::system::error_code &ec, size_t len );
     void print_resp( const std::string &msg );
+    void process_char( const char &ch );
+
     boost::asio::io_context &io;
     boost::asio::local::stream_protocol::endpoint endpoint;
     boost::asio::local::stream_protocol::socket socket;
     boost::asio::posix::stream_descriptor stdio;
     CLICMD cmd;
+    boost::asio::streambuf input;
+    std::string current_cmd;
 };
 
 #endif

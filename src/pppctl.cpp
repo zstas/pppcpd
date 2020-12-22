@@ -158,6 +158,43 @@ CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     if( !socket.is_open() ) {
         throw std::runtime_error( "Can't connect to unix socket" );
     }
+    read_input();
+    std::cout << "\033[2K" << greeting;
+    std::cout.flush();
+}
+
+void CLIClient::read_input() {
+    boost::asio::async_read( stdio, input, boost::asio::transfer_at_least( 1 ), std::bind( &CLIClient::on_read, this, std::placeholders::_1, std::placeholders::_2 ) );
+}
+
+void CLIClient::on_read( const boost::system::error_code &ec, size_t len ) {
+    if( ec ) {
+        // todo err handling
+        return;
+    }
+    input.commit( len );
+    while( input.in_avail() > 0 ) {
+        auto b = input.sgetc();
+        process_char( b );
+        input.consume( 1 );
+    }
+    std::cout << "\033[2K" << greeting << current_cmd;
+    std::cout.flush();
+    read_input();
+}
+
+void CLIClient::process_char( const char &ch ) {
+            current_cmd += ch;
+    switch( ch ) {
+    case '\t':
+    case ' ':
+        break;
+    case '\n':
+        break;
+    default:
+        if( std::isalnum( ch ) ) {
+        }
+    }
 }
 
 void CLIClient::process_input( const std::string &input ) {
@@ -237,12 +274,7 @@ int main( int argc, char *argv[] ) {
 
         CLIClient cli { io, unix_socket_path };
 
-        while( true ) {
-            std::cout << greeting;
-            std::getline( std::cin, cmd );
-            cli.process_input( cmd );
-        }
-
+        io.run();
     } catch( std::exception &e ) {
         std::cerr << e.what() << std::endl;
         return 1;
