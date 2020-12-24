@@ -178,21 +178,29 @@ void CLIClient::on_read( const boost::system::error_code &ec, size_t len ) {
         process_char( b );
         input.consume( 1 );
     }
-    std::cout << "\033[2K" << greeting << current_cmd;
+    std::cout << "\033[2K\r" << greeting << current_cmd;
     std::cout.flush();
     read_input();
 }
 
 void CLIClient::process_char( const char &ch ) {
-            current_cmd += ch;
     switch( ch ) {
+    case '\b':
+        if( !current_cmd.empty() )
+            current_cmd.erase( current_cmd.end() - 1 );
     case '\t':
-    case ' ':
         break;
     case '\n':
+        std::cout << std::endl;
+        if( !current_cmd.empty() ) {
+            process_input( current_cmd );
+            current_cmd.clear();
+        }
         break;
+    case ' ':
     default:
-        if( std::isalnum( ch ) ) {
+        if( std::isalnum( ch ) || ch == ' ' ) {
+            current_cmd += ch;
         }
     }
 }
