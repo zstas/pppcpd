@@ -39,6 +39,7 @@ public:
     CLICMD();
     void add_cmd( const std::string &full_command, cmd_callback callback );
     std::string call_cmd( const std::string &cmd );
+    std::vector<std::string> append_cmd( const std::string &cmd );
 private:
     std::shared_ptr<CLINode> start_node;
 };

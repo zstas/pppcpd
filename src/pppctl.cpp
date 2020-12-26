@@ -148,6 +148,44 @@ std::string CLICMD::call_cmd( const std::string &cmd ) {
     return node->callback( arguments );
 }
 
+std::vector<std::string> CLICMD::append_cmd( const std::string &cmd ) {
+    std::string common_part;
+    std::vector<std::string> ret;
+    auto node = start_node;
+    auto tokens = split( cmd );
+
+    while( !tokens.empty() ) {
+        auto ntoken = tokens.front();
+        tokens.erase( tokens.begin() );
+
+        if( auto nnode = std::find_if(
+            node->next_nodes.begin(),
+            node->next_nodes.end(),
+            [ ntoken ]( const std::shared_ptr<CLINode> v ) -> bool {
+                return v->token == ntoken;
+            }
+        ); nnode != node->next_nodes.end() ) {
+            node = *nnode;
+            common_part += node->token + " ";
+            continue;
+        }
+
+        for( auto const &nnode: node->next_nodes ) {
+            if( nnode->token.find( ntoken ) == 0 ) {
+                ret.emplace_back( common_part + nnode->token );
+            }
+        }
+    }
+
+    if( ret.empty() ) {
+        for( auto const &nnode: node->next_nodes ) {
+            ret.emplace_back( common_part + nnode->token );
+        }
+    }
+
+    return ret;
+}
+
 CLIClient::CLIClient( boost::asio::io_context &i, const std::string &path ):
     io( i ),
     endpoint( path ),
@@ -185,10 +223,25 @@ void CLIClient::on_read( const boost::system::error_code &ec, size_t len ) {
 
 void CLIClient::process_char( const char &ch ) {
     switch( ch ) {
+    case '?':
+        std::cout << std::endl;
+        for( auto const &tok: cmd.append_cmd( current_cmd ) ) {
+            std::cout << " " << tok << std::endl;
+        }
+        std::cout.flush();
+        break;
     case '\b':
         if( !current_cmd.empty() )
             current_cmd.erase( current_cmd.end() - 1 );
     case '\t':
+        std::cout << std::endl;
+        if( auto append = cmd.append_cmd( current_cmd ); append.size() == 1 ) {
+            current_cmd = append.front() + " ";
+        } else {
+            for( auto const &tok: append ) {
+                std::cout << " " << tok << std::endl;
+            }
+        }
         break;
     case '\n':
         std::cout << std::endl;
