@@ -148,7 +148,29 @@ vrfs:
 VRF are specified here. You should allocate unique table_id for every VRF. Also, we have a static routing table for every VRF, just the same as global RIB setting.
 
 ### Sesssion establishing ###
-In general there are 2 steps to setup a PPPoE Session:
+In summary, there are 2 steps to setup a PPPoE Session:
 * PPPoE establishing between subcriber and AC
 * PPP protocols negotiation: LCP/IPCP/CHAP/PAP
 
+In details:
+
+1. PPPoE AC answers regarding with PPPOEPolicy to requests from users. PPPOEPolicy is selected by vlan (or stay default).
+2. Established PPPoE session is stored in runtime. PPP protocols negotiation is started. PPPCPD uses separate FSM for every PPP protocol.
+3. PPP LCP negotiated with honouring LCPPolicy. For now LCP policy is hardcoded, but it can easily be removed to the global configuration.
+4. Then, PPP PAP or CHAP negotiation is started. On that stage AAA session started, it may be RADIUS or NOAUTH session for now. All information received from RADIUS and PPPOETemplate is stored in AAA session. AAA session is bound to PPPOESession.
+5. Finally, PPP IPCP negotiation is started with settings from previous step. On that stage VPP is being programmed: creating PPPoE session in dataplane, applying IP settings, etc.
+6. Periodic updates are being started at this moment. If the subscriber doesn't answer LCP Echo requests, both AAA and PPPOESession are stopped. 
+
+### Applying IP settings ###
+Depending on AAA settings we could have different entitites to confgure IP Address. They are listed in order of priority:
+* `Framed-IP-Address` from RADIUS response
+* `Framed-Pool` from RADIUS response
+* Framed-Pool setting from PPPOETemplate
+
+In case of NOAUTH we have only last option. 
+
+DNS are applied:
+* `Client-DNS-Pri` and `Client-DNS-Sec` from Ericsson RADIUS dictionary
+* DNS1 and DNS2 settings from PPPOETemplate
+
+IP Unnumbered is applied only from PPPOETemplate.
