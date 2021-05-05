@@ -174,3 +174,14 @@ DNS are applied:
 * DNS1 and DNS2 settings from PPPOETemplate
 
 IP Unnumbered is applied only from PPPOETemplate.
+
+VRF is also applied from PPPOETemplate.
+
+### Reloading configuration ###
+Configuration from YAML file specified in `-p` option is processed on SIGHUP. For now, only policies are updated. Entities such VPP interfaces and routes aren't being updated during this process. 
+
+### Troubleshooting ###
+* Logs are redirected to syslog.
+* Capturing packets on CP interface, usually `tap0` with tcpdump/wireshark.
+* RADIUS packets are sent via regular system interfaces (not through VPP).
+* `vppctl` is used to see actual pppoe session programmed in VPP. Also, you can check IP configuration, FIB entries, etc.
