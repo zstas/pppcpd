@@ -1,4 +1,32 @@
 ## Documentation ##
+### Installation ###
+0. Installing dependecies:
+```
+sudo apt install -y git
+sudo apt install -y cmake
+sudo apt install -y g++ gcc
+sudo apt install -y libboost1.74-all-dev
+```
+1. Installing VPP:
+```
+git clone https://gerrit.fd.io/r/vpp.git
+cd vpp
+make install-dep
+make install-ext-dep
+make build
+make pkg-deb-debug
+cd build-root/
+sudo dpkg -i *.deb 
+sudo apt install --fix-broken
+```
+2. Installing PPPCPD:
+```
+cd pppcpd/
+mkdir build
+cd build/
+cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTING=OFF ..
+```
+
 ### Configuration ###
 You can generate a sample configuration running a pppcpd with -g:
 ```

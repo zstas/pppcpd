@@ -1,6 +1,8 @@
 #ifndef NET_INTEGER_HPP
 #define NET_INTEGER_HPP
 
+#include <iostream>
+
 constexpr auto bswap( uint16_t val ) noexcept {
     return __builtin_bswap16( val );
 }
