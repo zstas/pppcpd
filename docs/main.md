@@ -27,6 +27,26 @@ cd build/
 cmake -DCMAKE_BUILD_TYPE=DEBUG -DBUILD_TESTING=OFF ..
 ```
 
+3. systemd service unit example:
+```
+/lib/systemd/system/pppcpd.service 
+[Unit]
+Description=PPPoE Control Plane Daemon
+After=vpp.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/home/dataf/pppcpd/build/pppcpd -p /home/dataf/pppcpd/build/config.yaml
+StandardOutput=syslog
+StandardError=syslog
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ### Configuration ###
 You can generate a sample configuration running a pppcpd with -g:
 ```
@@ -212,4 +232,16 @@ Configuration from YAML file specified in `-p` option is processed on SIGHUP. Fo
 * Logs are redirected to syslog.
 * Capturing packets on CP interface, usually `tap0` with tcpdump/wireshark.
 * RADIUS packets are sent via regular system interfaces (not through VPP).
-* `vppctl` is used to see actual pppoe session programmed in VPP. Also, you can check IP configuration, FIB entries, etc.
+* Since only static routes are supported, it's easy to tshoot ip routing issues, see below.
+
+Tshooting VPP:
+
+`show ip fib [table <x>] [x.x.x.x/y]` - to check IP routing table 
+
+`show pppoe session` - to check programmed session in VPP.
+
+`show pppoe fib` - to see interfaces and mac addresses of pppoe users.
+
+`show ip neigh` - to check arp/nd state
+
+`show interface [addr]` - to see actual hw and sw interfaces and addresses on them.
