@@ -87,6 +87,10 @@ AAA_Session::~AAA_Session() {
 }
 
 void AAA_Session::start() {
+    if( !acct ) {
+        return;
+    }
+
     AcctRequest req;
     req.session_id = "session_" + std::to_string( session_id );
     req.acct_status_type = "Start";
@@ -104,6 +108,9 @@ void AAA_Session::start() {
 }
 
 void AAA_Session::stop() {
+    if( !acct ) {
+        return;
+    }
     auto const &[ ret, counters ] = runtime->vpp->get_counters_by_index( ifindex );
     AcctRequest req;
     req.session_id = "session_" + std::to_string( session_id );

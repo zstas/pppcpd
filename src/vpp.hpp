@@ -9,6 +9,7 @@
 #include "vapi/pppoe.api.vapi.hpp"
 #include "vapi/policer.api.vapi.hpp"
 #include "vapi/ip.api.vapi.hpp"
+#include "vapi/memclnt.api.vapi.hpp"
 
 #include "config.hpp"
 
