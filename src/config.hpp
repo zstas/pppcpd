@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include <set>
+#include <optional>
 
 #include "aaa.hpp"
 #include "policy.hpp"
@@ -63,7 +64,7 @@ struct AAAConf {
 
 struct InterfaceUnit {
     std::optional<network_v4_t> address;
-    uint16_t vlan;
+    std::optional<uint16_t> vlan;
     bool admin_state { true };
     std::string vrf;
     std::string unnumbered;

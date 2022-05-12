@@ -4,11 +4,6 @@
 #include "vapi/vapi.hpp"
 #include "vapi/vpe.api.vapi.hpp"
 
-#include "vapi/interface.api.vapi.hpp"
-#include "vapi/tapv2.api.vapi.hpp"
-#include "vapi/pppoe.api.vapi.hpp"
-#include "vapi/policer.api.vapi.hpp"
-#include "vapi/ip.api.vapi.hpp"
 #include "vapi/memclnt.api.vapi.hpp"
 
 #include "config.hpp"
@@ -21,6 +16,7 @@ struct VPPIfaceCounters;
 struct VPPVRF;
 struct VPPIP;
 struct VPPUnnumbered;
+struct PolicerInfo;
 
 class VPPAPI {
 public:
@@ -62,6 +58,13 @@ public:
     // VRF methods
     bool set_vrf( const std::string &name, uint32_t id, bool is_add = true );
     std::vector<VPPVRF> dump_vrfs();
+
+    // Policer methods
+    uint32_t policer_add_del( const std::string &name, uint32_t cir, uint64_t cb, bool isAdd = true );
+    bool policer_input( const std::string &name, uint32_t sw_if_index, bool isAdd = true );
+    bool policer_output( const std::string &name, uint32_t sw_if_index, bool isAdd = true );
+    bool set_policer( uint32_t sw_if_index, const PolicerInfo& );
+    void unset_policer( uint32_t sw_if_index );
 
     // Stats
     std::tuple<bool,VPPIfaceCounters> get_counters_by_index( uint32_t ifindex );

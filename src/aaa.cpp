@@ -44,7 +44,7 @@ AAA::AAA( io_service &i, AAAConf &c ):
     }
 
     if( !dict.has_value() ) {
-        runtime->logger->logInfo() << LOGS::AAA << "No RADIUS dictionaries provided. RADIUS won't be working." << std::endl;
+        throw std::runtime_error( "No RADIUS dictionaries provided. RADIUS won't be working." );
     }
 
     for( auto const &[ k, v ]: conf.auth_servers ) {

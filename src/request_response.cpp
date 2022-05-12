@@ -136,6 +136,8 @@ RadiusResponse deserialize<RadiusResponse>( const RadiusDict &dict, std::vector<
             res.framed_pool = { avp.value.begin(), avp.value.end() };
         } else if( attr.first == "Subscriber-Profile-Name" ) {
             res.pppoe_template = { avp.value.begin(), avp.value.end() };
+        } else if( attr.first == "Mikrotik-Rate-Limit" ) {
+            res.policer_info = { avp.value.begin(), avp.value.end() };
         }
     }
     return res;

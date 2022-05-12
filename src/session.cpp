@@ -43,6 +43,12 @@ std::string PPPOESession::provision_dp() {
             return "Cannot set unnumbered to new session";
         }
     }
+
+    if( policer_info ) {
+        if( auto ret = runtime->vpp->set_policer( *policer_info ); !ret ) {
+            return "Cannot set policer for the new session";
+        }
+    }
     return {};
 }
 

@@ -1,5 +1,7 @@
 #include <iostream>
+#include <vapi/policer.api.vapi.h>
 
+#include "aaa_session.hpp"
 #include "vpp.hpp"
 #include "vpp_types.hpp"
 #include "log.hpp"
@@ -8,6 +10,13 @@
 extern "C" {
     #include "vpp-api/client/stat_client.h"
 }
+
+#include "vapi/interface.api.vapi.hpp"
+#include "vapi/tapv2.api.vapi.hpp"
+#include "vapi/pppoe.api.vapi.hpp"
+#include "vapi/policer.api.vapi.hpp"
+#include "vapi/ip.api.vapi.hpp"
+#include "vapi/policer.api.vapi.hpp"
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON
 DEFINE_VAPI_MSG_IDS_MEMCLNT_API_JSON
@@ -120,6 +129,10 @@ std::tuple<bool,uint32_t> VPPAPI::add_pppoe_session( uint32_t ip_address, uint16
 }
 
 std::tuple<bool,int32_t> VPPAPI::add_subif( int32_t interface, uint16_t unit, uint16_t outer_vlan, uint16_t inner_vlan ) {
+    if( outer_vlan == 0 ) {
+        return { true, interface };
+    }
+
     vapi::Create_subif subif{ con };
 
     auto &req = subif.get_request().get_payload();
@@ -129,7 +142,7 @@ std::tuple<bool,int32_t> VPPAPI::add_subif( int32_t interface, uint16_t unit, ui
     req.inner_vlan_id = inner_vlan;
     req.sub_if_flags = vapi_enum_sub_if_flags::SUB_IF_API_FLAG_EXACT_MATCH;
     if( outer_vlan == 0 ) {
-        req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_NO_TAGS );
+        req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( vapi_enum_sub_if_flags::SUB_IF_API_FLAG_DEFAULT );
     } else if( inner_vlan != 0 ) {
         req.sub_if_flags = static_cast<vapi_enum_sub_if_flags>( req.sub_if_flags | vapi_enum_sub_if_flags::SUB_IF_API_FLAG_TWO_TAGS );
     } else {
@@ -437,7 +450,7 @@ bool VPPAPI::setup_interfaces( std::vector<InterfaceConf> ifaces ) {
             set_mtu( vppif.sw_if_index, iface.mtu.value() );
         }
         for( auto &[ id, unit ]: iface.units ) {
-            if( auto [ ret, ifi ] = add_subif( vppif.sw_if_index, id, unit.vlan, 0 ); !ret ) {
+            if( auto [ ret, ifi ] = add_subif( vppif.sw_if_index, id, unit.vlan.value_or( 0 ), 0 ); !ret ) {
                 logger->logError() << LOGS::VPP << "Cannot create unit: " << iface.device << "." << id << std::endl;
                 continue;
             } else {
@@ -797,6 +810,116 @@ std::vector<VPPVRF> VPPAPI::dump_vrfs() {
         output.push_back( std::move( vrf ) );
     }
     return output;
+}
+
+uint32_t VPPAPI::policer_add_del( const std::string &name, uint32_t cir, uint64_t burst, bool isAdd ) {
+  vapi::Policer_add_del pol { con };
+
+  auto &req = pol.get_request().get_payload();
+  std::memcpy( req.name, name.c_str(), name.length() );
+  req.is_add = isAdd;
+  if( isAdd ) {
+    req.cir = cir;
+    req.cb = burst;
+    req.color_aware = false;
+    req.conform_action.type = SSE2_QOS_ACTION_API_TRANSMIT;
+    req.exceed_action.type  = SSE2_QOS_ACTION_API_DROP;
+    req.violate_action.type = SSE2_QOS_ACTION_API_DROP;
+  }
+
+  auto ret = pol.execute();
+  if( ret != VAPI_OK ) {
+      return false;
+  }
+
+  do {
+      ret = con.wait_for_response( pol );
+  } while( ret == VAPI_EAGAIN );
+
+  auto &repl = pol.get_response().get_payload();
+  if( repl.retval < 0 ) {
+      return ~0;
+  }
+
+  return uint32_t { repl.policer_index };
+}
+
+bool VPPAPI::policer_input( const std::string &name, uint32_t sw_if_index, bool isAdd ) {
+  vapi::Policer_input pol { con };
+
+  auto &req = pol.get_request().get_payload();
+  req.apply = isAdd;
+  req.sw_if_index = sw_if_index;
+  std::memcpy( req.name, name.c_str(), name.length() );
+
+  auto ret = pol.execute();
+  if( ret != VAPI_OK ) {
+      return false;
+  }
+
+  do {
+      ret = con.wait_for_response( pol );
+  } while( ret == VAPI_EAGAIN );
+
+  auto &repl = pol.get_response().get_payload();
+  return repl.retval < 0;
+}
+
+bool VPPAPI::policer_output( const std::string &name, uint32_t sw_if_index, bool isAdd ) {
+  vapi::Policer_output pol { con };
+
+  auto &req = pol.get_request().get_payload();
+  req.apply = isAdd;
+  req.sw_if_index = sw_if_index;
+  std::memcpy( req.name, name.c_str(), name.length() );
+
+  auto ret = pol.execute();
+  if( ret != VAPI_OK ) {
+      return false;
+  }
+
+  do {
+      ret = con.wait_for_response( pol );
+  } while( ret == VAPI_EAGAIN );
+
+  auto &repl = pol.get_response().get_payload();
+  return repl.retval < 0;
+}
+
+bool VPPAPI::set_policer(uint32_t sw_if_index, const PolicerInfo &conf) {
+  std::string policer_in = "pol_" + std::to_string( sw_if_index ) + "_in";
+  std::string policer_out = "pol_" + std::to_string( sw_if_index ) + "_out";
+  if( ~0 == policer_add_del( policer_in, conf.rate_in, conf.burst_in ) ) {
+    goto err;
+  }
+
+  if( ~0 == policer_add_del( policer_out, conf.rate_out, conf.burst_out ) ) {
+    goto err;
+  }
+
+  if( ! policer_input( policer_in, sw_if_index ) ) {
+    goto err;
+  }
+
+  if( ! policer_output( policer_out, sw_if_index ) ) {
+    goto err;
+  }
+
+  return true;
+
+err:
+  unset_policer( sw_if_index );
+  return false;
+}
+
+void VPPAPI::unset_policer( uint32_t sw_if_index ) {
+  std::string policer_in = "pol_" + std::to_string( sw_if_index ) + "_in";
+  std::string policer_out = "pol_" + std::to_string( sw_if_index ) + "_out";
+
+  policer_input( policer_in, sw_if_index, false );
+  policer_output( policer_out, sw_if_index, false );
+  policer_add_del( policer_in, 0, 0, false);
+  policer_add_del( policer_out, 0, 0, false);
 }
 
 std::tuple<bool,VPPIfaceCounters> VPPAPI::get_counters_by_index( uint32_t ifindex ) {

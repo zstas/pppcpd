@@ -1,6 +1,9 @@
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <iostream>
 #include <memory>
 #include <functional>
+#include <string>
 
 #include "aaa_session.hpp"
 #include "radius_dict.hpp"
@@ -10,6 +13,28 @@
 #include "runtime.hpp"
 
 extern std::shared_ptr<PPPOERuntime> runtime;
+
+uint32_t convertDigit( const std::string &in ) {
+    uint32_t ret = std::stoi( in );
+    if( in.find( "k" ) != std::string::npos ) {
+        ret *= 1024;
+    }
+    if( in.find( "m" ) != std::string::npos ) {
+        ret *= 1024 * 1024;
+    }
+}
+
+PolicerInfo::PolicerInfo( const std::string &in ) {
+    std::vector<std::string> input;
+    boost::algorithm::split( input, in, boost::is_any_of( "/ " ) );
+
+    if( input.size() == 4 ) {
+        rate_in = convertDigit( input[0] );
+        burst_in = convertDigit( input[1] );
+        rate_out = convertDigit( input[2] );
+        burst_out = convertDigit( input[3] );
+    }
+}
 
 AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, const std::string &template_name ):
     io( i ),
@@ -70,6 +95,10 @@ AAA_Session::AAA_Session( io_service &i, uint32_t sid, const std::string &u, con
             address = address_v4_t{ fr_pool->second.allocate_ip() };
             free_ip = true;
         }
+    }
+
+    if( !resp.policer_info.empty() ) {
+        policer.emplace( resp.policer_info );
     }
 
     runtime->logger->logInfo() << "Creating new AAA session: " << username << " " << address.to_string() << " vrf: " << vrf << std::endl;

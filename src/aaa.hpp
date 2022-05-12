@@ -4,6 +4,8 @@
 #include "auth_client.hpp"
 #include "session.hpp"
 
+#include <optional>
+
 struct AAAConf;
 struct PPPOELocalTemplate;
 struct RadiusResponse;

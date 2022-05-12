@@ -119,7 +119,9 @@ YAML::Node YAML::convert<InterfaceUnit>::encode( const InterfaceUnit &rhs ) {
     if( rhs.address.has_value() ) {
         node[ "address" ] = rhs.address.value().to_string();
     }
-    node[ "vlan" ] = rhs.vlan;
+    if( rhs.vlan ) {
+        node[ "vlan" ] = *rhs.vlan;
+    }
     if( !rhs.vrf.empty() ) {
         node[ "vrf" ] = rhs.vrf;
     }
@@ -133,7 +135,9 @@ bool YAML::convert<InterfaceUnit>::decode( const YAML::Node &node, InterfaceUnit
     if( node[ "address" ].IsDefined() ) {
         rhs.address = boost::asio::ip::make_network_v4( node[ "address" ].as<std::string>() );
     }
-    rhs.vlan = node[ "vlan" ].as<uint16_t>();
+    if( node[ "vrf" ].IsDefined() ) {
+        rhs.vlan = node[ "vlan" ].as<uint16_t>();
+    }
     if( node[ "vrf" ].IsDefined() ) {
         rhs.vrf = node[ "vrf" ].as<std::string>();
     }
@@ -182,7 +186,9 @@ bool YAML::convert<PPPOEGlobalConf>::decode( const YAML::Node &node, PPPOEGlobal
     rhs.pppoe_templates = node[ "pppoe_templates" ].as<std::map<std::string,PPPOELocalTemplate>>();
     rhs.aaa_conf = node[ "aaa_conf" ].as<AAAConf>();
     rhs.global_rib = node[ "global_rib" ].as<StaticRIB>();
-    rhs.vrfs = node[ "vrfs" ].as<std::vector<VRFConf>>();
+    if( node["vrfs"].IsDefined() ) {
+        rhs.vrfs = node[ "vrfs" ].as<std::vector<VRFConf>>();
+    }
     return true;
 }
 

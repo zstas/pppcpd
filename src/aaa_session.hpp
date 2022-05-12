@@ -3,6 +3,9 @@
 
 #include "auth_client.hpp"
 #include "config.hpp"
+#include "policer_info.hpp"
+#include <string>
+#include <optional>
 
 using aaa_callback = std::function<void(uint32_t,std::string)>;
 
@@ -30,6 +33,7 @@ public:
     std::string framed_pool;
     std::string vrf;
     std::string unnumbered;
+    std::optional<PolicerInfo> policer;
 
     std::shared_ptr<AuthClient> acct { nullptr };
     bool free_ip { false };

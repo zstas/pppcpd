@@ -2,6 +2,7 @@
 #define SESSION_HPP
 
 #include <memory>
+#include <optional>
 
 #include "evloop.hpp"
 #include "ppp_fsm.hpp"
@@ -10,6 +11,7 @@
 #include "ppp_lcp.hpp"
 #include "ppp_chap.hpp"
 #include "encap.hpp"
+#include "policer_info.hpp"
 
 struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     // General Data
@@ -27,6 +29,7 @@ struct PPPOESession : public std::enable_shared_from_this<PPPOESession> {
     uint32_t ifindex;
     std::string vrf;
     std::string unnumbered;
+    std::optional<PolicerInfo> policer_info;
 
     // PPP FSM for all the protocols we support
     struct LCP_FSM lcp;

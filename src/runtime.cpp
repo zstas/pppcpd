@@ -25,13 +25,13 @@ PPPOERuntime::PPPOERuntime( std::string cp, io_service &i ) :
     logger->setLevel( LOGL::INFO );
     logger->logInfo() << LOGS::MAIN << "Starting PPP control plane daemon..." << std::endl;
     vpp = std::make_shared<VPPAPI>( io, logger );
-    for( auto const &tapid: vpp->get_tap_interfaces() ) {
-        logger->logInfo() << LOGS::MAIN << "Deleting TAP interface with id " << tapid << std::endl;
-        auto ret = vpp->delete_tap( tapid );
-        if( !ret ) {
-            logger->logError() << LOGS::VPP << "Cannot delete tap interface with ifindex: " << tapid << std::endl;
-        }
-    }
+    // for( auto const &tapid: vpp->get_tap_interfaces() ) {
+    //     logger->logInfo() << LOGS::MAIN << "Deleting TAP interface with id " << tapid << std::endl;
+    //     auto ret = vpp->delete_tap( tapid );
+    //     if( !ret ) {
+    //         logger->logError() << LOGS::VPP << "Cannot delete tap interface with ifindex: " << tapid << std::endl;
+    //     }
+    // }
     if( auto const &[ ret, ifi ] = vpp->create_tap( conf.tap_name ); ret ) {
         std::string path { "/proc/sys/net/ipv6/conf/" + conf.tap_name + "/disable_ipv6" };
         std::ofstream dis_ipv6 { path };
